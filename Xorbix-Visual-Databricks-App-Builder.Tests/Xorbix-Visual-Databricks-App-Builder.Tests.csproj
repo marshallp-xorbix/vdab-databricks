@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Xorbix_Visual_Databricks_App_Builder.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.SemanticKernel.Core" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xorbix-Visual-Databricks-App-Builder.DataAccess\Xorbix-Visual-Databricks-App-Builder.DataAccess.csproj" />
+    <ProjectReference Include="..\Xorbix-Visual-Databricks-App-Builder.Models\Xorbix-Visual-Databricks-App-Builder.Models.csproj" />
+    <ProjectReference Include="..\Xorbix-Visual-Databricks-App-Builder.Server\Xorbix-Visual-Databricks-App-Builder.Server.csproj" />
+    <ProjectReference Include="..\Xorbix-Visual-Databricks-App-Builder.ServiceDefaults\Xorbix-Visual-Databricks-App-Builder.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Xorbix-Visual-Databricks-App-Builder.Services\Xorbix-Visual-Databricks-App-Builder.Services.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,80 @@
+# Packaging steps — publish the App Service zip, the EF Core migration bundle, and the pipeline artifacts.
+# Used ONLY by the full CI/CD job (templates/build.yml). The PR validation pipeline deliberately does NOT
+# run these: PR validation builds and tests, but produces no artifacts and never deploys.
+# These steps assume steps-build-test.yml has already run in the same job (checkout done, backend built).
+parameters:
+  - name: apiDirectory
+    type: string
+  - name: dataAccessDirectory
+    type: string
+  - name: buildConfiguration
+    type: string
+  - name: efContext
+    type: string
+  - name: artifactName
+    type: string
+  - name: publishDir
+    type: string
+
+steps:
+  # Publish the API to a folder (no auto-zip), then create exactly one deterministic package zip.
+  - task: DotNetCoreCLI@2
+    displayName: Publish API (folder)
+    inputs:
+      command: publish
+      publishWebProjects: false
+      projects: "${{ parameters.apiDirectory }}/Xorbix-Visual-Databricks-App-Builder.Server.csproj"
+      arguments: "--configuration ${{ parameters.buildConfiguration }} --no-build --output ${{ parameters.publishDir }}"
+      zipAfterPublish: false
+      modifyOutputPath: false
+    env:
+      NUGET_PACKAGES: "$(NUGET_PACKAGES)"
+
+  - task: ArchiveFiles@2
+    displayName: Create App Service package (zip)
+    inputs:
+      rootFolderOrFile: "${{ parameters.publishDir }}"
+      includeRootFolder: false
+      archiveType: zip
+      archiveFile: "$(Build.ArtifactStagingDirectory)/package/Xorbix-Visual-Databricks-App-Builder.Server.zip"
+      replaceExistingArchive: true
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish build artifact (${{ parameters.artifactName }})
+    inputs:
+      targetPath: "$(Build.ArtifactStagingDirectory)/package"
+      artifact: "${{ parameters.artifactName }}"
+      publishLocation: "pipeline"
+
+  # EF Core migration bundle (a self-contained migrate.exe applied during each deploy).
+  - task: DotNetCoreCLI@2
+    displayName: Install EF Core tools
+    inputs:
+      command: custom
+      custom: tool
+      arguments: "install --global dotnet-ef --version 9.0.10 --ignore-failed-sources"
+
+  - task: DotNetCoreCLI@2
+    displayName: dotnet ef migrations bundle
+    inputs:
+      command: custom
+      custom: ef
+      arguments: 'migrations bundle --no-build --project $(Build.SourcesDirectory)/${{ parameters.dataAccessDirectory }}/${{ parameters.dataAccessDirectory }}.csproj --startup-project $(Build.SourcesDirectory)/${{ parameters.apiDirectory }}/${{ parameters.apiDirectory }}.csproj --context "${{ parameters.efContext }}" --configuration ${{ parameters.buildConfiguration }} --output $(Build.ArtifactStagingDirectory)/efcore/migrate.exe --verbose'
+    env:
+      KeyVault__Uri: "" # Keep blank to skip Key Vault access during the migration build step
+      Encryption__BlobUri: ""
+      Encryption__KeyUri: ""
+
+  - task: CopyFiles@2
+    displayName: Copy appsettings json file for ef migration
+    inputs:
+      Contents: "$(Build.SourcesDirectory)/${{ parameters.apiDirectory }}/appsettings.json"
+      TargetFolder: "$(Build.ArtifactStagingDirectory)/efcore"
+      flattenFolders: true
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish Migration Bundle
+    inputs:
+      targetPath: "$(Build.ArtifactStagingDirectory)/efcore"
+      artifact: "migration_bundle"
+      publishLocation: "pipeline"

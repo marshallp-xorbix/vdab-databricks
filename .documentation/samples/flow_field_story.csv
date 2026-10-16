@@ -1,0 +1,11 @@
+period,source_stage,destination_stage,flow_volume,stage_order,conversion_pct,drop_off_count,avg_days_in_stage,status
+2026-01-01,Lead,Qualified,1180,1,61.5,450,2.3,normal
+2026-01-01,Qualified,Proposal,720,2,46.0,280,5.4,delayed
+2026-01-01,Proposal,Won,340,3,70.0,90,8.1,normal
+2026-01-01,Qualified,Lost,180,2,0.0,,3.1,failed
+2026-01-01,Proposal,Lost,130,3,0.0,,6.4,failed
+2026-02-01,Lead,Qualified,1220,1,63.2,430,2.5,normal
+2026-02-01,Qualified,Proposal,780,2,49.5,260,4.9,delayed
+2026-02-01,Proposal,Won,380,3,73.5,85,7.8,normal
+2026-02-01,Qualified,Lost,200,2,0.0,,2.9,failed
+2026-02-01,Proposal,Lost,150,3,0.0,,6.2,failed

@@ -1,0 +1,136 @@
+parameters:
+  - name: environment
+    type: string
+  - name: serviceConnection
+    type: string
+  - name: subscriptionId
+    type: string
+  - name: azureLocation
+    type: string
+  - name: resourceGroup
+    type: string
+  - name: webAppName
+    type: string
+  - name: bicepParametersFile
+    type: string
+  - name: postgresConnectionString
+    type: string
+  # When true, deploy to a deployment slot and swap it into the live site (blue-green). Used for production.
+  - name: deployToSlot
+    type: boolean
+    default: false
+  - name: slotName
+    type: string
+    default: ""
+
+jobs:
+  - deployment: Deploy_${{ parameters.environment }}
+    displayName: Deploy to ${{ parameters.environment }}
+    # Binds to the Azure DevOps Environment of the same name. Approval checks on the stg and prd Environments
+    # gate this deployment (prod with a higher bar). dev has no approval, so it deploys automatically.
+    environment: ${{ parameters.environment }}
+    pool:
+      vmImage: windows-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            # Download the promoted, build-once artifacts (same bits for every environment).
+            - task: DownloadPipelineArtifact@2
+              displayName: Download build artifact (vdab-build)
+              inputs:
+                artifact: "vdab-build"
+                path: "$(Pipeline.Workspace)/vdab-build"
+
+            - task: DownloadPipelineArtifact@2
+              displayName: Download migration bundle
+              inputs:
+                artifact: "migration_bundle"
+                path: "$(Pipeline.Workspace)/migration_bundle"
+
+            - task: DownloadPipelineArtifact@2
+              displayName: Download infrastructure artifact
+              inputs:
+                artifact: "vdab-infrastructure"
+                path: "$(Pipeline.Workspace)/vdab-infrastructure"
+
+            # 1. Preview infrastructure changes for this environment (informational; never fails the deploy).
+            - task: AzureCLI@2
+              displayName: Bicep what-if (${{ parameters.environment }})
+              inputs:
+                azureSubscription: "${{ parameters.serviceConnection }}"
+                scriptType: pscore
+                scriptLocation: inlineScript
+                inlineScript: |
+                  az bicep install
+                  try {
+                    az deployment group what-if `
+                      --resource-group "${{ parameters.resourceGroup }}" `
+                      --template-file "$(Pipeline.Workspace)/vdab-infrastructure/main.bicep" `
+                      --parameters "$(Pipeline.Workspace)/vdab-infrastructure/${{ parameters.bicepParametersFile }}"
+                  } catch {
+                    Write-Warning "What-if encountered an issue (non-fatal): $_"
+                  }
+
+            # 2. Deploy infrastructure (Bicep, incremental).
+            - task: AzureResourceManagerTemplateDeployment@3
+              displayName: Deploy Bicep Infrastructure
+              inputs:
+                deploymentScope: "Resource Group"
+                azureResourceManagerConnection: "${{ parameters.serviceConnection }}"
+                subscriptionId: "${{ parameters.subscriptionId }}"
+                action: "Create Or Update Resource Group"
+                resourceGroupName: "${{ parameters.resourceGroup }}"
+                location: "${{ parameters.azureLocation }}"
+                templateLocation: "Linked artifact"
+                csmFile: "$(Pipeline.Workspace)/vdab-infrastructure/main.bicep"
+                csmParametersFile: "$(Pipeline.Workspace)/vdab-infrastructure/${{ parameters.bicepParametersFile }}"
+                deploymentMode: "Incremental"
+
+            # 3. Deploy the full app package (API + embedded SPA) — the same zip for every environment.
+            # When deployToSlot=true (production), this deploys to the slot; the swap below makes it live.
+            - task: AzureWebApp@1
+              displayName: Deploy Full App
+              inputs:
+                azureSubscription: "${{ parameters.serviceConnection }}"
+                appType: "webApp"
+                appName: "${{ parameters.webAppName }}"
+                deployToSlotOrASE: ${{ parameters.deployToSlot }}
+                resourceGroupName: "${{ parameters.resourceGroup }}"
+                slotName: "${{ parameters.slotName }}"
+                package: "$(Pipeline.Workspace)/vdab-build/Xorbix-Visual-Databricks-App-Builder.Server.zip"
+                deploymentMethod: "auto"
+                enableCustomDeployment: true
+                removeAdditionalFilesFlag: true
+                excludeFilesFromAppDataFlag: true
+
+            # 4. Apply EF Core migrations against this environment's Lakebase branch.
+            # migrate.exe is idempotent (only pending migrations run). The connection string is passed as a
+            # masked environment variable, never inlined into the script.
+            - task: PowerShell@2
+              displayName: Execute EF Migrations
+              inputs:
+                targetType: "inline"
+                script: |
+                  if ([string]::IsNullOrWhiteSpace($env:POSTGRES_CONNECTION_STRING)) {
+                    Write-Error "POSTGRES connection string is empty. Check the Key Vault-linked variable group for ${{ parameters.environment }} (secret ConnectionStrings--PostgreSql)."
+                    exit 1
+                  }
+                  Set-Location "$(Pipeline.Workspace)/migration_bundle"
+                  & ./migrate.exe --connection "$env:POSTGRES_CONNECTION_STRING"
+              env:
+                POSTGRES_CONNECTION_STRING: ${{ parameters.postgresConnectionString }}
+
+            # 5. Blue-green swap (production only): make the warmed-up slot the live site. Migrations above ran
+            # first against the shared database, so migrations MUST be backward-compatible — the currently-live
+            # slot keeps serving the previous code against the new schema until this swap completes.
+            - ${{ if parameters.deployToSlot }}:
+              - task: AzureAppServiceManage@0
+                displayName: Swap '${{ parameters.slotName }}' slot into production
+                inputs:
+                  azureSubscription: "${{ parameters.serviceConnection }}"
+                  Action: "Swap Slots"
+                  WebAppName: "${{ parameters.webAppName }}"
+                  ResourceGroupName: "${{ parameters.resourceGroup }}"
+                  SourceSlot: "${{ parameters.slotName }}"
+                  SwapWithProduction: true

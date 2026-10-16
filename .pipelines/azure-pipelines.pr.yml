@@ -1,0 +1,56 @@
+# =====================================================================================
+# VDAB PR BUILD VALIDATION — build + test only. No artifacts, no deploy.
+#
+# This runs the EXACT SAME build/test steps as the full CI/CD pipeline (azure-pipelines.yml): both consume
+# templates/steps-build-test.yml, so there is one source of truth for how the app is compiled and tested.
+# The only difference is that PR validation skips the slower live-database tests (Category=RequiresDatabaseSchema)
+# and stops after testing — it never packages artifacts or deploys.
+#
+# HOW IT RUNS
+#   - trigger: none        → this pipeline never runs on a branch push; the full pipeline owns CI/CD on develop.
+#   - pr:                  → validates PRs into develop and main.
+#
+# Azure Repos Git note: the `pr:` trigger below is honoured for GitHub/Bitbucket but IGNORED for Azure Repos.
+# For Azure Repos, add this pipeline as a required "Build Validation" check in the branch policies for
+# develop and main (Project Settings → Repositories → Policies), and remove the full pipeline from those
+# policies so PRs are validated once, here.
+# =====================================================================================
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - develop
+      - main
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  # Same build/test variables the full pipeline uses — identical SDK versions, solution glob, cache paths.
+  - template: templates/build-variables.yml
+
+stages:
+  - stage: Validate
+    displayName: ✅ PR build & test (no deploy)
+    jobs:
+      - job: Build_Test
+        displayName: Build & test (no artifacts)
+        steps:
+          - template: templates/steps-build-test.yml
+            parameters:
+              dotnetSdkVersion: $(dotnetSdkVersion)
+              nodeVersion: $(nodeVersion)
+              uiDirectory: $(uiDirectory)
+              apiDirectory: $(apiDirectory)
+              solution: $(solution)
+              buildConfiguration: $(buildConfiguration)
+              # Skip slow tests on PR validation so it stays fast. Two trait categories are excluded:
+              #   - RequiresDatabaseSchema : live-Postgres tests (also self-skip without a connection string).
+              #   - LongRunning            : the convention for slow tests — heavy setup, in-memory DB
+              #                              rebuilds, long loops, etc.
+              # To keep a slow test out of PR validation, tag it [Trait("Category", "LongRunning")]; it still
+              # runs in the full pipeline. NOTE: as of now NO test is tagged LongRunning (the whole suite runs
+              # in ~1s), so this is a guardrail for future growth, not a current exclusion.
+              testFilter: "Category!=RequiresDatabaseSchema&Category!=LongRunning"

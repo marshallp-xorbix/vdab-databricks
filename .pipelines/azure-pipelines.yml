@@ -1,0 +1,139 @@
+# =====================================================================================
+# VDAB CI/CD — build ONCE, promote the SAME artifact across dev → staging → prod.
+#
+# HOW IT RUNS
+#   - PR to develop or main:    build + test + Bicep validation only (NO deploy).
+#   - Commit/merge to develop:  build one artifact, AUTO-deploy dev, then await approvals to promote the
+#                               SAME artifact to staging and prod. One run = one release candidate.
+#
+# GATES (configured on Azure DevOps Environments — see 3-service-connections-and-access.md)
+#   - dev:     automatic, no approval.
+#   - staging: "stg" Environment approval check.
+#   - prod:    "prd" Environment approval check at a higher bar (more approvers, business-hours, exclusive lock).
+#
+# The build is ENVIRONMENT-AGNOSTIC: the SPA resolves its API base (same-origin), OAuth redirect (window
+# origin) and Application Insights (GET /api/config) at RUNTIME, so the one artifact runs in every environment.
+#
+# main is the production record + hotfix base (updated on release), NOT a build trigger. See
+# .documentation/deployment/1-overview.md and 5-pipeline-setup.md.
+# =====================================================================================
+
+trigger:
+  branches:
+    include:
+      - develop
+  paths:
+    exclude:
+      - "**/*.md"
+      - "**/*.mdc"
+      - ".cursor/**"
+      - "**/.cursor/**"
+      - ".github/**"
+      - "**/.github/**"
+
+# PR validation lives in its own pipeline (azure-pipelines.pr.yml), which runs the SAME build/test suite
+# without packaging or deploying. Keeping PR triggers off here avoids validating every PR twice.
+# NOTE: for Azure Repos Git, PR builds are driven by branch-policy "Build Validation", not this key — point
+# that policy at the PR pipeline. The deploy stages below also guard on Build.Reason as defence in depth.
+pr: none
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  # Shared build/test variables (solution, SDK versions, cache paths) — identical to the PR pipeline.
+  - template: templates/build-variables.yml
+  # Deploy/packaging-only variables used past the Build stage.
+  - name: companyPrefix
+    value: "xorbix"
+  - name: appPrefix
+    value: "vdab"
+  - name: subscriptionId
+    value: "1691b7b4-5945-408f-a9e7-3eaab576becd"
+  - name: azureLocation
+    value: "North Central US"
+  - name: resourceGroup
+    value: "vdab"
+  - name: dataAccessDirectory
+    value: "Xorbix-Visual-Databricks-App-Builder.DataAccess"
+  - name: efContext
+    value: "ApplicationDbContext"
+  - name: artifactName
+    value: "vdab-build"
+  - name: publishDir
+    value: "$(Build.ArtifactStagingDirectory)/publish"
+
+stages:
+  - stage: Build
+    displayName: 🏗️ Build & validate (once)
+    jobs:
+      - template: templates/build.yml
+        parameters:
+          dotnetSdkVersion: $(dotnetSdkVersion)
+          nodeVersion: $(nodeVersion)
+          uiDirectory: $(uiDirectory)
+          apiDirectory: $(apiDirectory)
+          dataAccessDirectory: $(dataAccessDirectory)
+          solution: $(solution)
+          buildConfiguration: $(buildConfiguration)
+          efContext: $(efContext)
+          artifactName: $(artifactName)
+          publishDir: $(publishDir)
+      - template: templates/infrastructure.yml
+
+  - stage: Deploy_Dev
+    displayName: 🚀 Deploy dev (automatic)
+    dependsOn: Build
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    variables:
+      - group: vdab-infrastructure-secrets-dev
+    jobs:
+      - template: templates/deploy.yml
+        parameters:
+          environment: dev
+          serviceConnection: "ea0729b6-f3ef-4fe3-8e12-fba61b64a039" # existing dev service connection
+          subscriptionId: $(subscriptionId)
+          azureLocation: $(azureLocation)
+          resourceGroup: $(resourceGroup)
+          webAppName: "xorbix-vdab-dev"
+          bicepParametersFile: "main.dev.bicepparam"
+          postgresConnectionString: "$(ConnectionStrings--PostgreSql)"
+
+  - stage: Deploy_Staging
+    displayName: 🚀 Deploy staging (approval)
+    dependsOn: Deploy_Dev
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    variables:
+      - group: vdab-infrastructure-secrets-stg
+    jobs:
+      - template: templates/deploy.yml
+        parameters:
+          environment: stg
+          serviceConnection: "vdab-stg-service-connection"
+          subscriptionId: $(subscriptionId)
+          azureLocation: $(azureLocation)
+          resourceGroup: $(resourceGroup)
+          webAppName: "xorbix-vdab-stg"
+          bicepParametersFile: "main.stg.bicepparam"
+          postgresConnectionString: "$(ConnectionStrings--PostgreSql)"
+
+  - stage: Deploy_Prod
+    displayName: 🚀 Deploy prod (approval — promote from main)
+    dependsOn: Deploy_Staging
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    variables:
+      - group: vdab-infrastructure-secrets-prd
+    jobs:
+      - template: templates/deploy.yml
+        parameters:
+          environment: prd
+          serviceConnection: "vdab-prd-service-connection"
+          subscriptionId: $(subscriptionId)
+          azureLocation: $(azureLocation)
+          resourceGroup: $(resourceGroup)
+          webAppName: "xorbix-vdab-prd"
+          bicepParametersFile: "main.prd.bicepparam"
+          postgresConnectionString: "$(ConnectionStrings--PostgreSql)"
+          # Production uses blue-green: deploy to the 'staging' slot, then swap into the live site.
+          deployToSlot: true
+          slotName: "staging"

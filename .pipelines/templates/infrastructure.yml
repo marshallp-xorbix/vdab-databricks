@@ -1,0 +1,33 @@
+jobs:
+  - job: Validate_Infrastructure
+    displayName: Validate Bicep & publish infrastructure artifact
+    steps:
+      - checkout: self
+        clean: true
+
+      # Compile the template — the hard validation gate. `az bicep build` is the Bicep compiler and needs no
+      # Azure sign-in, so this runs without a service connection. Per-environment `what-if` previews run inside
+      # each deploy stage against that environment's parameter file.
+      - task: PowerShell@2
+        displayName: Build Bicep template
+        inputs:
+          targetType: inline
+          script: |
+            az bicep install
+            az bicep build --file .infrastructure/main.bicep
+
+      - task: CopyFiles@2
+        displayName: Copy infrastructure files to artifact staging
+        inputs:
+          SourceFolder: ".infrastructure"
+          Contents: |
+            main.bicep
+            *.bicepparam
+          TargetFolder: "$(Build.ArtifactStagingDirectory)/infrastructure"
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish infrastructure artifact (vdab-infrastructure)
+        inputs:
+          targetPath: "$(Build.ArtifactStagingDirectory)/infrastructure"
+          artifact: "vdab-infrastructure"
+          publishLocation: "pipeline"

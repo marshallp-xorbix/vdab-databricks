@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirm Your Email Address</title>
+  </head>
+  <body
+    style="
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    "
+  >
+    <div
+      style="
+        max-width: 600px;
+        margin: 20px auto;
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      "
+    >
+      <div style="text-align: center; margin-bottom: 30px">
+        <h1 style="color: #000000; margin: 0; font-size: 28px">
+          Visual Databricks App Builder
+        </h1>
+      </div>
+
+      <h2 style="color: #000000; margin-top: 0">Confirm Your Email Address</h2>
+
+      <p style="color: #000000">Hello <strong>{{UserName}}</strong>,</p>
+
+      <p style="color: #000000">
+        Thank you for registering with Visual Databricks App Builder. Please
+        confirm your email address by clicking the button below:
+      </p>
+
+      <div style="text-align: center; margin: 30px 0">
+        <a
+          href="{{ConfirmationLink}}"
+          style="
+            background-color: #495057;
+            color: white;
+            padding: 14px 40px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            font-weight: bold;
+            font-size: 16px;
+          "
+          >Confirm Email Address</a
+        >
+      </div>
+
+      <p style="margin-top: 30px; color: #000000">
+        Or copy and paste this link into your browser:
+      </p>
+      <p
+        style="
+          word-break: break-all;
+          color: #000000;
+          background-color: #f9f9f9;
+          padding: 12px;
+          border-radius: 4px;
+          font-size: 14px;
+        "
+      >
+        {{ConfirmationLink}}
+      </p>
+
+      <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd" />
+
+      <p style="font-size: 12px; color: #666; margin-bottom: 0">
+        If you didn't create an account, please ignore this email.
+      </p>
+
+      <p
+        style="
+          font-size: 12px;
+          color: #999;
+          margin-top: 20px;
+          text-align: center;
+        "
+      >
+        &copy; 2025 Xorbix Technologies. All rights reserved.
+      </p>
+    </div>
+  </body>
+</html>

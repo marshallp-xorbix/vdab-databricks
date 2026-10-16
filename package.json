@@ -1,0 +1,26 @@
+{
+  "cspell": {
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "words": [
+      "appsettings",
+      "bicepparam",
+      "commservice",
+      "Dtos",
+      "Hmac",
+      "northcentralus",
+      "Passwordless",
+      "Resends",
+      "unassigning",
+      "Unassigns",
+      "VDAB",
+      "wwwroot",
+      "Xorbix",
+      "xorbixvdabdevkv"
+    ],
+    "ignoreWords": [],
+    "import": []
+  }
+}

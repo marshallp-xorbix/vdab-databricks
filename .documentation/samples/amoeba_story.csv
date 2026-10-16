@@ -1,0 +1,91 @@
+customer_id,customer_name,segment,snapshot_date,revenue,growth_pct,risk_score,health_score,change_pct,owner,status
+C001,Northwind Traders,Enterprise,2026-01-31,2185920,15.8,15,90,15.8,Jordan Lee,On Track
+C002,Contoso Retail,Mid-Market,2026-01-31,901600,-10.6,76,60,-10.6,Sam Patel,Critical
+C003,Fabrikam Health,Enterprise,2026-01-31,2880520,4.1,33,81,4.1,Casey Nguyen,On Track
+C004,Adventure Works,SMB,2026-01-31,197064,22.7,17,86,22.7,Riley Brooks,On Track
+C005,Tailspin Toys,SMB,2026-01-31,130732,-13.6,71,54,-13.6,Alex Rivera,At Risk
+C006,Wide World Importers,Enterprise,2026-01-31,1684980,1.8,37,76,1.8,Jordan Lee,On Track
+C007,Litware Inc,Mid-Market,2026-01-31,662400,9.2,29,79,9.2,Sam Patel,On Track
+C008,Alpine Ski House,SMB,2026-01-31,81770,28.6,13,89,28.6,Casey Nguyen,On Track
+C009,Blue Yonder Airlines,Enterprise,2026-01-31,3941280,-4.7,58,67,-4.7,Riley Brooks,At Risk
+C010,City Power & Light,Enterprise,2026-01-31,2479400,-0.6,44,74,-0.6,Alex Rivera,Watch
+C011,Coho Winery,Mid-Market,2026-01-31,491832,13.8,25,85,13.8,Jordan Lee,On Track
+C012,Fourth Coffee,SMB,2026-01-31,57040,-6.8,50,64,-6.8,Sam Patel,Watch
+C013,Graphic Design Institute,Mid-Market,2026-01-31,362388,8.3,33,76,8.3,Casey Nguyen,On Track
+C014,Humongous Insurance,Enterprise,2026-01-31,4785840,2.2,29,82,2.2,Riley Brooks,On Track
+C015,Lucerne Publishing,Mid-Market,2026-01-31,414736,-16.7,86,45,-16.7,Alex Rivera,Critical
+C016,Margie Travel,SMB,2026-01-31,107474,19.9,15,89,19.9,Jordan Lee,On Track
+C017,Nod Publishers,SMB,2026-01-31,87400,5.4,39,73,5.4,Sam Patel,On Track
+C018,Proseware Inc,Enterprise,2026-01-31,1839816,11.1,23,84,11.1,Casey Nguyen,On Track
+C019,School of Fine Art,SMB,2026-01-31,69442,-11.4,70,56,-11.4,Riley Brooks,At Risk
+C020,Southridge Video,Mid-Market,2026-01-31,604072,4.1,39,76,4.1,Alex Rivera,On Track
+C021,Trey Research,Partner,2026-01-31,746856,16.7,20,86,16.7,Jordan Lee,On Track
+C022,Woodgrove Bank,Enterprise,2026-01-31,5796000,-3.5,53,70,-3.5,Sam Patel,Watch
+C023,A. Datum Corporation,Partner,2026-01-31,1022120,6.4,32,81,6.4,Casey Nguyen,On Track
+C024,Bellows College,Internal,2026-01-31,319056,0.0,44,72,0.0,Riley Brooks,Watch
+C025,Crayon Labs,Partner,2026-01-31,261464,26.0,12,92,26.0,Alex Rivera,On Track
+C026,Delta Warehouse,Mid-Market,2026-01-31,737748,-8.3,62,62,-8.3,Jordan Lee,At Risk
+C027,Elm Grove Foods,SMB,2026-01-31,143520,12.0,23,82,12.0,Sam Patel,On Track
+C028,Frontier Logistics,Enterprise,2026-01-31,2480964,-1.8,48,71,-1.8,Casey Nguyen,Watch
+C029,Horizon Analytics,Partner,2026-01-31,426972,18.6,17,89,18.6,Riley Brooks,On Track
+C030,Ion Energy,Enterprise,2026-01-31,3110520,-6.4,65,56,-6.4,Alex Rivera,At Risk
+C001,Northwind Traders,Enterprise,2026-02-28,2304720,17.3,13,91,17.3,Jordan Lee,On Track
+C002,Contoso Retail,Mid-Market,2026-02-28,950600,-9.1,74,61,-9.1,Sam Patel,At Risk
+C003,Fabrikam Health,Enterprise,2026-02-28,3037070,5.6,31,82,5.6,Casey Nguyen,On Track
+C004,Adventure Works,SMB,2026-02-28,207774,24.2,15,87,24.2,Riley Brooks,On Track
+C005,Tailspin Toys,SMB,2026-02-28,137837,-12.1,69,55,-12.1,Alex Rivera,At Risk
+C006,Wide World Importers,Enterprise,2026-02-28,1776555,3.3,35,77,3.3,Jordan Lee,On Track
+C007,Litware Inc,Mid-Market,2026-02-28,698400,10.7,27,80,10.7,Sam Patel,On Track
+C008,Alpine Ski House,SMB,2026-02-28,86214,30.1,11,90,30.1,Casey Nguyen,On Track
+C009,Blue Yonder Airlines,Enterprise,2026-02-28,4155480,-3.2,56,68,-3.2,Riley Brooks,At Risk
+C010,City Power & Light,Enterprise,2026-02-28,2614150,0.9,42,75,0.9,Alex Rivera,Watch
+C011,Coho Winery,Mid-Market,2026-02-28,518562,15.3,23,86,15.3,Jordan Lee,On Track
+C012,Fourth Coffee,SMB,2026-02-28,60140,-5.3,48,65,-5.3,Sam Patel,Watch
+C013,Graphic Design Institute,Mid-Market,2026-02-28,382083,9.8,31,77,9.8,Casey Nguyen,On Track
+C014,Humongous Insurance,Enterprise,2026-02-28,5045940,3.7,27,83,3.7,Riley Brooks,On Track
+C015,Lucerne Publishing,Mid-Market,2026-02-28,437276,-15.2,84,46,-15.2,Alex Rivera,Critical
+C016,Margie Travel,SMB,2026-02-28,113315,21.4,13,90,21.4,Jordan Lee,On Track
+C017,Nod Publishers,SMB,2026-02-28,92150,6.9,37,74,6.9,Sam Patel,On Track
+C018,Proseware Inc,Enterprise,2026-02-28,1939806,12.6,21,85,12.6,Casey Nguyen,On Track
+C019,School of Fine Art,SMB,2026-02-28,73216,-9.9,68,57,-9.9,Riley Brooks,At Risk
+C020,Southridge Video,Mid-Market,2026-02-28,636902,5.6,37,77,5.6,Alex Rivera,On Track
+C021,Trey Research,Partner,2026-02-28,787446,18.2,18,87,18.2,Jordan Lee,On Track
+C022,Woodgrove Bank,Enterprise,2026-02-28,6111000,-2.0,51,71,-2.0,Sam Patel,Watch
+C023,A. Datum Corporation,Partner,2026-02-28,1077670,7.9,30,82,7.9,Casey Nguyen,On Track
+C024,Bellows College,Internal,2026-02-28,336396,1.5,42,73,1.5,Riley Brooks,Watch
+C025,Crayon Labs,Partner,2026-02-28,275674,27.5,10,93,27.5,Alex Rivera,On Track
+C026,Delta Warehouse,Mid-Market,2026-02-28,777843,-6.8,60,63,-6.8,Jordan Lee,At Risk
+C027,Elm Grove Foods,SMB,2026-02-28,151320,13.5,21,83,13.5,Sam Patel,On Track
+C028,Frontier Logistics,Enterprise,2026-02-28,2615799,-0.3,46,72,-0.3,Casey Nguyen,Watch
+C029,Horizon Analytics,Partner,2026-02-28,450177,20.1,15,90,20.1,Riley Brooks,On Track
+C030,Ion Energy,Enterprise,2026-02-28,3279570,-4.9,63,57,-4.9,Alex Rivera,At Risk
+C001,Northwind Traders,Enterprise,2026-03-31,2376000,17.8,12,92,17.8,Jordan Lee,On Track
+C002,Contoso Retail,Mid-Market,2026-03-31,980000,-8.6,73,62,-8.6,Sam Patel,At Risk
+C003,Fabrikam Health,Enterprise,2026-03-31,3131000,6.1,30,83,6.1,Casey Nguyen,On Track
+C004,Adventure Works,SMB,2026-03-31,214200,24.7,14,88,24.7,Riley Brooks,On Track
+C005,Tailspin Toys,SMB,2026-03-31,142100,-11.6,68,56,-11.6,Alex Rivera,At Risk
+C006,Wide World Importers,Enterprise,2026-03-31,1831500,3.8,34,78,3.8,Jordan Lee,On Track
+C007,Litware Inc,Mid-Market,2026-03-31,720000,11.2,26,81,11.2,Sam Patel,On Track
+C008,Alpine Ski House,SMB,2026-03-31,88880,30.6,10,91,30.6,Casey Nguyen,On Track
+C009,Blue Yonder Airlines,Enterprise,2026-03-31,4284000,-2.7,55,69,-2.7,Riley Brooks,At Risk
+C010,City Power & Light,Enterprise,2026-03-31,2695000,1.4,41,76,1.4,Alex Rivera,Watch
+C011,Coho Winery,Mid-Market,2026-03-31,534600,15.8,22,87,15.8,Jordan Lee,On Track
+C012,Fourth Coffee,SMB,2026-03-31,62000,-4.8,47,66,-4.8,Sam Patel,Watch
+C013,Graphic Design Institute,Mid-Market,2026-03-31,393900,10.3,30,78,10.3,Casey Nguyen,On Track
+C014,Humongous Insurance,Enterprise,2026-03-31,5202000,4.2,26,84,4.2,Riley Brooks,On Track
+C015,Lucerne Publishing,Mid-Market,2026-03-31,450800,-14.7,83,47,-14.7,Alex Rivera,Critical
+C016,Margie Travel,SMB,2026-03-31,116820,21.9,12,91,21.9,Jordan Lee,On Track
+C017,Nod Publishers,SMB,2026-03-31,95000,7.4,36,75,7.4,Sam Patel,On Track
+C018,Proseware Inc,Enterprise,2026-03-31,1999800,13.1,20,86,13.1,Casey Nguyen,On Track
+C019,School of Fine Art,SMB,2026-03-31,75480,-9.4,67,58,-9.4,Riley Brooks,At Risk
+C020,Southridge Video,Mid-Market,2026-03-31,656600,6.1,36,78,6.1,Alex Rivera,On Track
+C021,Trey Research,Partner,2026-03-31,811800,18.7,17,88,18.7,Jordan Lee,On Track
+C022,Woodgrove Bank,Enterprise,2026-03-31,6300000,-1.5,50,72,-1.5,Sam Patel,Watch
+C023,A. Datum Corporation,Partner,2026-03-31,1111000,8.4,29,83,8.4,Casey Nguyen,On Track
+C024,Bellows College,Internal,2026-03-31,346800,2.0,41,74,2.0,Riley Brooks,Watch
+C025,Crayon Labs,Partner,2026-03-31,284200,28.0,9,94,28.0,Alex Rivera,On Track
+C026,Delta Warehouse,Mid-Market,2026-03-31,801900,-6.3,59,64,-6.3,Jordan Lee,At Risk
+C027,Elm Grove Foods,SMB,2026-03-31,156000,14.0,20,84,14.0,Sam Patel,On Track
+C028,Frontier Logistics,Enterprise,2026-03-31,2696700,0.2,45,73,0.2,Casey Nguyen,Watch
+C029,Horizon Analytics,Partner,2026-03-31,464100,20.6,14,91,20.6,Riley Brooks,On Track
+C030,Ion Energy,Enterprise,2026-03-31,3381000,-4.4,62,58,-4.4,Alex Rivera,At Risk

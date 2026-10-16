@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Sdk Name="Aspire.AppHost.Sdk" Version="9.5.0" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UserSecretsId>a37a6748-8946-431c-a9c1-17472a2d0aa9</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="MessagePack" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xorbix-Visual-Databricks-App-Builder.MigrationService\Xorbix-Visual-Databricks-App-Builder.MigrationService.csproj" />
+    <!-- Library reference (not an orchestrated resource) so the AppHost can use the shared
+         ConnectionStrings.AspireInjectedConnectionName constant. -->
+    <ProjectReference Include="..\Xorbix-Visual-Databricks-App-Builder.ServiceDefaults\Xorbix-Visual-Databricks-App-Builder.ServiceDefaults.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="..\Xorbix-Visual-Databricks-App-Builder.Server\Xorbix-Visual-Databricks-App-Builder.Server.csproj" />
+	<ProjectReference Include="..\xorbix-visual-databricks-app-builder.client\xorbix-visual-databricks-app-builder.client.esproj" />
+  </ItemGroup>
+
+</Project>

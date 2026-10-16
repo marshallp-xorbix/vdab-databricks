@@ -1,0 +1,48 @@
+# Full CI/CD build job: run the shared build/test suite, THEN package the deployable artifacts.
+# The build/test half is factored into steps-build-test.yml so the PR validation pipeline
+# (azure-pipelines.pr.yml) can run the exact same steps without the packaging half below.
+parameters:
+  - name: dotnetSdkVersion
+    type: string
+  - name: nodeVersion
+    type: string
+  - name: uiDirectory
+    type: string
+  - name: apiDirectory
+    type: string
+  - name: dataAccessDirectory
+    type: string
+  - name: solution
+    type: string
+  - name: buildConfiguration
+    type: string
+  - name: efContext
+    type: string
+  - name: artifactName
+    type: string
+  - name: publishDir
+    type: string
+
+jobs:
+  - job: Build_App
+    displayName: Build app (environment-agnostic)
+    steps:
+      # Shared build + test suite (no test filter → run the complete suite).
+      - template: steps-build-test.yml
+        parameters:
+          dotnetSdkVersion: ${{ parameters.dotnetSdkVersion }}
+          nodeVersion: ${{ parameters.nodeVersion }}
+          uiDirectory: ${{ parameters.uiDirectory }}
+          apiDirectory: ${{ parameters.apiDirectory }}
+          solution: ${{ parameters.solution }}
+          buildConfiguration: ${{ parameters.buildConfiguration }}
+
+      # Package the deployable artifacts + EF migration bundle (full pipeline only).
+      - template: steps-package.yml
+        parameters:
+          apiDirectory: ${{ parameters.apiDirectory }}
+          dataAccessDirectory: ${{ parameters.dataAccessDirectory }}
+          buildConfiguration: ${{ parameters.buildConfiguration }}
+          efContext: ${{ parameters.efContext }}
+          artifactName: ${{ parameters.artifactName }}
+          publishDir: ${{ parameters.publishDir }}

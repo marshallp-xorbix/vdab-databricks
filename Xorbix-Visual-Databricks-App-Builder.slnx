@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="Xorbix-Visual-Databricks-App-Builder.AppHost/Xorbix-Visual-Databricks-App-Builder.AppHost.csproj" />
+    <Project Path="xorbix-visual-databricks-app-builder.client/xorbix-visual-databricks-app-builder.client.esproj">
+      <Build />
+    </Project>
+    <Project Path="Xorbix-Visual-Databricks-App-Builder.Models/Xorbix-Visual-Databricks-App-Builder.Models.csproj" />
+    <Project Path="Xorbix-Visual-Databricks-App-Builder.DataAccess/Xorbix-Visual-Databricks-App-Builder.DataAccess.csproj" />
+    <Project Path="Xorbix-Visual-Databricks-App-Builder.Services/Xorbix-Visual-Databricks-App-Builder.Services.csproj" />
+    <Project Path="Xorbix-Visual-Databricks-App-Builder.Server/Xorbix-Visual-Databricks-App-Builder.Server.csproj" />
+    <Project Path="Xorbix-Visual-Databricks-App-Builder.MigrationService/Xorbix-Visual-Databricks-App-Builder.MigrationService.csproj" />
+    <Project Path="Xorbix-Visual-Databricks-App-Builder.ServiceDefaults/Xorbix-Visual-Databricks-App-Builder.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="Xorbix-Visual-Databricks-App-Builder.Tests/Xorbix-Visual-Databricks-App-Builder.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,11 @@
+journey_name,stage,milestone_date,progress_pct,metric_value,status,risk_score,owner,target_date,actual_date,key_achievement,stage_cost
+Expand APAC,Discovery,2025-10-01,100,120000,complete,15,Jordan Lee,2025-10-15,2025-10-12,Market scan complete,45000
+Expand APAC,Partner Shortlist,2025-11-15,100,180000,complete,28,Sam Patel,2025-11-30,2025-12-05,3 partners selected,62000
+Expand APAC,Pilot Launch,2026-01-20,85,420000,delayed,62,Casey Nguyen,2026-01-10,2026-01-28,Soft launch in SG,210000
+Expand APAC,Regulatory Clearance,2026-03-01,40,95000,blocked,78,Alex Rivera,2026-02-28,2026-03-15,Waiting on local counsel,88000
+Expand APAC,Scale Hiring,2026-04-15,55,310000,active,48,Riley Brooks,2026-04-30,2026-04-20,12 of 20 roles filled,175000
+Expand APAC,Regional GTM,2026-06-01,20,680000,active,55,Jordan Lee,2026-06-30,,Campaign briefs drafted,320000
+Expand APAC,Steady State,2026-09-01,0,900000,not_started,35,Sam Patel,2026-09-30,,,150000
+Partner Portal,Requirements,2025-12-01,100,80000,complete,12,Casey Nguyen,2025-12-10,2025-12-08,MVP scope locked,22000
+Partner Portal,Build Alpha,2026-02-15,70,150000,active,38,Riley Brooks,2026-02-28,2026-03-05,Auth + catalog live,95000
+Partner Portal,Beta Release,2026-05-01,10,220000,not_started,44,Sam Patel,2026-05-31,,,110000

@@ -1,0 +1,131 @@
+# AI Code Reviewer — review pipeline.
+#
+# Two stages (FR-1a):
+#   1. BuildAndTest — on the Microsoft-hosted pool already in use, build the PR and run its
+#      full test suite (commands come from the PR's `.aireview.yml` `gate:` section).
+#   2. Review       — on the self-hosted agent (Claude CLI + full checkout), runs ONLY if
+#      stage 1 succeeded. A red build/test therefore skips the review for that commit; it is
+#      re-evaluated on the next push. The reviewer stays advisory and never blocks the merge.
+#
+# IMPORTANT: Azure *Repos* does not support YAML `pr:` triggers. To run this on PR
+# publish/update, add a **Branch Policy → Build Validation** on each target branch
+# (develop, main) pointing at this pipeline. See docs/ARCHITECTURE.md §1.
+#
+# The conversation path (replies/resolves) is handled by the separate comment pipeline
+# (azure-pipelines.comment.yml), driven by a Service Hook — it is not wired here.
+
+trigger: none          # no CI/branch trigger; PR runs come from branch-policy validation
+
+variables:
+  - name: aireviewToolDir     # where azure-pipelines.deploy.yml installed the built reviewer
+    value: /opt/aireview
+
+# Cancel a stale run when a newer commit lands on the same PR (FR-2).
+# (Configure concurrency / "Automatically cancel" on the build-validation policy.)
+
+stages:
+  # --- 1. Gate: build + run all tests on the hosted pool already in use (FR-1a) ----------
+  - stage: BuildAndTest
+    displayName: "Build + test gate"
+    pool:
+      vmImage: ubuntu-latest
+    jobs:
+      - job: gate
+        displayName: "Build the PR and run its tests"
+        steps:
+          - checkout: self
+            fetchDepth: 0
+
+          - script: |
+              set -euo pipefail
+              CFG=.aireview.yml
+              if [ ! -f "$CFG" ]; then
+                echo "No .aireview.yml found — build/test gate skipped; the review will run."
+                exit 0
+              fi
+
+              # yq (mikefarah v4) ships on Microsoft-hosted ubuntu images; install on a
+              # custom pool that lacks it.
+              if ! command -v yq >/dev/null 2>&1; then
+                sudo curl -fsSL -o /usr/local/bin/yq \
+                  https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+                sudo chmod +x /usr/local/bin/yq
+              fi
+
+              # Read a scalar from the config, mapping a missing (null) value to empty.
+              cfg() { local v; v="$(yq "$1" "$CFG")"; [ "$v" = "null" ] && v=""; printf '%s' "$v"; }
+              ENABLED="$(cfg '.gate.enabled')"
+              BUILD_CMD="$(cfg '.gate.build')"
+              TEST_CMD="$(cfg '.gate.test')"
+
+              if [ "$ENABLED" = "false" ]; then
+                echo "gate.enabled is false — build/test gate skipped; the review will run."
+                exit 0
+              fi
+              if [ -z "$BUILD_CMD" ] && [ -z "$TEST_CMD" ]; then
+                echo "No gate.build/gate.test configured — gate skipped; the review will run."
+                exit 0
+              fi
+
+              if [ -n "$BUILD_CMD" ]; then
+                echo "+ build: $BUILD_CMD"
+                bash -lc "$BUILD_CMD"
+              fi
+              if [ -n "$TEST_CMD" ]; then
+                echo "+ test: $TEST_CMD"
+                bash -lc "$TEST_CMD"
+              fi
+              echo "Build + tests passed — proceeding to the AI review."
+            displayName: "Build + test (gate, FR-1a)"
+
+  # --- 2. AI review on the self-hosted agent — only if the gate passed -------------------
+  - stage: Review
+    displayName: "AI Code Reviewer"
+    dependsOn: BuildAndTest
+    condition: succeeded()    # red build/tests -> this stage is skipped (no review this commit)
+    pool:
+      name: Self-Hosted       # full checkout + Claude CLI installed on the agent (D-004)
+    jobs:
+      - job: review
+        displayName: "Run AI Code Reviewer"
+        variables:
+          - group: aireview-secrets   # ANTHROPIC/ADO/state-store secrets (Key Vault-linked)
+        steps:
+          - checkout: self
+            fetchDepth: 0       # full history so the engine can reason across the repo
+            persistCredentials: true
+
+          - script: claude --version
+            displayName: "Verify Claude CLI present"
+
+          # Freshness guard: the reviewer is deployed by a SEPARATE pipeline (azure-pipelines.deploy.yml),
+          # so this pipeline could otherwise run a missing or stale build with no signal. Fail loudly if
+          # it isn't there, and echo which build we're about to run so a stale deploy is visible.
+          - script: |
+              set -euo pipefail
+              ENTRY="$(aireviewToolDir)/dist/cli/index.js"
+              if [ ! -f "$ENTRY" ]; then
+                echo "##vso[task.logissue type=error]Reviewer not deployed at $ENTRY — run azure-pipelines.deploy.yml first."
+                exit 1
+              fi
+              if [ -f "$(aireviewToolDir)/DEPLOYED_VERSION" ]; then
+                echo "Reviewing with deployed build:"
+                cat "$(aireviewToolDir)/DEPLOYED_VERSION"
+              else
+                echo "WARNING: no DEPLOYED_VERSION marker — deployed before version tracking, or an incomplete deploy."
+              fi
+            displayName: "Verify reviewer deployed (freshness guard)"
+
+          # Run the reviewer deployed to the agent by azure-pipelines.deploy.yml. The tool reads
+          # the target repo from BUILD_SOURCESDIRECTORY, so its own location is fixed.
+          - script: |
+              echo "Running AI review for PR $(System.PullRequest.PullRequestId)"
+              node "$(aireviewToolDir)/dist/cli/index.js"
+            displayName: "Run AI Code Reviewer"
+            env:
+              # Key Vault-linked variable group: variable names ARE the (hyphenated) secret names.
+              ANTHROPIC_API_KEY: $(anthropic-api-key)
+              ADO_TOKEN: $(ado-token)
+              STATE_STORE_CONN: $(state-store-conn)
+              # ADO predefined vars consumed by cli/: System.PullRequest.*, Build.SourceVersion,
+              # System.CollectionUri, System.TeamProject, Build.Repository.Name

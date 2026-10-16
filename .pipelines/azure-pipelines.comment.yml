@@ -1,0 +1,69 @@
+# AI Code Reviewer — comment-handler pipeline (FR-8).
+#
+# Triggered by an Azure DevOps **Service Hook** ("Pull request commented on" /
+# thread updated) that posts to the `aireview_comment` incoming webhook. The handler
+# scans the PR's AI threads and replies to / accepts / defers on any whose latest
+# comment is from a human. See docs/SETUP.md.
+#
+# The handler scans by PR id (reliably present in the payload); it does not depend on
+# the exact thread-id JSON path, which varies by event type.
+
+trigger: none
+pr: none
+
+resources:
+  webhooks:
+    - webhook: aireview_comment_vdab
+      connection: aireview_comment_conn   # Incoming Webhook service connection
+
+pool:
+  name: Self-Hosted        # Claude CLI installed; full checkout for repo-aware replies
+
+variables:
+  - group: aireview-secrets  # ANTHROPIC/ADO/bot-user/state-store secrets (Key Vault-linked)
+  - name: aireviewToolDir    # where azure-pipelines.deploy.yml installed the built reviewer
+    value: /opt/aireview
+
+steps:
+  - checkout: self
+    fetchDepth: 0
+
+  # Freshness guard (same as the review pipeline): the comment handler runs from the deploy-populated
+  # tool dir, so fail loudly if it isn't there and echo which build is about to run.
+  - script: |
+      set -euo pipefail
+      ENTRY="$(aireviewToolDir)/dist/cli/comment.js"
+      if [ ! -f "$ENTRY" ]; then
+        echo "##vso[task.logissue type=error]Reviewer not deployed at $ENTRY — run azure-pipelines.deploy.yml first."
+        exit 1
+      fi
+      if [ -f "$(aireviewToolDir)/DEPLOYED_VERSION" ]; then
+        echo "Handling with deployed build:"
+        cat "$(aireviewToolDir)/DEPLOYED_VERSION"
+      else
+        echo "WARNING: no DEPLOYED_VERSION marker — deployed before version tracking, or an incomplete deploy."
+      fi
+    displayName: "Verify reviewer deployed (freshness guard)"
+
+  - script: |
+      echo "Handling comment event for PR ${SYSTEM_PULLREQUEST_PULLREQUESTID}"
+      node "$(aireviewToolDir)/dist/cli/comment.js"
+    displayName: "AI Code Reviewer — comment handler"
+    env:
+      # Map the webhook payload → the same env the CLI reads. Incoming-webhook payload JSON
+      # is consumed via the ${{ parameters.<alias>.<jsonPath> }} context (NOT
+      # resources.webhooks.*). Paths match the "Pull request commented on" event; adjust if
+      # you subscribe to a different event (see docs/SETUP.md §5).
+      SYSTEM_PULLREQUEST_PULLREQUESTID: ${{ parameters.aireview_comment_vdab.resource.pullRequest.pullRequestId }}
+      # The PR's repository (NOT $(Build.Repository.ID), which is this tool repo on a webhook run).
+      BUILD_REPOSITORY_ID: ${{ parameters.aireview_comment_vdab.resource.pullRequest.repository.id }}
+      SYSTEM_COLLECTIONURI: $(System.CollectionUri)
+      SYSTEM_TEAMPROJECT: $(System.TeamProject)
+      BUILD_SOURCESDIRECTORY: $(Build.SourcesDirectory)
+      # Key Vault-linked variable group: variable names ARE the (hyphenated) secret names.
+      ANTHROPIC_API_KEY: $(anthropic-api-key)
+      ADO_TOKEN: $(ado-token)
+      AIREVIEW_BOT_USER_ID: $(aireview-bot-user-id)
+      # Without this the handler runs with NO state store: conversation spend goes unrecorded and
+      # `review.maxCostUsdPerRepoMonth` silently never applies to comment events (FR-13).
+      STATE_STORE_CONN: $(state-store-conn)

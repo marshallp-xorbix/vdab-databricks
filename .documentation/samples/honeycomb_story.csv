@@ -1,0 +1,33 @@
+snapshot_date,item_name,category,impact_score,priority_level,progress_pct,trend,risk_score,owner,due_date,investment,benefit_value,status,notes
+2026-01-31,Expand APAC,Market,86,High,28,improving,58,Jordan Lee,2026-09-30,250000,900000,At Risk,Blocked on hiring
+2026-01-31,Partner Portal,Market,74,High,55,stable,42,Sam Patel,2026-08-15,180000,620000,On Track,
+2026-01-31,Brand Refresh,Market,46,Medium,72,improving,24,Casey Nguyen,2026-06-30,95000,210000,On Track,
+2026-01-31,Channel Enablement,Market,61,Medium,40,declining,51,Riley Brooks,2026-07-31,120000,340000,Watch,Partner content lag
+2026-01-31,Cost Takeout,Financial,82,High,42,declining,66,Alex Rivera,2026-05-31,75000,1100000,Watch,
+2026-01-31,Pricing Model,Financial,78,High,24,declining,76,Jordan Lee,2026-04-30,140000,850000,Critical,Needs exec decision
+2026-01-31,Working Capital,Financial,52,Medium,68,improving,33,Sam Patel,2026-10-31,60000,280000,On Track,
+2026-01-31,Revenue Ops,Financial,69,High,51,stable,48,Casey Nguyen,2026-08-31,110000,540000,On Track,
+2026-01-31,NPS Program,Customer,67,Medium,49,improving,29,Riley Brooks,2026-09-15,85000,390000,On Track,
+2026-01-31,Support SLAs,Customer,71,High,35,stable,54,Alex Rivera,2026-06-30,130000,470000,At Risk,Staffing gap
+2026-01-31,Self-Serve Help,Customer,55,Low,80,improving,16,Jordan Lee,2026-05-15,45000,190000,On Track,
+2026-01-31,Customer 360,Customer,80,High,38,declining,61,Sam Patel,2026-11-30,320000,980000,At Risk,Data quality blockers
+2026-01-31,Cloud Migration,Operations,92,High,31,declining,81,Casey Nguyen,2026-03-31,520000,1500000,Blocked,Vendor dependency
+2026-01-31,Data Platform,Operations,85,High,57,improving,45,Riley Brooks,2026-09-30,410000,1200000,On Track,
+2026-01-31,Automation Hub,Operations,64,Medium,46,stable,41,Alex Rivera,2026-08-31,160000,430000,Watch,
+2026-01-31,Security Hardening,Operations,77,High,62,improving,38,Jordan Lee,2026-07-15,200000,700000,On Track,
+2026-02-28,Expand APAC,Market,88,High,32,improving,55,Jordan Lee,2026-09-30,250000,900000,At Risk,Hiring delay
+2026-02-28,Partner Portal,Market,72,High,61,stable,40,Sam Patel,2026-08-15,180000,620000,On Track,
+2026-02-28,Brand Refresh,Market,48,Medium,78,improving,22,Casey Nguyen,2026-06-30,95000,210000,On Track,
+2026-02-28,Channel Enablement,Market,63,Medium,44,stable,47,Riley Brooks,2026-07-31,120000,340000,Watch,
+2026-02-28,Cost Takeout,Financial,81,High,45,declining,68,Alex Rivera,2026-05-31,75000,1100000,Watch,
+2026-02-28,Pricing Model,Financial,76,High,28,declining,74,Jordan Lee,2026-04-30,140000,850000,Critical,Needs exec decision
+2026-02-28,Working Capital,Financial,54,Medium,70,improving,35,Sam Patel,2026-10-31,60000,280000,On Track,
+2026-02-28,Revenue Ops,Financial,71,High,54,improving,44,Casey Nguyen,2026-08-31,110000,540000,On Track,
+2026-02-28,NPS Program,Customer,69,Medium,55,improving,30,Riley Brooks,2026-09-15,85000,390000,On Track,
+2026-02-28,Support SLAs,Customer,63,High,41,stable,52,Alex Rivera,2026-06-30,130000,470000,At Risk,Staffing gap
+2026-02-28,Self-Serve Help,Customer,58,Low,82,improving,18,Jordan Lee,2026-05-15,45000,190000,On Track,
+2026-02-28,Customer 360,Customer,83,High,42,stable,57,Sam Patel,2026-11-30,320000,980000,At Risk,Data quality blockers
+2026-02-28,Cloud Migration,Operations,91,High,36,declining,79,Casey Nguyen,2026-03-31,520000,1500000,Blocked,Vendor dependency
+2026-02-28,Data Platform,Operations,84,High,58,improving,47,Riley Brooks,2026-09-30,410000,1200000,On Track,
+2026-02-28,Automation Hub,Operations,66,Medium,49,stable,44,Alex Rivera,2026-08-31,160000,430000,Watch,
+2026-02-28,Security Hardening,Operations,79,High,66,improving,36,Jordan Lee,2026-07-15,200000,700000,On Track,

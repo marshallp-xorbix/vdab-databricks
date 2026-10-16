@@ -1,0 +1,101 @@
+state_code,state_name,region,order_month,revenue,prior_period_revenue,yoy_growth_pct,target_revenue,forecast_revenue,risk_score,customer_count,product_line,notes
+AL,Alabama,South,2026-01-01,37800,42954,-12.0,34776,38556,8,2080,Enterprise SaaS,Decline vs prior period
+AK,Alaska,West,2026-01-01,7381,8110,-9.0,6938,7528,11,760,Cloud Infrastructure,Decline vs prior period
+AZ,Arizona,West,2026-01-01,62869,66881,-6.0,60354,64126,14,3200,Analytics Platform,
+AR,Arkansas,South,2026-01-01,23499,24225,-3.0,23029,23968,17,1560,Support Services,
+CA,California,West,2026-01-01,175913,175913,0.0,175913,179431,20,8560,Enterprise SaaS,West coast enterprise concentration
+CO,Colorado,West,2026-01-01,41957,40734,3.0,38600,42796,23,2520,Cloud Infrastructure,
+CT,Connecticut,Northeast,2026-01-01,28558,26941,6.0,26844,29129,26,1920,Analytics Platform,
+DE,Delaware,Northeast,2026-01-01,9177,8419,9.0,8809,9360,29,1080,Support Services,
+FL,Florida,South,2026-01-01,129739,115838,12.0,127144,132333,32,6320,Enterprise SaaS,
+GA,Georgia,South,2026-01-01,82001,93182,-12.0,82001,83641,35,4360,Cloud Infrastructure,Decline vs prior period
+HI,Hawaii,West,2026-01-01,14164,15564,-9.0,13030,14447,38,1440,Analytics Platform,Decline vs prior period
+ID,Idaho,West,2026-01-01,15714,16717,-6.0,14771,16028,41,1560,Support Services,
+IL,Illinois,Midwest,2026-01-01,97406,100418,-3.0,93509,99354,44,5280,Enterprise SaaS,
+IN,Indiana,Midwest,2026-01-01,51035,51035,0.0,50014,52055,47,3160,Cloud Infrastructure,
+IA,Iowa,Midwest,2026-01-01,25948,25192,3.0,25948,26466,50,2080,Analytics Platform,
+KS,Kansas,Midwest,2026-01-01,22021,20774,6.0,20259,22461,53,1960,Support Services,
+KY,Kentucky,South,2026-01-01,33904,31104,9.0,31869,34582,56,2560,Enterprise SaaS,
+LA,Louisiana,South,2026-01-01,34961,31215,12.0,33562,35660,59,2000,Cloud Infrastructure,
+ME,Maine,Northeast,2026-01-01,12316,13995,-12.0,12069,12562,62,1000,Analytics Platform,Decline vs prior period
+MD,Maryland,Northeast,2026-01-01,47010,51659,-9.0,47010,47950,65,2560,Support Services,Decline vs prior period
+MA,Massachusetts,Northeast,2026-01-01,61026,64921,-6.0,56143,62246,68,3160,Enterprise SaaS,
+MI,Michigan,Midwest,2026-01-01,73807,76089,-3.0,69378,75283,71,3760,Cloud Infrastructure,
+MN,Minnesota,Midwest,2026-01-01,43188,43188,0.0,41460,44051,74,2520,Analytics Platform,
+MS,Mississippi,South,2026-01-01,21051,20437,3.0,20629,21472,77,1600,Support Services,
+MO,Missouri,Midwest,2026-01-01,47279,44602,6.0,47279,48224,10,2840,Enterprise SaaS,
+MT,Montana,West,2026-01-01,10757,9868,9.0,9896,10972,13,1200,Cloud Infrastructure,
+NE,Nebraska,Midwest,2026-01-01,18411,16438,12.0,17306,18779,16,1560,Analytics Platform,
+NV,Nevada,West,2026-01-01,25923,29457,-12.0,24886,26441,19,1920,Support Services,Decline vs prior period
+NH,New Hampshire,Northeast,2026-01-01,12702,13958,-9.0,12447,12956,22,1400,Enterprise SaaS,Decline vs prior period
+NJ,New Jersey,Northeast,2026-01-01,67038,71317,-6.0,67038,68378,25,3920,Cloud Infrastructure,
+NM,New Mexico,West,2026-01-01,19213,19807,-3.0,17675,19597,28,1800,Analytics Platform,
+NY,New York,Northeast,2026-01-01,142254,142254,0.0,133718,145099,31,7360,Support Services,
+NC,North Carolina,South,2026-01-01,76850,74611,3.0,73776,78387,34,4360,Enterprise SaaS,
+ND,North Dakota,Midwest,2026-01-01,8342,7869,6.0,8175,8508,37,1400,Cloud Infrastructure,
+OH,Ohio,Midwest,2026-01-01,87771,80523,9.0,87771,89526,40,4240,Analytics Platform,
+OK,Oklahoma,South,2026-01-01,30206,26969,12.0,27789,30810,43,1800,Support Services,
+OR,Oregon,West,2026-01-01,31435,35721,-12.0,29548,32063,46,1920,Enterprise SaaS,Decline vs prior period
+PA,Pennsylvania,Northeast,2026-01-01,88262,96991,-9.0,84731,90027,49,4520,Cloud Infrastructure,Decline vs prior period
+RI,Rhode Island,Northeast,2026-01-01,10896,11591,-6.0,10678,11113,52,1040,Analytics Platform,
+SC,South Carolina,South,2026-01-01,40744,42004,-3.0,40744,41558,55,2360,Support Services,
+SD,South Dakota,Midwest,2026-01-01,9201,9201,0.0,8464,9385,58,1040,Enterprise SaaS,
+TN,Tennessee,South,2026-01-01,53743,52177,3.0,50518,54817,61,3080,Cloud Infrastructure,
+TX,Texas,South,2026-01-01,148793,140370,6.0,142841,151768,64,7520,Analytics Platform,Strong mid-market expansion
+UT,Utah,West,2026-01-01,26326,24152,9.0,25799,26852,67,1960,Support Services,
+VT,Vermont,Northeast,2026-01-01,6303,5627,12.0,6303,6429,70,1080,Enterprise SaaS,
+VA,Virginia,South,2026-01-01,66454,75515,-12.0,61137,67783,73,3720,Cloud Infrastructure,Decline vs prior period
+WA,Washington,West,2026-01-01,64704,71103,-9.0,60821,65998,76,3680,Analytics Platform,Decline vs prior period
+WV,West Virginia,South,2026-01-01,14453,15375,-6.0,13874,14742,9,1560,Support Services,
+WI,Wisconsin,Midwest,2026-01-01,43962,45321,-3.0,43082,44841,12,2960,Enterprise SaaS,
+WY,Wyoming,West,2026-01-01,5245,5245,0.0,5245,5349,15,1240,Cloud Infrastructure,Sparse coverage; review territory plan
+AL,Alabama,South,2026-02-01,39312,44672,-12.0,36167,41277,8,2080,Enterprise SaaS,Decline vs prior period
+AK,Alaska,West,2026-02-01,7677,8436,-9.0,7216,8060,11,760,Cloud Infrastructure,Decline vs prior period
+AZ,Arizona,West,2026-02-01,65384,69557,-6.0,62768,68653,14,3200,Analytics Platform,
+AR,Arkansas,South,2026-02-01,24439,25194,-3.0,23950,25660,17,1560,Support Services,
+CA,California,West,2026-02-01,186468,186468,0.0,186468,195791,20,8560,Enterprise SaaS,West coast enterprise concentration
+CO,Colorado,West,2026-02-01,43635,42364,3.0,40144,45816,23,2520,Cloud Infrastructure,
+CT,Connecticut,Northeast,2026-02-01,29700,28018,6.0,27918,31185,26,1920,Analytics Platform,
+DE,Delaware,Northeast,2026-02-01,9544,8755,9.0,9162,10021,29,1080,Support Services,
+FL,Florida,South,2026-02-01,137524,122789,12.0,134773,144400,32,6320,Enterprise SaaS,
+GA,Georgia,South,2026-02-01,85281,96910,-12.0,85281,89545,35,4360,Cloud Infrastructure,Decline vs prior period
+HI,Hawaii,West,2026-02-01,14731,16187,-9.0,13552,15467,38,1440,Analytics Platform,Decline vs prior period
+ID,Idaho,West,2026-02-01,16342,17385,-6.0,15361,17159,41,1560,Support Services,
+IL,Illinois,Midwest,2026-02-01,101302,104435,-3.0,97249,106367,44,5280,Enterprise SaaS,
+IN,Indiana,Midwest,2026-02-01,53076,53076,0.0,52014,55729,47,3160,Cloud Infrastructure,
+IA,Iowa,Midwest,2026-02-01,26986,26200,3.0,26986,28335,50,2080,Analytics Platform,
+KS,Kansas,Midwest,2026-02-01,22902,21605,6.0,21069,24047,53,1960,Support Services,
+KY,Kentucky,South,2026-02-01,35260,32348,9.0,33144,37023,56,2560,Enterprise SaaS,
+LA,Louisiana,South,2026-02-01,36360,32464,12.0,34905,38178,59,2000,Cloud Infrastructure,
+ME,Maine,Northeast,2026-02-01,12808,14554,-12.0,12551,13448,62,1000,Analytics Platform,Decline vs prior period
+MD,Maryland,Northeast,2026-02-01,48890,53725,-9.0,48890,51334,65,2560,Support Services,Decline vs prior period
+MA,Massachusetts,Northeast,2026-02-01,63467,67518,-6.0,58389,66640,68,3160,Enterprise SaaS,
+MI,Michigan,Midwest,2026-02-01,76759,79132,-3.0,72153,80596,71,3760,Cloud Infrastructure,
+MN,Minnesota,Midwest,2026-02-01,44916,44916,0.0,43119,47161,74,2520,Analytics Platform,
+MS,Mississippi,South,2026-02-01,21893,21255,3.0,21455,22987,77,1600,Support Services,
+MO,Missouri,Midwest,2026-02-01,49170,46386,6.0,49170,51628,10,2840,Enterprise SaaS,
+MT,Montana,West,2026-02-01,11187,10263,9.0,10292,11746,13,1200,Cloud Infrastructure,
+NE,Nebraska,Midwest,2026-02-01,19148,17096,12.0,17999,20105,16,1560,Analytics Platform,
+NV,Nevada,West,2026-02-01,26959,30635,-12.0,25880,28306,19,1920,Support Services,Decline vs prior period
+NH,New Hampshire,Northeast,2026-02-01,13210,14516,-9.0,12945,13870,22,1400,Enterprise SaaS,Decline vs prior period
+NJ,New Jersey,Northeast,2026-02-01,69719,74169,-6.0,69719,73204,25,3920,Cloud Infrastructure,
+NM,New Mexico,West,2026-02-01,19981,20598,-3.0,18382,20980,28,1800,Analytics Platform,
+NY,New York,Northeast,2026-02-01,147944,147944,0.0,139067,155341,31,7360,Support Services,
+NC,North Carolina,South,2026-02-01,79924,77596,3.0,76727,83920,34,4360,Enterprise SaaS,
+ND,North Dakota,Midwest,2026-02-01,8676,8184,6.0,8502,9109,37,1400,Cloud Infrastructure,
+OH,Ohio,Midwest,2026-02-01,91282,83744,9.0,91282,95846,40,4240,Analytics Platform,
+OK,Oklahoma,South,2026-02-01,31415,28049,12.0,28901,32985,43,1800,Support Services,
+OR,Oregon,West,2026-02-01,32693,37151,-12.0,30731,34327,46,1920,Enterprise SaaS,Decline vs prior period
+PA,Pennsylvania,Northeast,2026-02-01,91792,100870,-9.0,88120,96381,49,4520,Cloud Infrastructure,Decline vs prior period
+RI,Rhode Island,Northeast,2026-02-01,11331,12054,-6.0,11104,11897,52,1040,Analytics Platform,
+SC,South Carolina,South,2026-02-01,42374,43684,-3.0,42374,44492,55,2360,Support Services,
+SD,South Dakota,Midwest,2026-02-01,9569,9569,0.0,8803,10047,58,1040,Enterprise SaaS,
+TN,Tennessee,South,2026-02-01,55892,54264,3.0,52538,58686,61,3080,Cloud Infrastructure,
+TX,Texas,South,2026-02-01,157720,148792,6.0,151411,165606,64,7520,Analytics Platform,Strong mid-market expansion
+UT,Utah,West,2026-02-01,27379,25118,9.0,26831,28747,67,1960,Support Services,
+VT,Vermont,Northeast,2026-02-01,6555,5852,12.0,6555,6882,70,1080,Enterprise SaaS,
+VA,Virginia,South,2026-02-01,69112,78536,-12.0,63583,72567,73,3720,Cloud Infrastructure,Decline vs prior period
+WA,Washington,West,2026-02-01,67292,73947,-9.0,63254,70656,76,3680,Analytics Platform,Decline vs prior period
+WV,West Virginia,South,2026-02-01,15031,15990,-6.0,14429,15782,9,1560,Support Services,
+WI,Wisconsin,Midwest,2026-02-01,45721,47135,-3.0,44806,48007,12,2960,Enterprise SaaS,
+WY,Wyoming,West,2026-02-01,5455,5455,0.0,5455,5727,15,1240,Cloud Infrastructure,Sparse coverage; review territory plan

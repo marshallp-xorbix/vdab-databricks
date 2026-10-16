@@ -1,0 +1,22 @@
+# Shared build/test variables consumed by BOTH pipelines:
+#   - azure-pipelines.yml     (full CI/CD: build + artifacts + deploy)
+#   - azure-pipelines.pr.yml  (PR validation: build + test only)
+# Keeping these in one place guarantees a PR is validated with the SAME SDK versions, solution glob, and
+# build configuration that the deploying pipeline uses — the "exact build and test steps" guarantee.
+variables:
+  - name: solution
+    value: "**/*.slnx"
+  - name: buildConfiguration
+    value: "Release"
+  - name: uiDirectory
+    value: "xorbix-visual-databricks-app-builder.client"
+  - name: apiDirectory
+    value: "Xorbix-Visual-Databricks-App-Builder.Server"
+  - name: dotnetSdkVersion
+    value: "10.0.x"
+  - name: nodeVersion
+    value: "24.11.x"
+  - name: NUGET_PACKAGES
+    value: "$(Pipeline.Workspace)/.nuget/packages"
+  - name: npm_config_cache
+    value: "$(Pipeline.Workspace)/.npm"

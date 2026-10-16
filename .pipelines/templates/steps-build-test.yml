@@ -1,0 +1,129 @@
+# Shared build + test steps — the SINGLE source of truth for how the app is compiled and tested.
+# Consumed by:
+#   - templates/build.yml      → the full CI/CD job (build/test THEN package + publish artifacts)
+#   - azure-pipelines.pr.yml   → PR validation (build/test ONLY, no artifacts, no deploy)
+# Both paths run byte-identical build/test steps; the ONLY difference the PR path opts into is testFilter,
+# which lets it skip the slower live-database tests. See the Test task below.
+parameters:
+  - name: dotnetSdkVersion
+    type: string
+  - name: nodeVersion
+    type: string
+  - name: uiDirectory
+    type: string
+  - name: apiDirectory
+    type: string
+  - name: solution
+    type: string
+  - name: buildConfiguration
+    type: string
+  # Optional VSTest --filter expression. Empty (default) runs the whole suite — used by the full pipeline.
+  # The PR pipeline passes a filter that excludes slow tests (Category=RequiresDatabaseSchema and
+  # Category=LongRunning) so PR validation stays fast. A test with neither trait always runs.
+  - name: testFilter
+    type: string
+    default: ""
+
+steps:
+  - checkout: self
+    clean: true
+
+  - task: PowerShell@2
+    displayName: Log source context
+    inputs:
+      targetType: inline
+      script: |
+        Write-Host "Build.Reason=$(Build.Reason)"
+        Write-Host "Build.SourceBranch=$(Build.SourceBranch)"
+        Write-Host "Build.SourceVersion=$(Build.SourceVersion)"
+        Write-Host "Build.SourceVersionMessage=$(Build.SourceVersionMessage)"
+        Write-Host ("Checked-out HEAD=" + (git rev-parse HEAD))
+        Write-Host ("Checked-out branch=" + (git rev-parse --abbrev-ref HEAD))
+
+  # SDKs
+  - task: UseDotNet@2
+    displayName: Install .NET SDK ${{ parameters.dotnetSdkVersion }}
+    inputs:
+      packageType: sdk
+      version: ${{ parameters.dotnetSdkVersion }}
+
+  - task: NodeTool@0
+    displayName: Install Node.js ${{ parameters.nodeVersion }}
+    inputs:
+      versionSpec: ${{ parameters.nodeVersion }}
+
+  # Cache NPM
+  - task: Cache@2
+    displayName: Cache NPM packages
+    inputs:
+      key: 'npm | "$(Agent.OS)" | ${{ parameters.uiDirectory }}/package-lock.json'
+      restoreKeys: |
+        npm | "$(Agent.OS)"
+      path: $(npm_config_cache)
+
+  - script: npm ci
+    displayName: Install frontend dependencies
+    workingDirectory: "${{ parameters.uiDirectory }}"
+
+  # The SPA is environment-agnostic: it resolves the API base (same-origin), the OAuth redirect (window
+  # origin), and Application Insights (GET /api/config) at RUNTIME — nothing environment-specific is baked
+  # in here, which is what lets this one artifact be promoted to dev, staging, and prod unchanged.
+  - script: npm run build
+    displayName: Build frontend
+    workingDirectory: "${{ parameters.uiDirectory }}"
+    retryCountOnTaskFailure: 1
+
+  - task: PowerShell@2
+    displayName: Prepare API wwwroot and copy frontend build
+    inputs:
+      targetType: inline
+      script: |
+        # Single-host model: the SPA's static assets are embedded into the API wwwroot and ship as one
+        # App Service package. React Router v7 (SPA mode) outputs to build/client.
+        $wwwroot = "${{ parameters.apiDirectory }}\wwwroot"
+        if (Test-Path $wwwroot) { Remove-Item -Recurse -Force $wwwroot }
+        New-Item -ItemType Directory -Force -Path $wwwroot | Out-Null
+        Copy-Item -Recurse -Force "${{ parameters.uiDirectory }}\build\client\*" $wwwroot
+
+  # Cache NuGet and restore/build/test backend.
+  # NOTE: build outputs (bin/obj) are intentionally NOT cached across runs — brittle on hosted agents.
+  - task: Cache@2
+    displayName: Cache NuGet packages
+    inputs:
+      key: 'nuget | "$(Agent.OS)" | **/*.csproj'
+      restoreKeys: |
+        nuget | "$(Agent.OS)"
+      path: "$(NUGET_PACKAGES)"
+
+  - task: DotNetCoreCLI@2
+    displayName: Restore .NET
+    inputs:
+      command: restore
+      projects: "${{ parameters.solution }}"
+    env:
+      NUGET_PACKAGES: "$(NUGET_PACKAGES)"
+
+  - task: DotNetCoreCLI@2
+    displayName: Build .NET
+    inputs:
+      command: build
+      projects: "${{ parameters.solution }}"
+      arguments: "--configuration ${{ parameters.buildConfiguration }} --no-restore"
+    env:
+      NUGET_PACKAGES: "$(NUGET_PACKAGES)"
+
+  # Full pipeline runs the whole suite (testFilter empty). The PR pipeline passes a filter to skip slow
+  # tests — those tagged [Trait("Category","RequiresDatabaseSchema")] or [Trait("Category","LongRunning")].
+  # A test with neither trait always runs in both pipelines.
+  - task: DotNetCoreCLI@2
+    displayName: Test
+    inputs:
+      command: test
+      projects: "${{ parameters.solution }}"
+      ${{ if ne(parameters.testFilter, '') }}:
+        arguments: '--configuration ${{ parameters.buildConfiguration }} --no-build --collect "XPlat Code Coverage" --filter "${{ parameters.testFilter }}"'
+      ${{ else }}:
+        arguments: '--configuration ${{ parameters.buildConfiguration }} --no-build --collect "XPlat Code Coverage"'
+      publishTestResults: true
+    env:
+      NUGET_PACKAGES: "$(NUGET_PACKAGES)"

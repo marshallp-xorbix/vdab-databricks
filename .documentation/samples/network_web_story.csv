@@ -1,0 +1,241 @@
+source_entity_id,source_entity_label,source_category,source_value,source_health_score,source_risk_score,target_entity_id,target_entity_label,target_category,target_value,target_health_score,target_risk_score,relationship_type,relationship_weight,direction,edge_value,frequency,edge_risk_score,edge_status,snapshot_date
+V001,Northwind Metals,Supplier,403200,88,18,P001,Redmond Assembly,Plant,854400,82,25,supplies,172800.0,forward,172800.0,4,10,Active,2026-02-28
+V001,Northwind Metals,Supplier,403200,88,18,P008,Dallas Metalworks,Plant,672000,73,41,supplies,91200.0,forward,91200.0,3,16,Active,2026-02-28
+V002,Contoso Plastics,Supplier,297600,74,35,P002,Austin Fabrication,Plant,729600,75,40,supplies,115200.0,forward,115200.0,6,26,Active,2026-02-28
+V002,Contoso Plastics,Supplier,297600,74,35,P003,Chicago Molding,Plant,614400,68,48,supplies,84480.0,forward,84480.0,5,33,Active,2026-02-28
+V003,Fabrikam Chemicals,Supplier,489600,81,28,P004,Seattle PCB Line,Plant,883200,86,20,supplies,201600.0,forward,201600.0,7,20,Active,2026-02-28
+V003,Fabrikam Chemicals,Supplier,489600,81,28,P005,Denver Extrusion,Plant,489600,71,36,supplies,72960.0,forward,72960.0,4,28,Active,2026-02-28
+V004,Litware Alloys,Supplier,182400,69,42,P008,Dallas Metalworks,Plant,672000,73,41,supplies,61440.0,forward,61440.0,3,38,Active,2026-02-28
+V004,Litware Alloys,Supplier,182400,69,42,P006,Atlanta Finishing,Plant,412800,78,29,supplies,49920.0,forward,49920.0,2,43,Watch,2026-02-28
+V005,Adventure Packaging,Supplier,139200,92,12,P011,Miami Packaging Plant,Plant,278400,84,21,supplies,39360.0,forward,39360.0,8,8,Active,2026-02-28
+V005,Adventure Packaging,Supplier,139200,92,12,P001,Redmond Assembly,Plant,854400,82,25,supplies,31680.0,forward,31680.0,5,12,Active,2026-02-28
+V006,Tailspin Resins,Supplier,94080,58,71,P003,Chicago Molding,Plant,614400,68,48,supplies,27840.0,forward,27840.0,2,66,Watch,2026-02-28
+V006,Tailspin Resins,Supplier,94080,58,71,P007,Portland Composites,Plant,364800,80,27,supplies,23040.0,forward,23040.0,2,70,Blocked,2026-02-28
+V007,Wide World Timber,Supplier,264000,77,33,P007,Portland Composites,Plant,364800,80,27,supplies,87360.0,forward,87360.0,4,23,Active,2026-02-28
+V007,Wide World Timber,Supplier,264000,77,33,P012,Nashville Assembly,Plant,585600,76,34,supplies,64320.0,forward,64320.0,3,30,Active,2026-02-28
+V008,Proseware Optics,Supplier,345600,85,22,P004,Seattle PCB Line,Plant,883200,86,20,supplies,134400.0,forward,134400.0,6,14,Active,2026-02-28
+V008,Proseware Optics,Supplier,345600,85,22,P009,Boston Precision,Plant,528000,88,16,supplies,74880.0,forward,74880.0,4,18,Active,2026-02-28
+V009,A. Datum Electronics,Supplier,460800,79,31,P004,Seattle PCB Line,Plant,883200,86,20,supplies,158400.0,forward,158400.0,5,22,Active,2026-02-28
+V009,A. Datum Electronics,Supplier,460800,79,31,P010,Phoenix Thermal,Plant,451200,65,58,supplies,78720.0,forward,78720.0,3,46,Watch,2026-02-28
+V010,Crayon Components,Supplier,211200,90,15,P009,Boston Precision,Plant,528000,88,16,supplies,68160.0,forward,68160.0,7,10,Active,2026-02-28
+V010,Crayon Components,Supplier,211200,90,15,P002,Austin Fabrication,Plant,729600,75,40,supplies,51840.0,forward,51840.0,4,17,Active,2026-02-28
+V011,Ion Raw Materials,Supplier,374400,66,55,P010,Phoenix Thermal,Plant,451200,65,58,supplies,95040.0,forward,95040.0,3,53,Watch,2026-02-28
+V011,Ion Raw Materials,Supplier,374400,66,55,P005,Denver Extrusion,Plant,489600,71,36,supplies,58560.0,forward,58560.0,3,48,Watch,2026-02-28
+V012,Horizon Sensors,Supplier,168000,87,19,P004,Seattle PCB Line,Plant,883200,86,20,supplies,55680.0,forward,55680.0,5,13,Active,2026-02-28
+V012,Horizon Sensors,Supplier,168000,87,19,P009,Boston Precision,Plant,528000,88,16,supplies,41280.0,forward,41280.0,4,15,Active,2026-02-28
+V013,Delta Coatings,Supplier,126720,72,38,P006,Atlanta Finishing,Plant,412800,78,29,supplies,45120.0,forward,45120.0,3,32,Active,2026-02-28
+V013,Delta Coatings,Supplier,126720,72,38,P011,Miami Packaging Plant,Plant,278400,84,21,supplies,34560.0,forward,34560.0,3,36,Active,2026-02-28
+V014,Elm Grove Farms,Supplier,83520,94,10,P011,Miami Packaging Plant,Plant,278400,84,21,supplies,21120.0,forward,21120.0,6,6,Active,2026-02-28
+V015,Southridge Films,Supplier,149760,70,44,P003,Chicago Molding,Plant,614400,68,48,supplies,37440.0,forward,37440.0,2,39,Active,2026-02-28
+V015,Southridge Films,Supplier,149760,70,44,P012,Nashville Assembly,Plant,585600,76,34,supplies,29760.0,forward,29760.0,2,42,Active,2026-02-28
+P001,Redmond Assembly,Plant,854400,82,25,W001,West Coast DC,Warehouse,1152000,83,24,ships_to,211200.0,forward,211200.0,12,16,Active,2026-02-28
+P001,Redmond Assembly,Plant,854400,82,25,W002,Central Hub DC,Warehouse,940800,79,30,ships_to,134400.0,forward,134400.0,8,20,Active,2026-02-28
+P002,Austin Fabrication,Plant,729600,75,40,W002,Central Hub DC,Warehouse,940800,79,30,ships_to,172800.0,forward,172800.0,10,28,Active,2026-02-28
+P002,Austin Fabrication,Plant,729600,75,40,W009,Texas Mega DC,Warehouse,825600,72,39,ships_to,91200.0,forward,91200.0,6,33,Active,2026-02-28
+P003,Chicago Molding,Plant,614400,68,48,W006,Great Lakes DC,Warehouse,700800,74,37,ships_to,153600.0,forward,153600.0,9,38,Active,2026-02-28
+P003,Chicago Molding,Plant,614400,68,48,W002,Central Hub DC,Warehouse,940800,79,30,ships_to,84480.0,forward,84480.0,5,34,Active,2026-02-28
+P004,Seattle PCB Line,Plant,883200,86,20,W001,West Coast DC,Warehouse,1152000,83,24,ships_to,240000.0,forward,240000.0,14,13,Active,2026-02-28
+P004,Seattle PCB Line,Plant,883200,86,20,W003,East Coast DC,Warehouse,1056000,81,26,ships_to,163200.0,forward,163200.0,11,18,Active,2026-02-28
+P005,Denver Extrusion,Plant,489600,71,36,W005,Mountain Region DC,Warehouse,499200,77,32,ships_to,105600.0,forward,105600.0,7,26,Active,2026-02-28
+P005,Denver Extrusion,Plant,489600,71,36,W009,Texas Mega DC,Warehouse,825600,72,39,ships_to,72960.0,forward,72960.0,5,30,Active,2026-02-28
+P006,Atlanta Finishing,Plant,412800,78,29,W004,Southern Crossdock,Warehouse,614400,70,45,ships_to,94080.0,forward,94080.0,8,24,Active,2026-02-28
+P006,Atlanta Finishing,Plant,412800,78,29,W010,Florida Port DC,Warehouse,432000,69,47,ships_to,61440.0,forward,61440.0,6,27,Active,2026-02-28
+P007,Portland Composites,Plant,364800,80,27,W001,West Coast DC,Warehouse,1152000,83,24,ships_to,83520.0,forward,83520.0,6,22,Active,2026-02-28
+P007,Portland Composites,Plant,364800,80,27,W007,Pacific Overflow,Warehouse,393600,68,52,ships_to,49920.0,forward,49920.0,4,46,Watch,2026-02-28
+P008,Dallas Metalworks,Plant,672000,73,41,W009,Texas Mega DC,Warehouse,825600,72,39,ships_to,182400.0,forward,182400.0,10,31,Active,2026-02-28
+P008,Dallas Metalworks,Plant,672000,73,41,W002,Central Hub DC,Warehouse,940800,79,30,ships_to,115200.0,forward,115200.0,8,29,Active,2026-02-28
+P009,Boston Precision,Plant,528000,88,16,W003,East Coast DC,Warehouse,1056000,81,26,ships_to,144000.0,forward,144000.0,9,12,Active,2026-02-28
+P009,Boston Precision,Plant,528000,88,16,W008,Atlantic Buffer,Warehouse,374400,85,18,ships_to,68160.0,forward,68160.0,5,14,Active,2026-02-28
+P010,Phoenix Thermal,Plant,451200,65,58,W005,Mountain Region DC,Warehouse,499200,77,32,ships_to,89280.0,forward,89280.0,5,50,Watch,2026-02-28
+P010,Phoenix Thermal,Plant,451200,65,58,W009,Texas Mega DC,Warehouse,825600,72,39,ships_to,65280.0,forward,65280.0,4,53,Watch,2026-02-28
+P011,Miami Packaging Plant,Plant,278400,84,21,W010,Florida Port DC,Warehouse,432000,69,47,ships_to,80640.0,forward,80640.0,7,17,Active,2026-02-28
+P011,Miami Packaging Plant,Plant,278400,84,21,W004,Southern Crossdock,Warehouse,614400,70,45,ships_to,56640.0,forward,56640.0,5,21,Active,2026-02-28
+P012,Nashville Assembly,Plant,585600,76,34,W006,Great Lakes DC,Warehouse,700800,74,37,ships_to,124800.0,forward,124800.0,8,25,Active,2026-02-28
+P012,Nashville Assembly,Plant,585600,76,34,W002,Central Hub DC,Warehouse,940800,79,30,ships_to,73920.0,forward,73920.0,6,28,Active,2026-02-28
+W001,West Coast DC,Warehouse,1152000,83,24,R001,Northwind Retail,Retailer,2016000,90,14,ships_to,297600.0,forward,297600.0,20,10,Active,2026-02-28
+W001,West Coast DC,Warehouse,1152000,83,24,R005,Adventure Shops,Retailer,748800,86,19,ships_to,134400.0,forward,134400.0,12,16,Active,2026-02-28
+W001,West Coast DC,Warehouse,1152000,83,24,R008,Proseware Galleries,Retailer,489600,88,17,ships_to,86400.0,forward,86400.0,8,13,Active,2026-02-28
+W002,Central Hub DC,Warehouse,940800,79,30,R002,Contoso Stores,Retailer,1728000,78,33,ships_to,249600.0,forward,249600.0,16,26,Active,2026-02-28
+W002,Central Hub DC,Warehouse,940800,79,30,R007,Wide World Markets,Retailer,1344000,75,35,ships_to,182400.0,forward,182400.0,14,30,Active,2026-02-28
+W002,Central Hub DC,Warehouse,940800,79,30,R015,Bellows Campus Store,Retailer,211200,76,31,ships_to,43200.0,forward,43200.0,6,23,Active,2026-02-28
+W003,East Coast DC,Warehouse,1056000,81,26,R001,Northwind Retail,Retailer,2016000,90,14,ships_to,211200.0,forward,211200.0,15,12,Active,2026-02-28
+W003,East Coast DC,Warehouse,1056000,81,26,R004,Litware Outlets,Retailer,595200,81,23,ships_to,105600.0,forward,105600.0,10,18,Active,2026-02-28
+W003,East Coast DC,Warehouse,1056000,81,26,R009,Woodgrove Branches,Retailer,2208000,84,22,ships_to,268800.0,forward,268800.0,18,20,Active,2026-02-28
+W004,Southern Crossdock,Warehouse,614400,70,45,R003,Fabrikam Mart,Retailer,912000,72,42,ships_to,144000.0,forward,144000.0,11,36,Active,2026-02-28
+W004,Southern Crossdock,Warehouse,614400,70,45,R006,Tailspin Kiosks,Retailer,326400,60,66,ships_to,59520.0,forward,59520.0,7,58,Watch,2026-02-28
+W004,Southern Crossdock,Warehouse,614400,70,45,R010,Blue Yonder Travel Desk,Retailer,835200,71,40,ships_to,94080.0,forward,94080.0,9,33,Active,2026-02-28
+W005,Mountain Region DC,Warehouse,499200,77,32,R007,Wide World Markets,Retailer,1344000,75,35,ships_to,115200.0,forward,115200.0,10,28,Active,2026-02-28
+W005,Mountain Region DC,Warehouse,499200,77,32,R014,Trey Research Store,Retailer,345600,89,15,ships_to,51840.0,forward,51840.0,5,15,Active,2026-02-28
+W006,Great Lakes DC,Warehouse,700800,74,37,R002,Contoso Stores,Retailer,1728000,78,33,ships_to,163200.0,forward,163200.0,12,24,Active,2026-02-28
+W006,Great Lakes DC,Warehouse,700800,74,37,R009,Woodgrove Branches,Retailer,2208000,84,22,ships_to,192000.0,forward,192000.0,13,22,Active,2026-02-28
+W006,Great Lakes DC,Warehouse,700800,74,37,R013,School of Fine Art Shop,Retailer,172800,67,50,ships_to,26880.0,forward,26880.0,3,44,Watch,2026-02-28
+W007,Pacific Overflow,Warehouse,393600,68,52,R005,Adventure Shops,Retailer,748800,86,19,ships_to,70080.0,forward,70080.0,6,40,Active,2026-02-28
+W007,Pacific Overflow,Warehouse,393600,68,52,R011,Fourth Coffee Cafes,Retailer,278400,92,11,ships_to,39360.0,forward,39360.0,8,9,Active,2026-02-28
+W008,Atlantic Buffer,Warehouse,374400,85,18,R004,Litware Outlets,Retailer,595200,81,23,ships_to,82560.0,forward,82560.0,7,14,Active,2026-02-28
+W008,Atlantic Buffer,Warehouse,374400,85,18,R012,Margie Travel Counters,Retailer,393600,80,28,ships_to,47040.0,forward,47040.0,5,19,Active,2026-02-28
+W009,Texas Mega DC,Warehouse,825600,72,39,R002,Contoso Stores,Retailer,1728000,78,33,ships_to,172800.0,forward,172800.0,14,27,Active,2026-02-28
+W009,Texas Mega DC,Warehouse,825600,72,39,R007,Wide World Markets,Retailer,1344000,75,35,ships_to,153600.0,forward,153600.0,12,31,Active,2026-02-28
+W009,Texas Mega DC,Warehouse,825600,72,39,R010,Blue Yonder Travel Desk,Retailer,835200,71,40,ships_to,73920.0,forward,73920.0,8,35,Active,2026-02-28
+W010,Florida Port DC,Warehouse,432000,69,47,R003,Fabrikam Mart,Retailer,912000,72,42,ships_to,95040.0,forward,95040.0,9,32,Active,2026-02-28
+W010,Florida Port DC,Warehouse,432000,69,47,R006,Tailspin Kiosks,Retailer,326400,60,66,ships_to,48960.0,forward,48960.0,5,62,Watch,2026-02-28
+W010,Florida Port DC,Warehouse,432000,69,47,R011,Fourth Coffee Cafes,Retailer,278400,92,11,ships_to,34560.0,forward,34560.0,7,11,Active,2026-02-28
+O001,Xorbix Holdings,Owner,4800000,91,12,P001,Redmond Assembly,Plant,854400,82,25,owns,480000.0,forward,480000.0,1,8,Active,2026-02-28
+O001,Xorbix Holdings,Owner,4800000,91,12,W001,West Coast DC,Warehouse,1152000,83,24,owns,384000.0,forward,384000.0,1,10,Active,2026-02-28
+O001,Xorbix Holdings,Owner,4800000,91,12,R001,Northwind Retail,Retailer,2016000,90,14,owns,576000.0,forward,576000.0,1,6,Active,2026-02-28
+O002,Pacific Ventures,Owner,3072000,85,20,P004,Seattle PCB Line,Plant,883200,86,20,owns,432000.0,forward,432000.0,1,13,Active,2026-02-28
+O002,Pacific Ventures,Owner,3072000,85,20,W003,East Coast DC,Warehouse,1056000,81,26,owns,336000.0,forward,336000.0,1,16,Active,2026-02-28
+O003,Midwest Capital,Owner,2688000,78,28,P002,Austin Fabrication,Plant,729600,75,40,owns,288000.0,forward,288000.0,1,23,Active,2026-02-28
+O003,Midwest Capital,Owner,2688000,78,28,W002,Central Hub DC,Warehouse,940800,79,30,owns,268800.0,forward,268800.0,1,20,Active,2026-02-28
+O004,Atlantic Partners,Owner,2304000,82,24,P009,Boston Precision,Plant,528000,88,16,owns,249600.0,forward,249600.0,1,12,Active,2026-02-28
+O004,Atlantic Partners,Owner,2304000,82,24,R009,Woodgrove Branches,Retailer,2208000,84,22,owns,403200.0,forward,403200.0,1,14,Active,2026-02-28
+O005,Summit Equity,Owner,1824000,74,36,P008,Dallas Metalworks,Plant,672000,73,41,owns,230400.0,forward,230400.0,1,28,Active,2026-02-28
+O005,Summit Equity,Owner,1824000,74,36,W009,Texas Mega DC,Warehouse,825600,72,39,owns,211200.0,forward,211200.0,1,26,Active,2026-02-28
+O006,Lakeview Group,Owner,1440000,88,16,P011,Miami Packaging Plant,Plant,278400,84,21,owns,172800.0,forward,172800.0,1,10,Active,2026-02-28
+O006,Lakeview Group,Owner,1440000,88,16,R011,Fourth Coffee Cafes,Retailer,278400,92,11,owns,144000.0,forward,144000.0,1,8,Active,2026-02-28
+O007,Frontier Fund,Owner,1632000,70,44,P010,Phoenix Thermal,Plant,451200,65,58,owns,192000.0,forward,192000.0,1,38,Active,2026-02-28
+O007,Frontier Fund,Owner,1632000,70,44,W005,Mountain Region DC,Warehouse,499200,77,32,owns,163200.0,forward,163200.0,1,34,Active,2026-02-28
+O008,Horizon Capital,Owner,2016000,86,18,P012,Nashville Assembly,Plant,585600,76,34,owns,220800.0,forward,220800.0,1,16,Active,2026-02-28
+O008,Horizon Capital,Owner,2016000,86,18,R007,Wide World Markets,Retailer,1344000,75,35,owns,297600.0,forward,297600.0,1,18,Active,2026-02-28
+O002,Pacific Ventures,Owner,3072000,85,20,S001,ERP Core,System,768000,87,21,owns,86400.0,forward,86400.0,1,13,Active,2026-02-28
+O001,Xorbix Holdings,Owner,4800000,91,12,S008,Finance Ledger,System,432000,90,13,owns,105600.0,forward,105600.0,1,8,Active,2026-02-28
+O004,Atlantic Partners,Owner,2304000,82,24,S004,POS Network,System,489600,84,22,owns,76800.0,forward,76800.0,1,12,Active,2026-02-28
+S002,WMS West,System,403200,80,29,S001,ERP Core,System,768000,87,21,depends_on,48.0,forward,48000.0,30,18,Active,2026-02-28
+S003,TMS Hub,System,374400,76,34,S001,ERP Core,System,768000,87,21,depends_on,43.2,forward,43200.0,25,20,Active,2026-02-28
+S004,POS Network,System,489600,84,22,S001,ERP Core,System,768000,87,21,depends_on,57.6,forward,57600.0,40,16,Active,2026-02-28
+S005,Quality MES,System,345600,79,31,S001,ERP Core,System,768000,87,21,depends_on,38.4,forward,38400.0,20,23,Active,2026-02-28
+S006,Supplier Portal,System,268800,73,38,S001,ERP Core,System,768000,87,21,depends_on,33.6,forward,33600.0,18,28,Watch,2026-02-28
+S007,Demand Planner,System,316800,81,25,S001,ERP Core,System,768000,87,21,depends_on,40.3,forward,40320.0,22,22,Active,2026-02-28
+S008,Finance Ledger,System,432000,90,13,S001,ERP Core,System,768000,87,21,depends_on,52.8,forward,52800.0,28,10,Active,2026-02-28
+S002,WMS West,System,403200,80,29,S003,TMS Hub,System,374400,76,34,depends_on,26.9,forward,26880.0,15,26,Active,2026-02-28
+S004,POS Network,System,489600,84,22,S007,Demand Planner,System,316800,81,25,depends_on,31.7,forward,31680.0,16,24,Active,2026-02-28
+S005,Quality MES,System,345600,79,31,S006,Supplier Portal,System,268800,73,38,depends_on,21.1,forward,21120.0,12,30,Watch,2026-02-28
+P001,Redmond Assembly,Plant,854400,82,25,S005,Quality MES,System,345600,79,31,depends_on,14.4,forward,14400.0,10,18,Active,2026-02-28
+P004,Seattle PCB Line,Plant,883200,86,20,S005,Quality MES,System,345600,79,31,depends_on,17.3,forward,17280.0,12,16,Active,2026-02-28
+W001,West Coast DC,Warehouse,1152000,83,24,S002,WMS West,System,403200,80,29,depends_on,19.2,forward,19200.0,14,20,Active,2026-02-28
+W003,East Coast DC,Warehouse,1056000,81,26,S002,WMS West,System,403200,80,29,depends_on,16.3,forward,16320.0,11,22,Active,2026-02-28
+R001,Northwind Retail,Retailer,2016000,90,14,S004,POS Network,System,489600,84,22,depends_on,24.0,forward,24000.0,20,14,Active,2026-02-28
+R009,Woodgrove Branches,Retailer,2208000,84,22,S004,POS Network,System,489600,84,22,depends_on,28.8,forward,28800.0,18,17,Active,2026-02-28
+V009,A. Datum Electronics,Supplier,460800,79,31,S006,Supplier Portal,System,268800,73,38,depends_on,11.5,forward,11520.0,8,25,Active,2026-02-28
+V003,Fabrikam Chemicals,Supplier,489600,81,28,S006,Supplier Portal,System,268800,73,38,depends_on,13.4,forward,13440.0,9,27,Active,2026-02-28
+W002,Central Hub DC,Warehouse,940800,79,30,S003,TMS Hub,System,374400,76,34,depends_on,18.2,forward,18240.0,13,29,Watch,2026-02-28
+P008,Dallas Metalworks,Plant,672000,73,41,S003,TMS Hub,System,374400,76,34,depends_on,15.4,forward,15360.0,10,31,Watch,2026-02-28
+V001,Northwind Metals,Supplier,420000,88,18,P001,Redmond Assembly,Plant,890000,82,25,supplies,180000.0,forward,180000.0,4,12,Active,2026-03-31
+V001,Northwind Metals,Supplier,420000,88,18,P008,Dallas Metalworks,Plant,700000,73,41,supplies,95000.0,forward,95000.0,3,18,Active,2026-03-31
+V002,Contoso Plastics,Supplier,310000,74,35,P002,Austin Fabrication,Plant,760000,75,40,supplies,120000.0,forward,120000.0,6,28,Active,2026-03-31
+V002,Contoso Plastics,Supplier,310000,74,35,P003,Chicago Molding,Plant,640000,68,48,supplies,88000.0,forward,88000.0,5,35,Active,2026-03-31
+V003,Fabrikam Chemicals,Supplier,510000,81,28,P004,Seattle PCB Line,Plant,920000,86,20,supplies,210000.0,forward,210000.0,7,22,Active,2026-03-31
+V003,Fabrikam Chemicals,Supplier,510000,81,28,P005,Denver Extrusion,Plant,510000,71,36,supplies,76000.0,forward,76000.0,4,30,Active,2026-03-31
+V004,Litware Alloys,Supplier,190000,69,42,P008,Dallas Metalworks,Plant,700000,73,41,supplies,64000.0,forward,64000.0,3,40,Active,2026-03-31
+V004,Litware Alloys,Supplier,190000,69,42,P006,Atlanta Finishing,Plant,430000,78,29,supplies,52000.0,forward,52000.0,2,45,Watch,2026-03-31
+V005,Adventure Packaging,Supplier,145000,92,12,P011,Miami Packaging Plant,Plant,290000,84,21,supplies,41000.0,forward,41000.0,8,10,Active,2026-03-31
+V005,Adventure Packaging,Supplier,145000,92,12,P001,Redmond Assembly,Plant,890000,82,25,supplies,33000.0,forward,33000.0,5,14,Active,2026-03-31
+V006,Tailspin Resins,Supplier,98000,58,71,P003,Chicago Molding,Plant,640000,68,48,supplies,29000.0,forward,29000.0,2,68,Watch,2026-03-31
+V006,Tailspin Resins,Supplier,98000,58,71,P007,Portland Composites,Plant,380000,80,27,supplies,24000.0,forward,24000.0,2,72,Blocked,2026-03-31
+V007,Wide World Timber,Supplier,275000,77,33,P007,Portland Composites,Plant,380000,80,27,supplies,91000.0,forward,91000.0,4,25,Active,2026-03-31
+V007,Wide World Timber,Supplier,275000,77,33,P012,Nashville Assembly,Plant,610000,76,34,supplies,67000.0,forward,67000.0,3,32,Active,2026-03-31
+V008,Proseware Optics,Supplier,360000,85,22,P004,Seattle PCB Line,Plant,920000,86,20,supplies,140000.0,forward,140000.0,6,16,Active,2026-03-31
+V008,Proseware Optics,Supplier,360000,85,22,P009,Boston Precision,Plant,550000,88,16,supplies,78000.0,forward,78000.0,4,20,Active,2026-03-31
+V009,A. Datum Electronics,Supplier,480000,79,31,P004,Seattle PCB Line,Plant,920000,86,20,supplies,165000.0,forward,165000.0,5,24,Active,2026-03-31
+V009,A. Datum Electronics,Supplier,480000,79,31,P010,Phoenix Thermal,Plant,470000,65,58,supplies,82000.0,forward,82000.0,3,48,Watch,2026-03-31
+V010,Crayon Components,Supplier,220000,90,15,P009,Boston Precision,Plant,550000,88,16,supplies,71000.0,forward,71000.0,7,12,Active,2026-03-31
+V010,Crayon Components,Supplier,220000,90,15,P002,Austin Fabrication,Plant,760000,75,40,supplies,54000.0,forward,54000.0,4,19,Active,2026-03-31
+V011,Ion Raw Materials,Supplier,390000,66,55,P010,Phoenix Thermal,Plant,470000,65,58,supplies,99000.0,forward,99000.0,3,55,Watch,2026-03-31
+V011,Ion Raw Materials,Supplier,390000,66,55,P005,Denver Extrusion,Plant,510000,71,36,supplies,61000.0,forward,61000.0,3,50,Watch,2026-03-31
+V012,Horizon Sensors,Supplier,175000,87,19,P004,Seattle PCB Line,Plant,920000,86,20,supplies,58000.0,forward,58000.0,5,15,Active,2026-03-31
+V012,Horizon Sensors,Supplier,175000,87,19,P009,Boston Precision,Plant,550000,88,16,supplies,43000.0,forward,43000.0,4,17,Active,2026-03-31
+V013,Delta Coatings,Supplier,132000,72,38,P006,Atlanta Finishing,Plant,430000,78,29,supplies,47000.0,forward,47000.0,3,34,Active,2026-03-31
+V013,Delta Coatings,Supplier,132000,72,38,P011,Miami Packaging Plant,Plant,290000,84,21,supplies,36000.0,forward,36000.0,3,38,Active,2026-03-31
+V014,Elm Grove Farms,Supplier,87000,94,10,P011,Miami Packaging Plant,Plant,290000,84,21,supplies,22000.0,forward,22000.0,6,8,Active,2026-03-31
+V015,Southridge Films,Supplier,156000,70,44,P003,Chicago Molding,Plant,640000,68,48,supplies,39000.0,forward,39000.0,2,41,Active,2026-03-31
+V015,Southridge Films,Supplier,156000,70,44,P012,Nashville Assembly,Plant,610000,76,34,supplies,31000.0,forward,31000.0,2,44,Active,2026-03-31
+P001,Redmond Assembly,Plant,890000,82,25,W001,West Coast DC,Warehouse,1200000,83,24,ships_to,220000.0,forward,220000.0,12,18,Active,2026-03-31
+P001,Redmond Assembly,Plant,890000,82,25,W002,Central Hub DC,Warehouse,980000,79,30,ships_to,140000.0,forward,140000.0,8,22,Active,2026-03-31
+P002,Austin Fabrication,Plant,760000,75,40,W002,Central Hub DC,Warehouse,980000,79,30,ships_to,180000.0,forward,180000.0,10,30,Active,2026-03-31
+P002,Austin Fabrication,Plant,760000,75,40,W009,Texas Mega DC,Warehouse,860000,72,39,ships_to,95000.0,forward,95000.0,6,35,Active,2026-03-31
+P003,Chicago Molding,Plant,640000,68,48,W006,Great Lakes DC,Warehouse,730000,74,37,ships_to,160000.0,forward,160000.0,9,40,Active,2026-03-31
+P003,Chicago Molding,Plant,640000,68,48,W002,Central Hub DC,Warehouse,980000,79,30,ships_to,88000.0,forward,88000.0,5,36,Active,2026-03-31
+P004,Seattle PCB Line,Plant,920000,86,20,W001,West Coast DC,Warehouse,1200000,83,24,ships_to,250000.0,forward,250000.0,14,15,Active,2026-03-31
+P004,Seattle PCB Line,Plant,920000,86,20,W003,East Coast DC,Warehouse,1100000,81,26,ships_to,170000.0,forward,170000.0,11,20,Active,2026-03-31
+P005,Denver Extrusion,Plant,510000,71,36,W005,Mountain Region DC,Warehouse,520000,77,32,ships_to,110000.0,forward,110000.0,7,28,Active,2026-03-31
+P005,Denver Extrusion,Plant,510000,71,36,W009,Texas Mega DC,Warehouse,860000,72,39,ships_to,76000.0,forward,76000.0,5,32,Active,2026-03-31
+P006,Atlanta Finishing,Plant,430000,78,29,W004,Southern Crossdock,Warehouse,640000,70,45,ships_to,98000.0,forward,98000.0,8,26,Active,2026-03-31
+P006,Atlanta Finishing,Plant,430000,78,29,W010,Florida Port DC,Warehouse,450000,69,47,ships_to,64000.0,forward,64000.0,6,29,Active,2026-03-31
+P007,Portland Composites,Plant,380000,80,27,W001,West Coast DC,Warehouse,1200000,83,24,ships_to,87000.0,forward,87000.0,6,24,Active,2026-03-31
+P007,Portland Composites,Plant,380000,80,27,W007,Pacific Overflow,Warehouse,410000,68,52,ships_to,52000.0,forward,52000.0,4,48,Watch,2026-03-31
+P008,Dallas Metalworks,Plant,700000,73,41,W009,Texas Mega DC,Warehouse,860000,72,39,ships_to,190000.0,forward,190000.0,10,33,Active,2026-03-31
+P008,Dallas Metalworks,Plant,700000,73,41,W002,Central Hub DC,Warehouse,980000,79,30,ships_to,120000.0,forward,120000.0,8,31,Active,2026-03-31
+P009,Boston Precision,Plant,550000,88,16,W003,East Coast DC,Warehouse,1100000,81,26,ships_to,150000.0,forward,150000.0,9,14,Active,2026-03-31
+P009,Boston Precision,Plant,550000,88,16,W008,Atlantic Buffer,Warehouse,390000,85,18,ships_to,71000.0,forward,71000.0,5,16,Active,2026-03-31
+P010,Phoenix Thermal,Plant,470000,65,58,W005,Mountain Region DC,Warehouse,520000,77,32,ships_to,93000.0,forward,93000.0,5,52,Watch,2026-03-31
+P010,Phoenix Thermal,Plant,470000,65,58,W009,Texas Mega DC,Warehouse,860000,72,39,ships_to,68000.0,forward,68000.0,4,55,Watch,2026-03-31
+P011,Miami Packaging Plant,Plant,290000,84,21,W010,Florida Port DC,Warehouse,450000,69,47,ships_to,84000.0,forward,84000.0,7,19,Active,2026-03-31
+P011,Miami Packaging Plant,Plant,290000,84,21,W004,Southern Crossdock,Warehouse,640000,70,45,ships_to,59000.0,forward,59000.0,5,23,Active,2026-03-31
+P012,Nashville Assembly,Plant,610000,76,34,W006,Great Lakes DC,Warehouse,730000,74,37,ships_to,130000.0,forward,130000.0,8,27,Active,2026-03-31
+P012,Nashville Assembly,Plant,610000,76,34,W002,Central Hub DC,Warehouse,980000,79,30,ships_to,77000.0,forward,77000.0,6,30,Active,2026-03-31
+W001,West Coast DC,Warehouse,1200000,83,24,R001,Northwind Retail,Retailer,2100000,90,14,ships_to,310000.0,forward,310000.0,20,12,Active,2026-03-31
+W001,West Coast DC,Warehouse,1200000,83,24,R005,Adventure Shops,Retailer,780000,86,19,ships_to,140000.0,forward,140000.0,12,18,Active,2026-03-31
+W001,West Coast DC,Warehouse,1200000,83,24,R008,Proseware Galleries,Retailer,510000,88,17,ships_to,90000.0,forward,90000.0,8,15,Active,2026-03-31
+W002,Central Hub DC,Warehouse,980000,79,30,R002,Contoso Stores,Retailer,1800000,78,33,ships_to,260000.0,forward,260000.0,16,28,Active,2026-03-31
+W002,Central Hub DC,Warehouse,980000,79,30,R007,Wide World Markets,Retailer,1400000,75,35,ships_to,190000.0,forward,190000.0,14,32,Active,2026-03-31
+W002,Central Hub DC,Warehouse,980000,79,30,R015,Bellows Campus Store,Retailer,220000,76,31,ships_to,45000.0,forward,45000.0,6,25,Active,2026-03-31
+W003,East Coast DC,Warehouse,1100000,81,26,R001,Northwind Retail,Retailer,2100000,90,14,ships_to,220000.0,forward,220000.0,15,14,Active,2026-03-31
+W003,East Coast DC,Warehouse,1100000,81,26,R004,Litware Outlets,Retailer,620000,81,23,ships_to,110000.0,forward,110000.0,10,20,Active,2026-03-31
+W003,East Coast DC,Warehouse,1100000,81,26,R009,Woodgrove Branches,Retailer,2300000,84,22,ships_to,280000.0,forward,280000.0,18,22,Active,2026-03-31
+W004,Southern Crossdock,Warehouse,640000,70,45,R003,Fabrikam Mart,Retailer,950000,72,42,ships_to,150000.0,forward,150000.0,11,38,Active,2026-03-31
+W004,Southern Crossdock,Warehouse,640000,70,45,R006,Tailspin Kiosks,Retailer,340000,60,66,ships_to,62000.0,forward,62000.0,7,60,Watch,2026-03-31
+W004,Southern Crossdock,Warehouse,640000,70,45,R010,Blue Yonder Travel Desk,Retailer,870000,71,40,ships_to,98000.0,forward,98000.0,9,35,Active,2026-03-31
+W005,Mountain Region DC,Warehouse,520000,77,32,R007,Wide World Markets,Retailer,1400000,75,35,ships_to,120000.0,forward,120000.0,10,30,Active,2026-03-31
+W005,Mountain Region DC,Warehouse,520000,77,32,R014,Trey Research Store,Retailer,360000,89,15,ships_to,54000.0,forward,54000.0,5,17,Active,2026-03-31
+W006,Great Lakes DC,Warehouse,730000,74,37,R002,Contoso Stores,Retailer,1800000,78,33,ships_to,170000.0,forward,170000.0,12,26,Active,2026-03-31
+W006,Great Lakes DC,Warehouse,730000,74,37,R009,Woodgrove Branches,Retailer,2300000,84,22,ships_to,200000.0,forward,200000.0,13,24,Active,2026-03-31
+W006,Great Lakes DC,Warehouse,730000,74,37,R013,School of Fine Art Shop,Retailer,180000,67,50,ships_to,28000.0,forward,28000.0,3,46,Watch,2026-03-31
+W007,Pacific Overflow,Warehouse,410000,68,52,R005,Adventure Shops,Retailer,780000,86,19,ships_to,73000.0,forward,73000.0,6,42,Active,2026-03-31
+W007,Pacific Overflow,Warehouse,410000,68,52,R011,Fourth Coffee Cafes,Retailer,290000,92,11,ships_to,41000.0,forward,41000.0,8,11,Active,2026-03-31
+W008,Atlantic Buffer,Warehouse,390000,85,18,R004,Litware Outlets,Retailer,620000,81,23,ships_to,86000.0,forward,86000.0,7,16,Active,2026-03-31
+W008,Atlantic Buffer,Warehouse,390000,85,18,R012,Margie Travel Counters,Retailer,410000,80,28,ships_to,49000.0,forward,49000.0,5,21,Active,2026-03-31
+W009,Texas Mega DC,Warehouse,860000,72,39,R002,Contoso Stores,Retailer,1800000,78,33,ships_to,180000.0,forward,180000.0,14,29,Active,2026-03-31
+W009,Texas Mega DC,Warehouse,860000,72,39,R007,Wide World Markets,Retailer,1400000,75,35,ships_to,160000.0,forward,160000.0,12,33,Active,2026-03-31
+W009,Texas Mega DC,Warehouse,860000,72,39,R010,Blue Yonder Travel Desk,Retailer,870000,71,40,ships_to,77000.0,forward,77000.0,8,37,Active,2026-03-31
+W010,Florida Port DC,Warehouse,450000,69,47,R003,Fabrikam Mart,Retailer,950000,72,42,ships_to,99000.0,forward,99000.0,9,34,Active,2026-03-31
+W010,Florida Port DC,Warehouse,450000,69,47,R006,Tailspin Kiosks,Retailer,340000,60,66,ships_to,51000.0,forward,51000.0,5,64,Watch,2026-03-31
+W010,Florida Port DC,Warehouse,450000,69,47,R011,Fourth Coffee Cafes,Retailer,290000,92,11,ships_to,36000.0,forward,36000.0,7,13,Active,2026-03-31
+O001,Xorbix Holdings,Owner,5000000,91,12,P001,Redmond Assembly,Plant,890000,82,25,owns,500000.0,forward,500000.0,1,10,Active,2026-03-31
+O001,Xorbix Holdings,Owner,5000000,91,12,W001,West Coast DC,Warehouse,1200000,83,24,owns,400000.0,forward,400000.0,1,12,Active,2026-03-31
+O001,Xorbix Holdings,Owner,5000000,91,12,R001,Northwind Retail,Retailer,2100000,90,14,owns,600000.0,forward,600000.0,1,8,Active,2026-03-31
+O002,Pacific Ventures,Owner,3200000,85,20,P004,Seattle PCB Line,Plant,920000,86,20,owns,450000.0,forward,450000.0,1,15,Active,2026-03-31
+O002,Pacific Ventures,Owner,3200000,85,20,W003,East Coast DC,Warehouse,1100000,81,26,owns,350000.0,forward,350000.0,1,18,Active,2026-03-31
+O003,Midwest Capital,Owner,2800000,78,28,P002,Austin Fabrication,Plant,760000,75,40,owns,300000.0,forward,300000.0,1,25,Active,2026-03-31
+O003,Midwest Capital,Owner,2800000,78,28,W002,Central Hub DC,Warehouse,980000,79,30,owns,280000.0,forward,280000.0,1,22,Active,2026-03-31
+O004,Atlantic Partners,Owner,2400000,82,24,P009,Boston Precision,Plant,550000,88,16,owns,260000.0,forward,260000.0,1,14,Active,2026-03-31
+O004,Atlantic Partners,Owner,2400000,82,24,R009,Woodgrove Branches,Retailer,2300000,84,22,owns,420000.0,forward,420000.0,1,16,Active,2026-03-31
+O005,Summit Equity,Owner,1900000,74,36,P008,Dallas Metalworks,Plant,700000,73,41,owns,240000.0,forward,240000.0,1,30,Active,2026-03-31
+O005,Summit Equity,Owner,1900000,74,36,W009,Texas Mega DC,Warehouse,860000,72,39,owns,220000.0,forward,220000.0,1,28,Active,2026-03-31
+O006,Lakeview Group,Owner,1500000,88,16,P011,Miami Packaging Plant,Plant,290000,84,21,owns,180000.0,forward,180000.0,1,12,Active,2026-03-31
+O006,Lakeview Group,Owner,1500000,88,16,R011,Fourth Coffee Cafes,Retailer,290000,92,11,owns,150000.0,forward,150000.0,1,10,Active,2026-03-31
+O007,Frontier Fund,Owner,1700000,70,44,P010,Phoenix Thermal,Plant,470000,65,58,owns,200000.0,forward,200000.0,1,40,Active,2026-03-31
+O007,Frontier Fund,Owner,1700000,70,44,W005,Mountain Region DC,Warehouse,520000,77,32,owns,170000.0,forward,170000.0,1,36,Active,2026-03-31
+O008,Horizon Capital,Owner,2100000,86,18,P012,Nashville Assembly,Plant,610000,76,34,owns,230000.0,forward,230000.0,1,18,Active,2026-03-31
+O008,Horizon Capital,Owner,2100000,86,18,R007,Wide World Markets,Retailer,1400000,75,35,owns,310000.0,forward,310000.0,1,20,Active,2026-03-31
+O002,Pacific Ventures,Owner,3200000,85,20,S001,ERP Core,System,800000,87,21,owns,90000.0,forward,90000.0,1,15,Active,2026-03-31
+O001,Xorbix Holdings,Owner,5000000,91,12,S008,Finance Ledger,System,450000,90,13,owns,110000.0,forward,110000.0,1,10,Active,2026-03-31
+O004,Atlantic Partners,Owner,2400000,82,24,S004,POS Network,System,510000,84,22,owns,80000.0,forward,80000.0,1,14,Active,2026-03-31
+S002,WMS West,System,420000,80,29,S001,ERP Core,System,800000,87,21,depends_on,50.0,forward,50000.0,30,20,Active,2026-03-31
+S003,TMS Hub,System,390000,76,34,S001,ERP Core,System,800000,87,21,depends_on,45.0,forward,45000.0,25,22,Active,2026-03-31
+S004,POS Network,System,510000,84,22,S001,ERP Core,System,800000,87,21,depends_on,60.0,forward,60000.0,40,18,Active,2026-03-31
+S005,Quality MES,System,360000,79,31,S001,ERP Core,System,800000,87,21,depends_on,40.0,forward,40000.0,20,25,Active,2026-03-31
+S006,Supplier Portal,System,280000,73,38,S001,ERP Core,System,800000,87,21,depends_on,35.0,forward,35000.0,18,30,Watch,2026-03-31
+S007,Demand Planner,System,330000,81,25,S001,ERP Core,System,800000,87,21,depends_on,42.0,forward,42000.0,22,24,Active,2026-03-31
+S008,Finance Ledger,System,450000,90,13,S001,ERP Core,System,800000,87,21,depends_on,55.0,forward,55000.0,28,12,Active,2026-03-31
+S002,WMS West,System,420000,80,29,S003,TMS Hub,System,390000,76,34,depends_on,28.0,forward,28000.0,15,28,Active,2026-03-31
+S004,POS Network,System,510000,84,22,S007,Demand Planner,System,330000,81,25,depends_on,33.0,forward,33000.0,16,26,Active,2026-03-31
+S005,Quality MES,System,360000,79,31,S006,Supplier Portal,System,280000,73,38,depends_on,22.0,forward,22000.0,12,32,Watch,2026-03-31
+P001,Redmond Assembly,Plant,890000,82,25,S005,Quality MES,System,360000,79,31,depends_on,15.0,forward,15000.0,10,20,Active,2026-03-31
+P004,Seattle PCB Line,Plant,920000,86,20,S005,Quality MES,System,360000,79,31,depends_on,18.0,forward,18000.0,12,18,Active,2026-03-31
+W001,West Coast DC,Warehouse,1200000,83,24,S002,WMS West,System,420000,80,29,depends_on,20.0,forward,20000.0,14,22,Active,2026-03-31
+W003,East Coast DC,Warehouse,1100000,81,26,S002,WMS West,System,420000,80,29,depends_on,17.0,forward,17000.0,11,24,Active,2026-03-31
+R001,Northwind Retail,Retailer,2100000,90,14,S004,POS Network,System,510000,84,22,depends_on,25.0,forward,25000.0,20,16,Active,2026-03-31
+R009,Woodgrove Branches,Retailer,2300000,84,22,S004,POS Network,System,510000,84,22,depends_on,30.0,forward,30000.0,18,19,Active,2026-03-31
+V009,A. Datum Electronics,Supplier,480000,79,31,S006,Supplier Portal,System,280000,73,38,depends_on,12.0,forward,12000.0,8,27,Active,2026-03-31
+V003,Fabrikam Chemicals,Supplier,510000,81,28,S006,Supplier Portal,System,280000,73,38,depends_on,14.0,forward,14000.0,9,29,Active,2026-03-31
+W002,Central Hub DC,Warehouse,980000,79,30,S003,TMS Hub,System,390000,76,34,depends_on,19.0,forward,19000.0,13,31,Watch,2026-03-31
+P008,Dallas Metalworks,Plant,700000,73,41,S003,TMS Hub,System,390000,76,34,depends_on,16.0,forward,16000.0,10,33,Watch,2026-03-31

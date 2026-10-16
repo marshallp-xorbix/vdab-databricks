@@ -1,0 +1,532 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Reset default styles to work with Tailwind */
+#root {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+    height: 100vh;
+}
+
+/* Ensure full height layout */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body {
+    display: block;
+    min-width: 320px;
+    min-height: 100vh;
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button:not(:disabled) {
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}
+
+.scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide:hover {
+    scrollbar-width: thin;
+    -ms-overflow-style: auto;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar {
+    display: block;
+    width: 8px;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar-track {
+    background: var(--muted);
+    border-radius: 4px;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+}
+
+/* Thin scrollbars + stable gutter: drag uses overflow-hidden on this node (dnd-kit),
+   so the gutter must stay reserved or the grid reflows when the bar disappears. */
+.builder-panel-scroll {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.builder-panel-scroll::-webkit-scrollbar {
+    width: 3px;
+}
+
+.builder-panel-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.builder-panel-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+}
+
+.builder-panel-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+}
+
+.builder-sidebar-surface .builder-panel-scroll {
+    scrollbar-color: rgb(255 255 255 / 0.35) transparent;
+}
+
+.builder-sidebar-surface .builder-panel-scroll::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.3);
+}
+
+.builder-sidebar-surface .builder-panel-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(255 255 255 / 0.45);
+}
+
+/**
+ * Builder chrome (components panel, properties panel, tab bar, header toolbar):
+ * same asset as auth — public/images/site-background.png
+ * `fixed` keeps one viewport-aligned crop across adjacent strips.
+ */
+.builder-chrome-surface {
+    background-color: var(--builder-sidebar-surface);
+    background-image: var(--builder-chrome-bg-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+/**
+ * Toolbar / tab / components sidebar title+search rows: exact 40px flex basis
+ * so borders line up across the left column and main column (avoids subpixel drift).
+ */
+.builder-chrome-toolbar-row {
+    box-sizing: border-box;
+    height: 40px;
+    min-height: 40px;
+    max-height: 40px;
+    flex: 0 0 40px;
+    overflow: hidden;
+}
+
+/* Unified inset blue glow for shared chrome sections (inside edges only). */
+.chrome-inside-blue-glow {
+    --chrome-glow-none: inset 0 0 0 transparent;
+    --chrome-glow-left-line: inset 1px 0 0 rgb(125 211 252 / 0.2);
+    --chrome-glow-right-line: inset -1px 0 0 rgb(125 211 252 / 0.2);
+    --chrome-glow-top-line: inset 0 1px 0 rgb(125 211 252 / 0.2);
+    --chrome-glow-bottom-line: inset 0 -1px 0 rgb(125 211 252 / 0.2);
+    --chrome-glow-bottom-soft: inset 0 -18px 28px -10px rgb(56 189 248 / 0.2);
+    --chrome-glow-bottom-deep: inset 0 -36px 56px -24px rgb(37 99 235 / 0.2);
+    --chrome-glow-top-soft: inset 0 14px 24px -14px rgb(56 189 248 / 0.2);
+    --chrome-glow-center-soft: inset 0 0 26px rgb(37 99 235 / 0.2);
+    --chrome-glow-left-soft: inset 18px 0 28px -10px rgb(56 189 248 / 0.2);
+    --chrome-glow-left-deep: inset 36px 0 56px -24px rgb(37 99 235 / 0.2);
+    --chrome-glow-right-soft: inset -18px 0 28px -10px rgb(56 189 248 / 0.2);
+    --chrome-glow-right-deep: inset -36px 0 56px -24px rgb(37 99 235 / 0.2);
+    box-shadow:
+        var(--chrome-glow-left-line),
+        var(--chrome-glow-right-line),
+        var(--chrome-glow-top-line),
+        var(--chrome-glow-bottom-line),
+        var(--chrome-glow-bottom-soft),
+        var(--chrome-glow-bottom-deep),
+        var(--chrome-glow-top-soft),
+        var(--chrome-glow-center-soft),
+        var(--chrome-glow-left-soft),
+        var(--chrome-glow-left-deep),
+        var(--chrome-glow-right-soft),
+        var(--chrome-glow-right-deep);
+}
+
+/*
+ * Sidebar sits under full-width header: strip top edge haze. Lateral soft/deep
+ * layers use large blur — it still pools in the top corners; drop those too
+ * (keep 1px side lines only on left/right).
+ */
+.chrome-inside-blue-glow--no-top {
+    --chrome-glow-top-line: var(--chrome-glow-none);
+    --chrome-glow-top-soft: var(--chrome-glow-none);
+    --chrome-glow-center-soft: var(--chrome-glow-none);
+    --chrome-glow-left-soft: var(--chrome-glow-none);
+    --chrome-glow-left-deep: var(--chrome-glow-none);
+    --chrome-glow-right-soft: var(--chrome-glow-none);
+    --chrome-glow-right-deep: var(--chrome-glow-none);
+}
+
+/* Primary rail only: cyan inner-right edge after --no-top clears lateral soft blur. */
+.chrome-inside-blue-glow--rail-right {
+    --chrome-glow-right-line: inset -1px 0 0 rgb(125 211 252 / 0.32);
+    --chrome-glow-right-soft: inset -18px 0 28px -10px rgb(56 189 248 / 0.22);
+    --chrome-glow-right-deep: inset -36px 0 56px -24px rgb(37 99 235 / 0.18);
+}
+
+/*
+ * Header spans full width above the rail: lateral glow is disabled; bottom soft/deep
+ * still run the full header width and read as a bright band above the sidebar — drop those too.
+ */
+.chrome-inside-blue-glow--no-sides {
+    --chrome-glow-left-line: var(--chrome-glow-none);
+    --chrome-glow-right-line: var(--chrome-glow-none);
+    --chrome-glow-left-soft: var(--chrome-glow-none);
+    --chrome-glow-left-deep: var(--chrome-glow-none);
+    --chrome-glow-right-soft: var(--chrome-glow-none);
+    --chrome-glow-right-deep: var(--chrome-glow-none);
+    --chrome-glow-center-soft: var(--chrome-glow-none);
+    --chrome-glow-bottom-line: var(--chrome-glow-none);
+    --chrome-glow-bottom-soft: var(--chrome-glow-none);
+    --chrome-glow-bottom-deep: var(--chrome-glow-none);
+}
+
+/**
+ * App shell (reference: builder top bar + left rail).
+ * Header: horizontal — primary left → royal / sky right.
+ * Rail: vertical — same dark anchor top → same lighter blues bottom.
+ */
+.shell-header-chrome {
+    background-color: var(--primary);
+    background-image: linear-gradient(
+        to right,
+        color-mix(in srgb, var(--primary) 92%, black) 0%,
+        var(--primary) 22%,
+        color-mix(in srgb, var(--primary) 58%, var(--shell-chrome-accent)) 62%,
+        color-mix(in srgb, var(--primary) 42%, var(--shell-chrome-accent-bright)) 100%
+    );
+}
+
+.shell-sidebar-chrome {
+    background-color: var(--sidebar);
+    background-image: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--sidebar) 92%, black) 0%,
+        var(--sidebar) 22%,
+        color-mix(in srgb, var(--sidebar) 58%, var(--shell-chrome-accent)) 60%,
+        color-mix(in srgb, var(--sidebar) 42%, var(--shell-chrome-accent-bright)) 100%
+    );
+    border-top: 1px solid rgb(255 255 255 / 0.14);
+}
+
+.dark .shell-header-chrome {
+    /* VS Code Dark Modern title bar — flat dark grey, not a blue fill */
+    background-color: #181818;
+    background-image: none;
+    border-bottom: 1px solid var(--border);
+}
+
+.dark .shell-sidebar-chrome {
+    /* VS Code activity / side rail — flat near-black with clear edge */
+    background-color: #181818;
+    background-image: none;
+    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+}
+
+/* Defined section edges in dark mode — 1px separators, no blue glow */
+.dark .chrome-inside-blue-glow {
+    --chrome-glow-left-line: var(--chrome-glow-none);
+    --chrome-glow-right-line: inset -1px 0 0 var(--border);
+    --chrome-glow-top-line: var(--chrome-glow-none);
+    --chrome-glow-bottom-line: inset 0 -1px 0 var(--border);
+    --chrome-glow-bottom-soft: var(--chrome-glow-none);
+    --chrome-glow-bottom-deep: var(--chrome-glow-none);
+    --chrome-glow-top-soft: var(--chrome-glow-none);
+    --chrome-glow-center-soft: var(--chrome-glow-none);
+    --chrome-glow-left-soft: var(--chrome-glow-none);
+    --chrome-glow-left-deep: var(--chrome-glow-none);
+    --chrome-glow-right-soft: var(--chrome-glow-none);
+    --chrome-glow-right-deep: var(--chrome-glow-none);
+}
+
+.dark .chrome-inside-blue-glow--rail-right {
+    --chrome-glow-right-line: inset -1px 0 0 var(--border);
+    --chrome-glow-right-soft: var(--chrome-glow-none);
+    --chrome-glow-right-deep: var(--chrome-glow-none);
+}
+
+.dark .chrome-inside-blue-glow--no-sides {
+    --chrome-glow-bottom-line: inset 0 -1px 0 var(--border);
+}
+
+/**
+ * Inside bordered property cards: flatten inner form controls so only the card
+ * frame reads as a single border (Bindings, General, etc.).
+ */
+[data-property-nested-fields] input[data-slot="input"]:not([type="checkbox"]):not([type="radio"]),
+[data-property-nested-fields]
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(
+        [type="hidden"]
+    ):not([type="color"]),
+[data-property-nested-fields] select,
+[data-property-nested-fields] textarea {
+    border-width: 0 !important;
+    box-shadow: none !important;
+    background-color: var(--muted) !important;
+}
+
+[data-property-nested-fields] [role="combobox"] {
+    border-width: 0 !important;
+    box-shadow: none !important;
+    background-color: var(--muted) !important;
+}
+
+[data-property-nested-fields] input.border-destructive,
+[data-property-nested-fields] select.border-destructive,
+[data-property-nested-fields] textarea.border-destructive {
+    border-width: 1px !important;
+    border-color: var(--destructive) !important;
+}
+
+@theme inline {
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-hover: var(--primary-hover);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-brand-accent: var(--brand-accent);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive-subtle: var(--destructive-subtle);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-success-subtle: var(--success-subtle);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning-subtle: var(--warning-subtle);
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+    --color-info-subtle: var(--info-subtle);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-shell-surface: var(--shell-surface);
+}
+
+/* Light theme — develop navy primary + full light builder chrome */
+:root {
+    --radius: 0.625rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    /* VDAB brand — primary navy (keep in sync with authBranding.BRAND_NAVY) */
+    --primary: #001641;
+    --primary-hover: #002a5c;
+    --primary-foreground: oklch(0.985 0 0);
+    --brand-accent: rgb(37 99 235);
+    --shell-surface: var(--primary);
+    /* Shell chrome: saturated lifts (royal / sky) — reference builder header + rail */
+    --shell-chrome-accent: rgb(37 99 235);
+    --shell-chrome-accent-bright: rgb(59 130 246);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: var(--primary);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.965 0.01 265);
+    --accent-foreground: var(--primary);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.4 0.16 25);
+    --destructive-subtle: oklch(0.97 0.02 25);
+    --success: oklch(0.55 0.15 145);
+    --success-foreground: oklch(0.35 0.1 145);
+    --success-subtle: oklch(0.96 0.03 145);
+    --warning: oklch(0.7 0.15 75);
+    --warning-foreground: oklch(0.4 0.1 75);
+    --warning-subtle: oklch(0.97 0.04 90);
+    --info: oklch(0.55 0.14 250);
+    --info-foreground: oklch(0.35 0.1 250);
+    --info-subtle: oklch(0.96 0.03 250);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: var(--primary);
+    --chart-1: var(--primary);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.42 0.08 265);
+    --chart-4: oklch(0.65 0.1 240);
+    --chart-5: oklch(0.55 0.13 260);
+    --chart-axis-text: #6e6e6e;
+    --chart-axis-line: #d5d7db;
+    --chart-grid: #e7e9ee;
+    --chart-legend-text: #6e6e6e;
+    --sidebar: oklch(0.9296 0.0125 215.83); /* #dfeaed */
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.965 0.01 265);
+    --sidebar-accent-foreground: var(--primary);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: var(--primary);
+    --primary-sidebar-bg: var(--primary);
+    --primary-sidebar-foreground: oklch(0.985 0 0);
+    --primary-sidebar-muted: oklch(0.78 0.015 265);
+    --primary-sidebar-hover: rgba(255, 255, 255, 0.12);
+    --primary-sidebar-active: rgba(255, 255, 255, 0.2);
+    --primary-sidebar-rail: oklch(0.62 0.1 265);
+    --builder-sidebar-surface: #375ca3;
+    --builder-chrome-bg-image: url("/images/site-background.png");
+    --builder-toolbar-bg: var(--builder-sidebar-surface);
+    --builder-toolbar-border: rgba(255, 255, 255, 0.25);
+    --builder-panel-bg: oklch(1 0 0);
+    --builder-panel-subtle-bg: oklch(0.97 0.002 220);
+    --builder-panel-foreground: oklch(0.145 0 0);
+    /* Develop light: black type/borders on pale chrome image */
+    --builder-chrome-foreground: #000000;
+    --builder-chrome-foreground-muted: rgb(0 0 0 / 0.7);
+    --builder-chrome-border: #000000;
+    --builder-chrome-hover: rgb(0 0 0 / 0.1);
+    --builder-chrome-hint-bg: rgb(255 255 255 / 0.1);
+    /* Tab edges — full rgba so Tailwind arbitrary vars keep opacity */
+    --builder-tab-border: rgb(0 0 0 / 0.3);
+    --builder-tab-border-active: rgb(0 0 0 / 0.4);
+    --card-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.08);
+}
+
+/* Dark theme — VS Code Dark Modern greys; blue only as accent (buttons / selection) */
+:root.dark {
+    --background: #1e1e1e;
+    --foreground: #cccccc;
+    --card: #252526;
+    --card-foreground: #cccccc;
+    --popover: #252526;
+    --popover-foreground: #cccccc;
+    /* Keep in sync with authBranding.BRAND_PRIMARY_DARK — accent, not chrome fill */
+    --primary: #0078d4;
+    --primary-hover: #026ec1;
+    --primary-foreground: #ffffff;
+    --brand-accent: #3794ff;
+    --shell-surface: #181818;
+    --shell-chrome-accent: #0078d4;
+    --shell-chrome-accent-bright: #3794ff;
+    --secondary: #2d2d30;
+    --secondary-foreground: #cccccc;
+    --muted: #2d2d30;
+    /* Slightly brighter than #9d9d9d so labels on --card (#252526) clear AA */
+    --muted-foreground: #a8a8a8;
+    --accent: #2a2d2e;
+    --accent-foreground: #ffffff;
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: #fca5a5;
+    --destructive-subtle: rgb(239 68 68 / 12%);
+    --success: oklch(0.72 0.17 145);
+    --success-foreground: #86efac;
+    --success-subtle: rgb(34 197 94 / 12%);
+    --warning: oklch(0.78 0.14 75);
+    --warning-foreground: #fcd34d;
+    --warning-subtle: rgb(245 158 11 / 12%);
+    --info: oklch(0.7 0.12 250);
+    --info-foreground: #93c5fd;
+    --info-subtle: rgb(59 130 246 / 12%);
+    /* Stronger separators so header / sidebar / cards / panels read as distinct sections */
+    --border: rgb(255 255 255 / 18%);
+    --input: rgb(255 255 255 / 20%);
+    --ring: #0078d4;
+    --chart-1: #0078d4;
+    --chart-2: #3794ff;
+    --chart-3: #9d9d9d;
+    --chart-4: #f59e0b;
+    --chart-5: #a78bfa;
+    --chart-axis-text: #a8a8a8;
+    --chart-axis-line: rgb(255 255 255 / 18%);
+    --chart-grid: rgb(255 255 255 / 10%);
+    --chart-legend-text: #a8a8a8;
+    --sidebar: #181818;
+    --sidebar-foreground: #cccccc;
+    --sidebar-primary: #0078d4;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #2a2d2e;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgb(255 255 255 / 18%);
+    --sidebar-ring: #0078d4;
+    --primary-sidebar-bg: #181818;
+    --primary-sidebar-foreground: #cccccc;
+    --primary-sidebar-muted: #858585;
+    --primary-sidebar-hover: rgba(255, 255, 255, 0.06);
+    /* Subtle selection (VS Code explorer), not a solid blue pill */
+    --primary-sidebar-active: rgba(255, 255, 255, 0.1);
+    --primary-sidebar-rail: #0078d4;
+    --builder-sidebar-surface: #252526;
+    --builder-chrome-bg-image: none;
+    --builder-toolbar-bg: var(--builder-sidebar-surface);
+    --builder-toolbar-border: rgb(255 255 255 / 18%);
+    --builder-panel-bg: #252526;
+    --builder-panel-subtle-bg: #2d2d30;
+    --builder-panel-foreground: #cccccc;
+    --builder-chrome-foreground: #ffffff;
+    --builder-chrome-foreground-muted: rgb(255 255 255 / 0.7);
+    --builder-chrome-border: rgb(255 255 255 / 18%);
+    --builder-chrome-hover: rgb(255 255 255 / 0.1);
+    --builder-chrome-hint-bg: rgb(255 255 255 / 0.08);
+    --builder-tab-border: rgb(255 255 255 / 0.3);
+    --builder-tab-border-active: rgb(255 255 255 / 0.4);
+    --card-shadow: 0 0 0 1px rgb(255 255 255 / 14%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+}

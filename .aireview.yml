@@ -1,0 +1,104 @@
+# .aireview.yml — per-repo AI Code Reviewer config (commit this to the repo root).
+# All keys are optional; shown values are the defaults.
+# (Exception: `exclude` defaults to none — the globs below are common examples.)
+# Onboarding a repo? See docs/ONBOARDING.md. Effort/conversation semantics: docs/DESIGN-review.md.
+
+version: 1
+
+# --- Engine ---------------------------------------------------------------
+engine: claude-cli            # claude-cli (MVP) | claude-api | copilot-cli (P2)
+model: claude-opus-4-8        # passed through to the engine
+instructionsPath: CLAUDE.md   # repo agent instructions the engine must follow
+
+# --- When to run ----------------------------------------------------------
+targetBranches:               # branch-policy build validation should be set on these
+  - develop
+  - main
+modes:
+  draft: true                 # manual/draft PR -> report-only comment, no inline threads
+  published: true             # published PR    -> inline threads + summary + dedupe
+
+# --- Build/test gate (FR-1a) ---------------------------------------------
+# Before the AI review runs, the pipeline builds the PR and runs its tests on the
+# Microsoft-hosted agents already in use. The review runs ONLY if both succeed; a failing
+# build or test skips the review for that commit (re-evaluated on the next push).
+# NOTE: with gate.enabled true but build AND test empty, the gate is a no-op and the review
+# runs unconditionally — set both to this repo's own commands to get build/test protection.
+gate:
+  enabled: true               # false -> skip the gate, always run the review
+  build: ""                   # shell command, e.g. "npm ci && npm run build" (empty -> no build step)
+  test: ""                    # shell command, e.g. "npm test"                (empty -> no test step)
+
+# --- What to review -------------------------------------------------------
+focusAreas:                   # steer the review; free text appended to the prompt
+  - correctness
+  - security
+  - error handling
+  - test coverage
+# Excluded paths are filtered OUT OF THE DIFF (git exclude pathspecs), so they are never sent to
+# the model and never billed as input tokens. Glob syntax: `**` matches across directories.
+# Note `**/*.lock` does NOT match `package-lock.json` — list lockfiles by their real names.
+exclude:                      # default: none; the globs below are common examples
+  - "**/package-lock.json"
+  - "**/*.lock"
+  - "**/migrations/**"
+  - "**/*.min.js"
+  - "**/dist/**"
+
+# --- Who to review --------------------------------------------------------
+# PRs opened by these authors are skipped before a single token is spent. Matched
+# case-insensitively against the ADO author's display name, unique name, and id; `*` is a wildcard.
+# A bot's lockfile bump otherwise costs exactly as much to review as a hand-written change.
+#
+# NOTE this file is read from the PR's own checkout, so a PR that adds itself here skips its own
+# review, silently (a skip posts no comment at all). The reviewer is advisory and a human still
+# approves — but if that matters to you, protect `.aireview.yml` with a branch policy.
+skipAuthors: []               # e.g. ["*dependabot*", "*[bot]", "Renovate*"]
+
+# --- Output & noise control ----------------------------------------------
+# Findings below `severityThreshold` are never posted — and, on a published run, are not even
+# verified (verifying something you will suppress is pure spend). Raising this therefore cuts
+# BOTH noise and cost.
+severityThreshold: low        # post findings >= this: low | medium | high | critical
+limits:
+  maxCommentsPerRun: 20       # overflow is summarized, never silently dropped (FR-14)
+  maxCommentsPerPr: 60
+cooldownMinutes: 2            # min interval between full reviews on the same PR
+
+# --- Review depth (effort) — precision + recall scaling; see docs/DESIGN-review.md ---
+# low    = single pass (default; unchanged behaviour).            1 engine call
+# medium = adversarially verify each finding, drop low-confidence. 1 + N calls
+# high   = verify + trace the change's cross-cutting impact across the repo
+#          (out-of-diff findings go to the summary's "Cross-cutting concerns" section).
+#                                                                 1 + (verifiers x N) calls
+# max    = also run diverse finder lenses (highest cost).         5 + (verifiers x N) calls
+#
+# COST: at high/max the verify fan-out, not the finder, is most of the bill. Prefer lowering
+# `verifiers` or pointing `verifyModel` at a cheaper model before dropping effort outright. Every
+# run prints its find/verify split in the PR summary footer and the pipeline log.
+review:
+  effort: medium                 # low | medium | high | max
+  draftEffort: ""             # effort for a draft (report-only) run; empty -> same as `effort`
+  verifiers: 3                # refuters per finding in the verify pass (high/max)
+  minConfidence: 0.1          # drop findings below this post-verification confidence (0..1)
+  maxEngineCalls: 0           # hard cap on engine CALLS/run; 0 = unlimited. Cap this when using high/max.
+  verifyModel: "claude-sonnet-5"             # model for the verify fan-out; empty -> fall back to `model`
+  auxModel: claude-haiku-4-5  # cheap model for reply-intent classification; empty -> fall back to `model`
+  maxCostUsdPerCall: 0        # hard $ ceiling per engine call (claude --max-budget-usd); 0 = unlimited
+  maxCostUsdPerRepoMonth: 0   # hard $ ceiling per repo per calendar month; 0 = unlimited (needs a state store)
+  allowedTools: []            # e.g. [Read, Grep, Glob] for a read-only review; [] = unrestricted
+
+# --- Status / gating ------------------------------------------------------
+postStatus: true              # set a NON-BLOCKING PR status on completion
+blocking: false               # MUST stay false — reviewer is advisory only (D-006)
+
+# --- Conversation (v2 — severity/reason/intent-aware) --------------------
+conversation:
+  replyToHumans: true                   # respond when a human replies to an AI thread
+  acceptWontFix: true                   # honor a human "won't fix"
+  maxPushbacks: 1                       # times the engine may push back on a blocker before deferring
+  wontFixRequiresReasonAtOrAbove: high  # won't-fix below this severity is auto-accepted; at/above needs a stated reason
+  assessReasons: true                   # when a blocker won't-fix has a reason, let the engine judge whether it holds
+  maxQuestionReplies: 3                 # cap on question/answer exchanges per thread (separate from pushbacks)
+  deferBelowConfidence: 0               # if a finding's confidence < this, defer quickly regardless of severity; 0 disables
+  maxEngineCallsPerRun: 0               # cap engine calls per comment event; leftover threads wait for the next one. 0 = unlimited
