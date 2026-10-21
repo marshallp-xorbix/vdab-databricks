@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xorbix.com/vdab/schemas/standalone-project-v1.schema.json",
+  "title": "VDAB standalone project export v1",
+  "description": "Portable builder definition for standalone VDAB installations. Contains no SaaS identity, workspace URL, Databricks token, or credential fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "schemaVersion", "exportedAt", "project"],
+  "properties": {
+    "format": { "const": "vdab-project" },
+    "schemaVersion": { "const": 1 },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "components", "workflow", "resourceReferences", "childAppLink"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": ["string", "null"], "maxLength": 2000 },
+        "theme": { "$ref": "#/$defs/portableJsonObjectOrNull" },
+        "customModulesSource": { "type": ["string", "null"], "maxLength": 256000 },
+        "components": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/component" }
+        },
+        "workflow": { "$ref": "#/$defs/workflow" },
+        "resourceReferences": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resourceReference" }
+        },
+        "childAppLink": { "$ref": "#/$defs/childAppLink" }
+      }
+    }
+  },
+  "$defs": {
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "type", "schemaVersion", "properties"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "resourceReferenceKeys": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "uniqueItems": true
+        },
+        "type": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "componentVersion": { "type": "integer", "minimum": 1 },
+        "codeName": { "type": ["string", "null"], "maxLength": 160 },
+        "description": { "type": ["string", "null"], "maxLength": 2000 },
+        "properties": { "$ref": "#/$defs/portableJsonObject" },
+        "bindings": { "$ref": "#/$defs/portableJsonObjectOrNull" },
+        "children": { "type": "array", "items": { "type": "string" } },
+        "layout": { "$ref": "#/$defs/portableJsonObjectOrNull" }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "workflows"],
+      "properties": {
+        "version": { "const": 1 },
+        "workflows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["codeName", "trigger", "nodes", "edges"],
+            "properties": {
+              "codeName": { "type": "string", "minLength": 1 },
+              "trigger": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["componentKey", "eventKey"],
+                "properties": {
+                  "componentKey": { "type": "string", "minLength": 1 },
+                  "eventKey": { "type": "string", "minLength": 1 }
+                }
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "actionType", "schemaVersion"],
+                  "properties": {
+                    "id": { "type": "string", "minLength": 1 },
+                    "actionType": {
+                      "enum": ["triggerToast", "showModal", "saveToTable", "buildSql", "runSql", "setBinding", "startDatabricksJob", "callCustomModule", "callPrebuiltModule"]
+                    },
+                    "schemaVersion": { "type": "integer", "minimum": 1 }
+                  },
+                  "propertyNames": { "$ref": "#/$defs/portablePropertyName" },
+                  "additionalProperties": { "$ref": "#/$defs/portableJsonValue" }
+                }
+              },
+              "edges": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["fromNodeId", "toNodeId", "route"],
+                  "properties": {
+                    "fromNodeId": { "type": "string" },
+                    "toNodeId": { "type": "string" },
+                    "route": { "enum": ["onSuccess", "onError", "always"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "resourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "kind", "label"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "kind": {
+          "enum": ["unityCatalogTable", "unityCatalogVolume", "sqlWarehouse", "databricksJob", "dashboard", "servingEndpoint", "genieSpace", "lakebaseDatabase", "secretScope"]
+        },
+        "label": { "type": "string", "minLength": 1, "maxLength": 500 }
+        ,"componentKeys": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 160 }, "uniqueItems": true }
+        ,"workflowNodeIds": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 160 }, "uniqueItems": true }
+      }
+    },
+    "childAppLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiresSelection"],
+      "properties": {
+        "requiresSelection": { "const": true },
+        "sourceDisplayName": { "type": ["string", "null"], "maxLength": 160 }
+      }
+    },
+    "portablePropertyName": {
+      "not": {
+        "pattern": "[Ww]orkspace[_-]?[Cc]onnection[_-]?[Ii][Dd]|[Dd]atabricks[_-]?[Cc]onnection[_-]?[Ii][Dd]|[Ww]orkspace[_-]?[Uu][Rr][Ll]|[Ww]orkspace[_-]?[Hh][Oo][Ss][Tt]|[Ww]orkspace[_-]?[Ii][Dd]|[Tt]enant[_-]?[Ii][Dd]|[Aa]ccount[_-]?[Ii][Dd]|[Rr]efresh[_-]?[Tt]oken|[Aa]ccess[_-]?[Tt]oken|[Cc]lient[_-]?[Ss]ecret|[Pp]assword|[Aa][Pp][Ii][_-]?[Kk]ey|[Cc]redential|[Aa]uthorization"
+      }
+    },
+    "portableJsonObject": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/portablePropertyName" },
+      "additionalProperties": { "$ref": "#/$defs/portableJsonValue" }
+    },
+    "portableJsonObjectOrNull": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/portableJsonObject" }
+      ]
+    },
+    "portableJsonValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        { "type": "array", "items": { "$ref": "#/$defs/portableJsonValue" } },
+        { "$ref": "#/$defs/portableJsonObject" }
+      ]
+    }
+  }
+}

@@ -10,6 +10,10 @@ vi.mock("../../providers/BillingApi", () => ({
   },
 }));
 
+vi.mock("../../context/IdentityContext", () => ({
+  useIdentity: () => ({ user: { tenantId: "tenant-1" } }),
+}));
+
 // Imported after the mock so the mocked instance is what we interact with.
 import { billingApi } from "../../providers/BillingApi";
 

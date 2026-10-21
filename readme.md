@@ -125,6 +125,10 @@ If you cannot use your personal Azure identity (e.g., for external contributors 
 
 ## Documentation
 
+### Planned Databricks App transition
+
+The plan to convert **this repository in place** into a standalone, customer-workspace Databricks App is documented in the [workspace-native transition plan](.documentation/databricks-app-transition/README.md). The new product starts with no SaaS accounts or projects. The .NET/Azure instructions below describe the application before that conversion.
+
 ### Project Documentation
 - [Authentication & Identity](.documentation/identity_readme.md) - Authentication flows, JWT, passwordless login, API endpoints
 - [EF Core and Database](./.documentation/data-access-ef-instructions.md) - EF Core migrations and database setup

@@ -1,0 +1,9 @@
+event: progress
+data: {"message":"Reviewing the current canvas."}
+
+event: progress
+data: {"message":"Applying a proposed chart update."}
+
+event: result
+data: {"operations":[{"type":"updateComponent","componentKey":"component-sales-chart","patch":{"properties":{"title":"Monthly sales"}}}]}
+

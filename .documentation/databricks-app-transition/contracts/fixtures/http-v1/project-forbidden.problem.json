@@ -1,0 +1,8 @@
+{
+  "type": "about:blank",
+  "title": "Project access denied",
+  "status": 404,
+  "detail": "The project was not found or is not available to this user.",
+  "code": "project_not_found",
+  "requestId": "req_01j9v8k2fq0r6w9c4y3z5t7s1a"
+}

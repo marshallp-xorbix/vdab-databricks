@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id": "prj_01j9v7xv34m6kz3h1p2s4f5t6a",
+      "name": "Sales overview",
+      "description": "Portable sales dashboard definition.",
+      "version": 3,
+      "accessRole": "creator",
+      "childApp": {
+        "id": "sales-overview",
+        "state": "deployed"
+      },
+      "updatedAt": "2026-10-16T15:00:00Z"
+    }
+  ]
+}

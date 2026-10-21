@@ -31,6 +31,15 @@ describe("validateBuildSqlReferences Lakebase", () => {
       permission: "CAN_CONNECT_AND_CREATE",
     },
   };
+  const autoscalingResource: NormalizedAppResource = {
+    kind: AppResourceKindSlug.AutoscalingDatabase,
+    name: "auto-db",
+    description: "",
+    database: {
+      database_name: "appdb",
+      permission: "CAN_CONNECT_AND_CREATE",
+    },
+  };
 
   it("requires resource when provisioned Lakebase is selected", () => {
     const node = buildSqlNode({
@@ -69,5 +78,28 @@ describe("validateBuildSqlReferences Lakebase", () => {
         e.includes("database name"),
     );
     expect(lakebaseMsgs).toEqual([]);
+  });
+
+  it("requires all installed-workspace Autoscaling identifiers and database metadata", () => {
+    const validNode = buildSqlNode({
+      sqlSourceKind: "lakebaseAutoscaling",
+      lakebaseAppResourceName: "auto-db",
+      lakebaseDatabaseName: "appdb",
+      lakebaseProjectId: "project-1",
+      lakebaseBranchId: "production",
+      lakebaseEndpointId: "read-write",
+    });
+    expect(validateBuildSqlReferences(validNode, components, [autoscalingResource])).toEqual([]);
+
+    const importedNode = buildSqlNode({
+      ...validNode.params,
+      lakebaseAppResourceName: "unresolved_resource_1",
+      lakebaseDatabaseName: "unresolved_resource_1",
+      lakebaseProjectId: "unresolved_resource_1",
+      lakebaseBranchId: "unresolved_resource_1",
+      lakebaseEndpointId: "unresolved_resource_1",
+    });
+    expect(validateBuildSqlReferences(importedNode, components, [autoscalingResource])
+      .some((message) => message.includes("current-workspace Lakebase"))).toBe(true);
   });
 });

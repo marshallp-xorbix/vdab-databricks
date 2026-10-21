@@ -115,6 +115,7 @@ describe("CreateAppWizardDialog", () => {
 
     await waitFor(() => {
       expect(mockGetWorkspacesByTenant).toHaveBeenCalled();
+      expect(screen.getAllByTestId("wizard-native-select").length).toBeGreaterThan(0);
     });
 
     const selects = screen.getAllByTestId("wizard-native-select");

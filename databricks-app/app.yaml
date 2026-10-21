@@ -1,0 +1,11 @@
+command:
+  - npm
+  - start
+
+env:
+  - name: NODE_ENV
+    value: production
+  - name: VDAB_AUTH_MODE
+    value: databricks
+  - name: LAKEBASE_ENDPOINT
+    valueFrom: postgres

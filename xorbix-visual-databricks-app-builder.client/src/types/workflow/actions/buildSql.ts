@@ -11,6 +11,14 @@ export interface BuildSqlParams {
   lakebaseAppResourceName?: string;
   /** Postgres database name for the selected Lakebase resource. */
   lakebaseDatabaseName?: string;
+  /** Current-workspace Autoscaling endpoint components for user-scoped credentials. */
+  lakebaseProjectId?: string;
+  lakebaseBranchId?: string;
+  lakebaseEndpointId?: string;
+  /** Current-workspace SQL warehouse selected for viewer-authorized execution. */
+  sqlWarehouseId?: string;
+  /** Display name paired with the current-workspace SQL warehouse ID. */
+  sqlWarehouseName?: string;
 }
 
 export interface BuildSqlResult {

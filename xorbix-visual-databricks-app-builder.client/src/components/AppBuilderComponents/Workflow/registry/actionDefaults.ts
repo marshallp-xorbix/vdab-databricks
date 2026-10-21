@@ -34,6 +34,11 @@ const createBuildSqlParams =
     placeholders: [],
     lakebaseAppResourceName: undefined,
     lakebaseDatabaseName: undefined,
+    lakebaseProjectId: undefined,
+    lakebaseBranchId: undefined,
+    lakebaseEndpointId: undefined,
+    sqlWarehouseId: undefined,
+    sqlWarehouseName: undefined,
   });
 
 const createRunSqlParams =

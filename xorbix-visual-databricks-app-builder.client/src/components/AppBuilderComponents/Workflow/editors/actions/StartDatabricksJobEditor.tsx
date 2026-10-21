@@ -1,8 +1,3 @@
-import { useEffect, useState, type FC } from "react";
-import {
-  databricksDataConnectorApi,
-  type DatabricksJob,
-} from "../../../../../providers/DatabricksDataConnectorApi";
 import { Label } from "../../../../ui/label";
 import {
   Select,
@@ -12,65 +7,23 @@ import {
   SelectValue,
 } from "../../../../ui/select";
 import { isWorkflowActionNode } from "../../../../../types/workflow";
+import type { WorkflowNode } from "../../../../../types/workflow";
 import type { WorkflowActionEditorProps } from "./types";
-import { useLogger } from "../../../../../logger/useLogger";
+import { useWorkspaceJobs } from "../../../../../hooks/useWorkspaceJobs";
 
-export const StartDatabricksJobEditor: FC<WorkflowActionEditorProps> = ({
+interface IStartDatabricksJobEditorProps {
+  workflowId: string;
+  node: WorkflowNode;
+  onUpdateNode: WorkflowActionEditorProps["onUpdateNode"];
+}
+
+function StartDatabricksJobEditor({
   workflowId,
   node,
-  workspaceConnectionId,
   onUpdateNode,
-}) => {
-  const logger = useLogger("StartDatabricksJobEditor");
-  const [jobs, setJobs] = useState<DatabricksJob[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    const fetchJobs = async () => {
-      if (!workspaceConnectionId || workspaceConnectionId <= 0) {
-        if (active) {
-          setJobs([]);
-          setError("Workspace connection is not set for this workflow.");
-        }
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const nextJobs = await databricksDataConnectorApi.getJobs(
-          workspaceConnectionId,
-        );
-
-        if (active) {
-          setJobs(nextJobs ?? []);
-        }
-      } catch (err) {
-        if (active) {
-          logger.UI.error(
-            "[StartDatabricksJobEditor] Failed to fetch Databricks jobs:",
-            err,
-          );
-          setJobs([]);
-          setError(err instanceof Error ? err.message : "Failed to load jobs");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void fetchJobs();
-
-    return () => {
-      active = false;
-    };
-  }, [workspaceConnectionId]);
+}: Readonly<IStartDatabricksJobEditorProps>) {
+  const jobsQuery = useWorkspaceJobs();
+  const jobs = jobsQuery.data?.items ?? [];
 
   if (!isWorkflowActionNode(node, "StartDatabricksJob")) {
     return null;
@@ -96,28 +49,25 @@ export const StartDatabricksJobEditor: FC<WorkflowActionEditorProps> = ({
                       ...current.params,
                       job: {
                         ...current.params.job,
-                        workspaceConnectionId:
-                          workspaceConnectionId ??
-                          current.params.job.workspaceConnectionId,
                         jobId: selectedJob.jobId,
-                        jobName: selectedJob.jobName,
+                        jobName: selectedJob.name,
                       },
                     },
                   }
                 : current,
             );
           }}
-          disabled={loading || jobs.length === 0 || !!error}
+          disabled={jobsQuery.isPending || jobs.length === 0 || jobsQuery.isError}
         >
           <SelectTrigger className="h-9 text-sm">
             <SelectValue
-              placeholder={loading ? "Loading jobs..." : "Select job..."}
+              placeholder={jobsQuery.isPending ? "Loading jobs…" : "Select job…"}
             />
           </SelectTrigger>
           <SelectContent>
             {jobs.map((job) => (
               <SelectItem key={job.jobId} value={job.jobId}>
-                {job.jobName}
+                {job.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -130,12 +80,24 @@ export const StartDatabricksJobEditor: FC<WorkflowActionEditorProps> = ({
         </p>
       )}
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      {!error && jobs.length === 0 && !loading && (
+      <p className="text-xs text-muted-foreground">
+        Databricks checks your permission to start the job. The job itself runs as its configured Run as identity.
+      </p>
+
+      {jobsQuery.isError && (
+        <p className="text-xs text-destructive" role="alert">
+          {jobsQuery.error instanceof Error
+            ? jobsQuery.error.message
+            : "Jobs could not be loaded with your current workspace permissions."}
+        </p>
+      )}
+      {!jobsQuery.isError && jobs.length === 0 && !jobsQuery.isPending && (
         <p className="text-xs text-muted-foreground">
-          No Databricks jobs were returned for this workspace connection.
+          No Databricks Jobs are visible to your user in the workspace hosting VDAB.
         </p>
       )}
     </div>
   );
-};
+}
+
+export default StartDatabricksJobEditor;

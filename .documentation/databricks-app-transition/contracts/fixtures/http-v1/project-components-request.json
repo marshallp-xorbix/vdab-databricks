@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "key": "overview-tabs",
+      "type": "Tabs",
+      "schemaVersion": 1,
+      "componentVersion": 1,
+      "codeName": "overviewTabs",
+      "description": "Project overview",
+      "properties": {
+        "tabs": ["Overview", "Details"]
+      },
+      "bindings": null,
+      "children": ["customer-name"],
+      "layout": {
+        "order": 0,
+        "width": 12
+      }
+    },
+    {
+      "key": "customer-name",
+      "type": "TextInput",
+      "schemaVersion": 1,
+      "componentVersion": 1,
+      "codeName": "customerName",
+      "description": null,
+      "properties": {
+        "label": "Customer name"
+      },
+      "bindings": {
+        "value": {
+          "kind": "local",
+          "path": "customer.name"
+        }
+      },
+      "children": [],
+      "layout": {
+        "order": 0
+      }
+    }
+  ]
+}

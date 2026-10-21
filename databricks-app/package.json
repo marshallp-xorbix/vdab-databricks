@@ -1,0 +1,30 @@
+{
+  "name": "vdab-databricks-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.16"
+  },
+  "scripts": {
+    "build": "npm run typecheck && npm test && npm run build:client && npm run package",
+    "build:client": "node --experimental-strip-types scripts/build-client.ts",
+    "install:client": "npm --prefix ../xorbix-visual-databricks-app-builder.client ci --include=dev",
+    "install:all": "npm run install:server && npm run install:client",
+    "install:server": "npm ci --include=dev",
+    "package": "node --experimental-strip-types scripts/package-app.ts",
+    "start": "node --experimental-strip-types server/src/main.ts",
+    "smoke": "node --experimental-strip-types scripts/smoke-app.ts",
+    "start:packaged": "npm --prefix .build start",
+    "test:postgres": "node --experimental-strip-types scripts/test-postgres.ts",
+    "test": "node --experimental-strip-types --test server/test/http-app.test.ts server/test/ai-builder-input.test.ts server/test/ai-builder-stream.test.ts server/test/ai-builder-workspace-client.test.ts server/test/ai-builder-service.test.ts server/test/ai-builder-resource-context.test.ts server/test/workspace-apps.test.ts server/test/workspace-resources.test.ts server/test/lakebase-credentials.test.ts server/test/migrations.test.ts server/test/project-repository.test.ts server/test/project-components-repository.test.ts server/test/project-components-service.test.ts server/test/project-workflow-input.test.ts server/test/project-workflow-repository.test.ts server/test/project-workflow-component-references.test.ts server/test/project-custom-modules-input.test.ts server/test/project-custom-modules-repository.test.ts server/test/project-portability-input.test.ts server/test/project-portability-service.test.ts server/test/component-registry-service.test.ts server/test/project-component-bar-chart.test.ts server/test/project-component-line-chart.test.ts server/test/project-component-pie-chart.test.ts server/test/project-preview-generator.test.ts server/test/preview-workflow-modules.test.ts server/test/project-preview-service.test.ts server/test/postgres-migrations.integration.test.ts server/test/project-component-amoeba-story.test.ts server/test/project-component-flow-field-story.test.ts server/test/project-component-heat-map-story.test.ts server/test/project-component-honeycomb-story.test.ts server/test/project-component-network-web-story.test.ts server/test/project-component-pulse-wave-story.test.ts server/test/project-component-spiral-story.test.ts server/test/project-component-terrain-story.test.ts server/test/project-component-dashboard-embed.test.ts server/test/project-component-genie-chat.test.ts server/test/project-component-model-chat.test.ts server/test/workspace-execution-resources-client.test.ts server/test/workspace-lakebase-resources-client.test.ts server/test/package-artifact.test.ts server/test/ai-builder-operations.test.ts server/test/ai-builder-prompt.test.ts",
+    "typecheck": "node ../xorbix-visual-databricks-app-builder.client/node_modules/typescript/bin/tsc --project tsconfig.json --noEmit",
+    "update:component-registry-fixture": "node --experimental-strip-types scripts/update-component-registry-fixture.ts"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

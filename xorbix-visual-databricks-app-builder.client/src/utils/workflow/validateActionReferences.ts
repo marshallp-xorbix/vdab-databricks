@@ -102,6 +102,17 @@ export const validateBuildSqlReferences = (
         "The selected Lakebase Autoscaling resource must include a database name.",
       );
     }
+    for (const [label, value] of [
+      ["project", node.params.lakebaseProjectId],
+      ["branch", node.params.lakebaseBranchId],
+      ["read-write endpoint", node.params.lakebaseEndpointId],
+    ] as const) {
+      if (!value || value.startsWith("unresolved_resource_")) {
+        errors.push(`Select a current-workspace Lakebase ${label}.`);
+      } else if (!/^[A-Za-z0-9_-]{1,128}$/.test(value)) {
+        errors.push(`The selected Lakebase ${label} reference is invalid.`);
+      }
+    }
     if (normalizedAppResources && node.params.lakebaseAppResourceName?.trim()) {
       const name = node.params.lakebaseAppResourceName.trim();
       const match = normalizedAppResources.find(
@@ -300,10 +311,6 @@ export const validateSaveToTableReferences = (
     );
   }
 
-  if (node.params.targetTable.workspaceConnectionId <= 0) {
-    errors.push("SaveToTable requires a workspace connection.");
-  }
-
   if (node.params.targetTable.tableType === "unityCatalogTable") {
     if (
       !node.params.targetTable.catalog ||
@@ -333,15 +340,17 @@ export const validateSaveToTableReferences = (
   if (node.params.targetTable.tableType === "lakebaseAutoscaling") {
     if (
       !node.params.targetTable.projectId ||
+      node.params.targetTable.projectId.startsWith("unresolved_resource_") ||
       !node.params.targetTable.branchId ||
+      node.params.targetTable.branchId.startsWith("unresolved_resource_") ||
       !node.params.targetTable.endpointId ||
+      node.params.targetTable.endpointId.startsWith("unresolved_resource_") ||
       !node.params.targetTable.database ||
-      !node.params.targetTable.catalog ||
       !node.params.targetTable.schema ||
       !node.params.targetTable.table
     ) {
       errors.push(
-        "Select a Lakebase Autoscaling project, branch, endpoint, and synced catalog, schema, and table for SaveToTable.",
+        "Select a Lakebase Autoscaling project, branch, endpoint, database, schema, and table in this workspace for SaveToTable.",
       );
     }
   }

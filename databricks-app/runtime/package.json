@@ -1,0 +1,15 @@
+{
+  "name": "vdab-databricks-app-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.16"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types server/src/main.ts"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  }
+}

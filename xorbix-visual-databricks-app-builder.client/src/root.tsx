@@ -23,6 +23,7 @@ import appStylesHref from "./App.css?url";
 // @ts-expect-error - This is a workaround to avoid type errors
 import type { Route } from "./+types/root";
 
+/* eslint-disable react-refresh/only-export-components -- React Router requires route metadata and boundaries in this module. */
 export const links: Route.LinksFunction = () => [
   { rel: "stylesheet", href: appStylesHref },
 ];
@@ -43,6 +44,8 @@ const queryClientOptions = {
 
 export function Layout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [queryClient] = useState(() => new QueryClient(queryClientOptions));
+  const isStandaloneDatabricksRuntime =
+    import.meta.env.VITE_VDAB_RUNTIME === "databricks";
 
   return (
     <html className={DEFAULT_THEME} lang="en" suppressHydrationWarning>
@@ -58,11 +61,15 @@ export function Layout({ children }: Readonly<{ children: React.ReactNode }>) {
       <body className="bg-background text-foreground font-sans">
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <SettingsProvider>
-              <IdentityProvider>
-                <TenantProvider>{children}</TenantProvider>
-              </IdentityProvider>
-            </SettingsProvider>
+            {isStandaloneDatabricksRuntime ? (
+              children
+            ) : (
+              <SettingsProvider>
+                <IdentityProvider>
+                  <TenantProvider>{children}</TenantProvider>
+                </IdentityProvider>
+              </SettingsProvider>
+            )}
           </ThemeProvider>
         </QueryClientProvider>
         <Toaster />

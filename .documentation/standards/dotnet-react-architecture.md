@@ -2,6 +2,8 @@
 **Last Updated:** 11 June 2026  
 **Applies To:** All Xorbix .NET API projects with React frontends
 
+> **VDAB transition applicability:** This document is the legacy .NET/Aspire/EF Core architecture reference for this repository. The active architecture for the approved VDAB product transition is [TypeScript and Databricks Apps](node-databricks-app-architecture.md), recorded in [ADR 0002](../adr/0002-vdab-node-databricks-app.md). For VDAB, the Node standard governs all new backend code and replacements; the sections below apply only to existing .NET code that remains temporarily as source material. Do not add VDAB product behavior to the legacy .NET stack.
+
 ---
 
 ## Table of Contents

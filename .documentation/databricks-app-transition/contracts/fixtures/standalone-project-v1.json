@@ -1,0 +1,53 @@
+{
+  "format": "vdab-project",
+  "schemaVersion": 1,
+  "exportedAt": "2026-10-16T15:00:00Z",
+  "project": {
+    "name": "Sales overview",
+    "description": "Portable sales dashboard definition.",
+    "theme": null,
+    "customModulesSource": "",
+    "components": [
+      {
+        "key": "component-sales-chart",
+        "type": "BarChart",
+        "schemaVersion": 1,
+        "codeName": "salesByMonth",
+        "description": "Sales by month",
+        "properties": {
+          "title": "Sales by month",
+          "seriesColor": "#2f77cc",
+          "xAxis": {
+            "field": "month",
+            "displayName": "Month",
+            "scaleType": "categorical",
+            "transform": "none"
+          },
+          "yAxis": {
+            "field": "revenue",
+            "displayName": "Revenue",
+            "scaleType": "continuous",
+            "transform": "sum"
+          }
+        },
+        "bindings": {
+          "portableResourceKey": "resource-sales-table"
+        },
+        "children": [],
+        "layout": null
+      }
+    ],
+    "workflow": { "version": 1, "workflows": [] },
+    "resourceReferences": [
+      {
+        "key": "resource-sales-table",
+        "kind": "unityCatalogTable",
+        "label": "analytics.sales.monthly_sales"
+      }
+    ],
+    "childAppLink": {
+      "requiresSelection": true,
+      "sourceDisplayName": "sales-overview"
+    }
+  }
+}

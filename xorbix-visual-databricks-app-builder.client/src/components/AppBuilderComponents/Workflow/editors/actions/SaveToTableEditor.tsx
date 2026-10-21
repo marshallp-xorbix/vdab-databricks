@@ -1,8 +1,4 @@
-import { useEffect, useState, type FC } from "react";
-import {
-  databricksDataConnectorApi,
-  type UnityCatalogTableDetails,
-} from "../../../../../providers/DatabricksDataConnectorApi";
+import { useEffect, type FC } from "react";
 import {
   isWorkflowActionNode,
   type SaveToTableParams,
@@ -13,9 +9,7 @@ import {
   getWorkflowTriggerComponent,
   isWorkflowTriggerForm,
 } from "../../../../../utils/workflow/actionReferenceOptions";
-import { LakebaseAutoscalingTableSelectorFields } from "../../../../properties/LakebaseAutoscalingTableSelectorFields";
-import { LakebaseTableSelectorFields } from "../../../../properties/LakebaseTableSelectorFields";
-import { UnityCatalogTableSelectorFields } from "../../../../properties/UnityCatalogTableSelectorFields";
+import WorkflowSaveToTableTargetSelector from "../../../../WorkflowSaveToTableTargetSelector";
 import { Label } from "../../../../ui/label";
 import {
   Select,
@@ -33,7 +27,8 @@ import {
   TableRow,
 } from "../../../../ui/table";
 import type { WorkflowActionEditorProps } from "./types";
-import { useLogger } from "../../../../../logger/useLogger";
+import { useWorkspaceTables } from "../../../../../hooks/useWorkspaceTables";
+import { useWorkspaceLakebaseTables } from "../../../../../hooks/useWorkspaceLakebaseTables";
 
 const MAP_COLUMN_VALUE = "__map__";
 const UNMAPPED_SOURCE_VALUE = "__unmapped__";
@@ -53,17 +48,8 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
   workflow,
   node,
   components,
-  workspaceConnectionId,
   onUpdateNode,
 }) => {
-  const logger = useLogger("SaveToTableEditor");
-  const [tableDetails, setTableDetails] =
-    useState<UnityCatalogTableDetails | null>(null);
-  const [loadingColumns, setLoadingColumns] = useState(false);
-  const [tableDetailsError, setTableDetailsError] = useState<string | null>(
-    null,
-  );
-
   const triggerComponent = getWorkflowTriggerComponent(workflow, components);
   const triggerIsForm = isWorkflowTriggerForm(workflow, components);
   const sourceOptions = getSaveToTableSourceComponentOptions(
@@ -74,12 +60,30 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
   const saveToTableParams = isSaveToTableNode ? node.params : null;
   const sourceFormComponentCodeName =
     saveToTableParams?.sourceFormComponentCodeName;
-  const targetWorkspaceConnectionId =
-    saveToTableParams?.targetTable.workspaceConnectionId;
   const targetTableType = saveToTableParams?.targetTable.tableType;
   const targetCatalog = saveToTableParams?.targetTable.catalog;
   const targetSchema = saveToTableParams?.targetTable.schema;
   const targetTableName = saveToTableParams?.targetTable.table;
+  const unityCatalogTablesQuery = useWorkspaceTables(
+    targetTableType === "unityCatalogTable" ? targetCatalog : null,
+    targetTableType === "unityCatalogTable" ? targetSchema : null,
+  );
+  const lakebaseSelection = saveToTableParams?.targetTable.tableType === "lakebaseAutoscaling" &&
+      hasResolvedLakebaseSelection(saveToTableParams.targetTable.projectId) &&
+      hasResolvedLakebaseSelection(saveToTableParams.targetTable.branchId) &&
+      hasResolvedLakebaseSelection(saveToTableParams.targetTable.endpointId) &&
+      hasResolvedLakebaseSelection(saveToTableParams.targetTable.database)
+    ? {
+        projectId: saveToTableParams.targetTable.projectId,
+        branchId: saveToTableParams.targetTable.branchId,
+        endpointId: saveToTableParams.targetTable.endpointId,
+        databaseName: saveToTableParams.targetTable.database,
+      }
+    : null;
+  const lakebaseTablesQuery = useWorkspaceLakebaseTables(
+    lakebaseSelection,
+    targetTableType === "lakebaseAutoscaling" ? targetSchema : null,
+  );
 
   useEffect(() => {
     if (!triggerIsForm || !triggerComponent?.codeName) {
@@ -92,11 +96,7 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
 
     const needsSourceSync =
       sourceFormComponentCodeName !== triggerComponent.codeName;
-    const needsWorkspaceSync =
-      workspaceConnectionId != null &&
-      targetWorkspaceConnectionId !== workspaceConnectionId;
-
-    if (!needsSourceSync && !needsWorkspaceSync) {
+    if (!needsSourceSync) {
       return;
     }
 
@@ -107,12 +107,6 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
             params: {
               ...current.params,
               sourceFormComponentCodeName: triggerComponent.codeName,
-              targetTable: {
-                ...current.params.targetTable,
-                workspaceConnectionId:
-                  workspaceConnectionId ??
-                  current.params.targetTable.workspaceConnectionId,
-              },
             },
           }
         : current,
@@ -121,84 +115,10 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
     onUpdateNode,
     node.id,
     sourceFormComponentCodeName,
-    targetWorkspaceConnectionId,
     triggerComponent,
     triggerIsForm,
     isSaveToTableNode,
     workflowId,
-    workspaceConnectionId,
-  ]);
-
-  useEffect(() => {
-    let active = true;
-
-    if (!isSaveToTableNode) {
-      return;
-    }
-
-    const fetchTableDetails = async () => {
-      if (
-        (targetTableType !== "unityCatalogTable" && targetTableType !== "lakebaseProvisionedDatabase") ||
-        !workspaceConnectionId ||
-        workspaceConnectionId <= 0 ||
-        !targetCatalog ||
-        !targetSchema ||
-        !targetTableName
-      ) {
-        if (active) {
-          setTableDetails(null);
-          setTableDetailsError(null);
-        }
-        return;
-      }
-
-      setLoadingColumns(true);
-      setTableDetailsError(null);
-
-      try {
-        const details =
-          await databricksDataConnectorApi.getUnityCatalogTableDetails(
-            workspaceConnectionId,
-            targetCatalog,
-            targetSchema,
-            targetTableName,
-          );
-
-        if (active) {
-          setTableDetails(details);
-        }
-      } catch (err) {
-        if (active) {
-          logger.UI.error(
-            "[SaveToTableEditor] Failed to fetch target table metadata:",
-            err,
-          );
-          setTableDetails(null);
-          setTableDetailsError(
-            err instanceof Error
-              ? err.message
-              : "Failed to load table metadata",
-          );
-        }
-      } finally {
-        if (active) {
-          setLoadingColumns(false);
-        }
-      }
-    };
-
-    void fetchTableDetails();
-
-    return () => {
-      active = false;
-    };
-  }, [
-    isSaveToTableNode,
-    targetCatalog,
-    targetSchema,
-    targetTableName,
-    targetTableType,
-    workspaceConnectionId,
   ]);
 
   if (!saveToTableParams) {
@@ -206,7 +126,30 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
   }
 
   const targetTable = saveToTableParams.targetTable;
-  const targetColumns = tableDetails?.columns ?? [];
+  const selectedUnityCatalogTable = unityCatalogTablesQuery.data?.items.find(
+    (table) => table.name === targetTableName,
+  );
+  const selectedLakebaseTable = lakebaseTablesQuery.data?.items.find(
+    (table) => table.name === targetTableName,
+  );
+  const selectedTableColumns = targetTableType === "lakebaseAutoscaling"
+    ? selectedLakebaseTable?.columns
+    : targetTableType === "unityCatalogTable"
+    ? selectedUnityCatalogTable?.columns
+    : undefined;
+  const targetColumns = (selectedTableColumns ?? []).map((column) => ({
+    name: column.name,
+    type: column.type,
+    nullable: "nullable" in column ? column.nullable : undefined,
+  }));
+  const loadingColumns = targetTableType === "lakebaseAutoscaling"
+    ? lakebaseTablesQuery.isPending
+    : targetTableType === "unityCatalogTable" && unityCatalogTablesQuery.isPending;
+  const tableDetailsError = targetTableType === "lakebaseAutoscaling"
+    ? lakebaseTablesQuery.error?.message ?? null
+    : targetTableType === "lakebaseProvisionedDatabase"
+    ? "Choose a Lakebase Autoscaling target in the workspace hosting VDAB."
+    : unityCatalogTablesQuery.error?.message ?? null;
 
   const updateTargetTable = (
     updater: (
@@ -339,140 +282,10 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
 
       <div className="rounded-md border border-border p-3 space-y-3">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_1fr] lg:items-start">
-          <div className="space-y-1">
-            <Label className="text-sm font-medium">Target Type</Label>
-            <Select
-              value={targetTable.tableType}
-              onValueChange={(value) => {
-                const wc = workspaceConnectionId ?? 0;
-                updateTargetTable(() => {
-                  if (value === "lakebaseProvisionedDatabase") {
-                    return {
-                      tableType: "lakebaseProvisionedDatabase",
-                      workspaceConnectionId: wc,
-                      instanceName: "",
-                      database: "",
-                      catalog: "",
-                      schema: "",
-                      table: "",
-                    };
-                  }
-                  if (value === "lakebaseAutoscaling") {
-                    return {
-                      tableType: "lakebaseAutoscaling",
-                      workspaceConnectionId: wc,
-                      projectId: "",
-                      branchId: "",
-                      endpointId: "",
-                      database: "",
-                      catalog: "",
-                      schema: "",
-                      table: "",
-                    };
-                  }
-                  return {
-                    tableType: "unityCatalogTable",
-                    workspaceConnectionId: wc,
-                    catalog: "",
-                    schema: "",
-                    table: "",
-                  };
-                });
-              }}
-            >
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unityCatalogTable">Unity Catalog</SelectItem>
-                <SelectItem value="lakebaseProvisionedDatabase">
-                  Lakebase
-                </SelectItem>
-                <SelectItem value="lakebaseAutoscaling">
-                  Lakebase Autoscaling
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            {targetTable.tableType === "lakebaseProvisionedDatabase" ? (
-              <LakebaseTableSelectorFields
-                value={{
-                  instanceName: targetTable.instanceName,
-                  database: targetTable.database,
-                  catalog: targetTable.catalog,
-                  schema: targetTable.schema,
-                  table: targetTable.table,
-                }}
-                workspaceConnectionId={workspaceConnectionId}
-                onChange={(next) =>
-                  updateTargetTable((current) =>
-                    current.tableType === "lakebaseProvisionedDatabase"
-                      ? {
-                          ...current,
-                          instanceName: next.instanceName ?? "",
-                          database: next.database ?? "",
-                          catalog: next.catalog ?? "",
-                          schema: next.schema ?? "",
-                          table: next.table ?? "",
-                        }
-                      : current,
-                  )
-                }
-              />
-            ) : targetTable.tableType === "lakebaseAutoscaling" ? (
-              <LakebaseAutoscalingTableSelectorFields
-                value={{
-                  projectId: targetTable.projectId,
-                  branchId: targetTable.branchId,
-                  endpointId: targetTable.endpointId,
-                  database: targetTable.database,
-                  catalog: targetTable.catalog,
-                  schema: targetTable.schema,
-                  table: targetTable.table,
-                }}
-                workspaceConnectionId={workspaceConnectionId}
-                onChange={(next) =>
-                  updateTargetTable((current) =>
-                    current.tableType === "lakebaseAutoscaling"
-                      ? {
-                          ...current,
-                          projectId: next.projectId ?? "",
-                          branchId: next.branchId ?? "",
-                          endpointId: next.endpointId ?? "",
-                          database: next.database ?? "",
-                          catalog: next.catalog ?? "",
-                          schema: next.schema ?? "",
-                          table: next.table ?? "",
-                        }
-                      : current,
-                  )
-                }
-              />
-            ) : (
-              <UnityCatalogTableSelectorFields
-                value={{
-                  catalog: targetTable.catalog,
-                  schema: targetTable.schema,
-                  table: targetTable.table,
-                }}
-                workspaceConnectionId={workspaceConnectionId}
-                onChange={(next) =>
-                  updateTargetTable((current) =>
-                    current.tableType === "unityCatalogTable"
-                      ? {
-                          ...current,
-                          catalog: next.catalog ?? "",
-                          schema: next.schema ?? "",
-                          table: next.table ?? "",
-                        }
-                      : current,
-                  )
-                }
-              />
-            )}
-          </div>
+          <WorkflowSaveToTableTargetSelector
+            value={targetTable}
+            onChange={(next) => updateTargetTable(() => next)}
+          />
         </div>
       </div>
 
@@ -600,3 +413,7 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
     </div>
   );
 };
+
+function hasResolvedLakebaseSelection(value: string): boolean {
+  return value.length > 0 && !value.startsWith("unresolved_resource_");
+}

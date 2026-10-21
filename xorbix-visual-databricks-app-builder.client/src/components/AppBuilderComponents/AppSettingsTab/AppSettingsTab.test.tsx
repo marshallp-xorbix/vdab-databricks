@@ -1,9 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import AppSettingsTab from "./AppSettingsTab";
 import type { AppDetails } from "../../../hooks/useAppPersistence";
 import { DatabricksConnection } from "../../../models";
+import { ThemeProvider } from "../../../context/ThemeContext";
+
+function renderWithTheme(ui: ReactElement) {
+  return render(<ThemeProvider>{ui}</ThemeProvider>);
+}
 
 const baseDetails: AppDetails = {
   appName: "My app",
@@ -34,7 +40,7 @@ const sharedSettingsProps = {
 
 describe("AppSettingsTab", () => {
   it("switches tabs and renders extracted tab content", () => {
-    render(
+    renderWithTheme(
       <AppSettingsTab
         appDetails={baseDetails}
         onAppDetailsChange={vi.fn()}
@@ -61,7 +67,7 @@ describe("AppSettingsTab", () => {
     const onAppDetailsChange = vi.fn();
     const onAppThemeChange = vi.fn();
 
-    const { container } = render(
+    const { container } = renderWithTheme(
       <AppSettingsTab
         appDetails={baseDetails}
         onAppDetailsChange={onAppDetailsChange}

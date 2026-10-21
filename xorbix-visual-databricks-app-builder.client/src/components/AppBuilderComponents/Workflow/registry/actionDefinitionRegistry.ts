@@ -8,7 +8,7 @@ import { RunSqlEditor } from "../editors/actions/RunSqlEditor";
 import { SaveToTableEditor } from "../editors/actions/SaveToTableEditor";
 import { SetBindingEditor } from "../editors/actions/SetBindingEditor";
 import { ShowModalEditor } from "../editors/actions/ShowModalEditor";
-import { StartDatabricksJobEditor } from "../editors/actions/StartDatabricksJobEditor";
+import StartDatabricksJobEditor from "../editors/actions/StartDatabricksJobEditor";
 import { TriggerToastEditor } from "../editors/actions/TriggerToastEditor";
 import type { WorkflowActionEditorProps } from "../editors/actions/types";
 

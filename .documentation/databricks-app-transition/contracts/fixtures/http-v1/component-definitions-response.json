@@ -1,0 +1,1458 @@
+{
+  "components": [
+    {
+      "id": "template-textinput",
+      "codeName": "templateTextInput",
+      "type": "TextInput",
+      "category": "Controls",
+      "icon": "Type",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Label",
+        "placeholder": "",
+        "defaultValue": "",
+        "help": "",
+        "disabled": false,
+        "type": "default",
+        "multiline": false,
+        "height": ""
+      }
+    },
+    {
+      "id": "template-button",
+      "codeName": "templateButton",
+      "type": "Button",
+      "category": "Controls",
+      "icon": "MousePointerClick",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onClick"
+      ],
+      "children": null,
+      "props": {
+        "label": "Click Me",
+        "variant": "primary",
+        "disabled": false,
+        "help": ""
+      }
+    },
+    {
+      "id": "template-checkbox",
+      "codeName": "templateCheckbox",
+      "type": "Checkbox",
+      "category": "Controls",
+      "icon": "CheckSquare",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Checkbox",
+        "defaultChecked": false,
+        "help": "",
+        "disabled": false
+      }
+    },
+    {
+      "id": "template-toggle",
+      "codeName": "templateToggle",
+      "type": "Toggle",
+      "category": "Controls",
+      "icon": "ToggleLeft",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Toggle",
+        "defaultValue": false,
+        "help": "",
+        "disabled": false
+      }
+    },
+    {
+      "id": "template-dropdown",
+      "codeName": "templateDropdown",
+      "type": "Dropdown",
+      "category": "Controls",
+      "icon": "ChevronDown",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Select an option",
+        "options": [
+          {
+            "value": "1"
+          },
+          {
+            "value": "2"
+          }
+        ],
+        "defaultValue": "",
+        "disabled": false,
+        "help": "",
+        "placeholder": "Select an option",
+        "multiselect": false
+      }
+    },
+    {
+      "id": "template-datepicker",
+      "codeName": "templateDatePicker",
+      "type": "DatePicker",
+      "category": "Controls",
+      "icon": "Calendar",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Select Date",
+        "defaultValue": "today",
+        "minDate": "",
+        "maxDate": "",
+        "format": "",
+        "help": "",
+        "disabled": false
+      }
+    },
+    {
+      "id": "template-timepicker",
+      "codeName": "templateTimePicker",
+      "type": "TimePicker",
+      "category": "Controls",
+      "icon": "Clock",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Select Time",
+        "defaultValue": "now",
+        "step": 900,
+        "help": "",
+        "disabled": false
+      }
+    },
+    {
+      "id": "template-slider",
+      "codeName": "templateSlider",
+      "type": "Slider",
+      "category": "Controls",
+      "icon": "SlidersHorizontal",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Slider",
+        "minValue": 0,
+        "maxValue": 100,
+        "defaultValue": 50,
+        "upperValue": 60,
+        "step": 1,
+        "disabled": false,
+        "help": "",
+        "format": "",
+        "ranged": false
+      }
+    },
+    {
+      "id": "template-columns",
+      "codeName": "templateColumns",
+      "type": "Columns",
+      "category": "Layout",
+      "icon": "Columns3",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "columnCount": 2
+      }
+    },
+    {
+      "id": "template-rows",
+      "codeName": "templateRows",
+      "type": "Rows",
+      "category": "Layout",
+      "icon": "Rows3",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "rowCount": 2
+      }
+    },
+    {
+      "id": "template-datawindow",
+      "codeName": "templateDataWindow",
+      "type": "DataWindow",
+      "category": "Data",
+      "icon": "Table",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "label": "Data Table",
+        "maxRows": 0,
+        "scrollable": true,
+        "placeholder": null,
+        "width": "stretch",
+        "hideIndex": null,
+        "height": "auto"
+      }
+    },
+    {
+      "id": "template-editable-datawindow",
+      "codeName": "templateEditableDataWindow",
+      "type": "EditableDataWindow",
+      "category": "Data",
+      "icon": "Table",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Editable Data Table",
+        "maxRows": 0,
+        "scrollable": true,
+        "placeholder": null,
+        "disabled": false,
+        "numRows": "fixed",
+        "hideIndex": null,
+        "width": "stretch",
+        "height": "auto"
+      }
+    },
+    {
+      "id": "template-modal",
+      "codeName": "templateModal",
+      "type": "Modal",
+      "category": "Page",
+      "icon": "MessageSquare",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": null,
+      "children": [],
+      "props": {
+        "title": "My Modal",
+        "width": null,
+        "height": null,
+        "position": "center",
+        "dismissible": true
+      }
+    },
+    {
+      "id": "template-form",
+      "codeName": "templateForm",
+      "type": "Form",
+      "category": "Layout",
+      "icon": "RectangleVertical",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [
+        "onSubmit"
+      ],
+      "children": null,
+      "props": {
+        "submitButtonText": "Submit",
+        "clearOnSubmit": false,
+        "enterToSubmit": true,
+        "border": true,
+        "width": "stretch",
+        "height": "content"
+      }
+    },
+    {
+      "id": "template-expander",
+      "codeName": "templateExpander",
+      "type": "Expander",
+      "category": "Layout",
+      "icon": "ChevronsUpDown",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": [],
+      "children": null,
+      "props": {
+        "sectionTitle": "Section",
+        "defaultExpanded": false
+      }
+    },
+    {
+      "id": "template-file-upload",
+      "codeName": "templateFileUpload",
+      "type": "FileUpload",
+      "category": "Data",
+      "icon": "Upload",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "databricksVolume"
+      ],
+      "supportedEvents": [
+        "onChange"
+      ],
+      "children": null,
+      "props": {
+        "label": "Upload File"
+      }
+    },
+    {
+      "id": "template-label",
+      "codeName": "templateLabel",
+      "type": "Label",
+      "category": "Controls",
+      "icon": "Text",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "text": "Label Text",
+        "fontSize": "medium",
+        "bold": false
+      }
+    },
+    {
+      "id": "template-barchart",
+      "codeName": "templateBarChart",
+      "type": "BarChart",
+      "category": "Visualization",
+      "icon": "BarChart",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Bar Chart",
+        "seriesColor": "#1f77b4",
+        "xAxis": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "yAxis": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "count"
+        }
+      }
+    },
+    {
+      "id": "template-linechart",
+      "codeName": "templateLineChart",
+      "type": "LineChart",
+      "category": "Visualization",
+      "icon": "LineChart",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Line Chart",
+        "seriesColor": "#1f77b4",
+        "xAxis": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "yAxis": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        }
+      }
+    },
+    {
+      "id": "template-piechart",
+      "codeName": "templatePieChart",
+      "type": "PieChart",
+      "category": "Visualization",
+      "icon": "PieChart",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Pie Chart",
+        "seriesColor": "#1f77b4",
+        "category": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "value": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        }
+      }
+    },
+    {
+      "id": "template-donutchart",
+      "codeName": "templateDonutChart",
+      "type": "DonutChart",
+      "category": "Visualization",
+      "icon": "DonutChart",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Donut Chart",
+        "seriesColor": "#1f77b4",
+        "category": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "value": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        }
+      }
+    },
+    {
+      "id": "template-amoebastory",
+      "codeName": "templateAmoebaStory",
+      "type": "AmoebaStory",
+      "category": "Visualization",
+      "icon": "AmoebaStory",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Amoeba Story",
+        "entityId": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "entityLabel": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "category": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "sizeMetric": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "xMetric": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "yMetric": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "changeMetric": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "timeField": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "healthScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "riskScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "layoutMode": "hybrid",
+        "sizeScale": "sqrt",
+        "minRadiusPx": 42,
+        "maxRadiusPx": 130,
+        "colorBy": "category",
+        "pulseBy": "risk_score",
+        "pulseThreshold": 50,
+        "pulseThresholdMode": "above",
+        "shapeVariation": 0.35,
+        "labelMode": "compact",
+        "animationEnabled": true,
+        "animationSpeed": 1
+      }
+    },
+    {
+      "id": "template-networkwebstory",
+      "codeName": "templateNetworkWebStory",
+      "type": "NetworkWebStory",
+      "category": "Visualization",
+      "icon": "NetworkWebStory",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Network Web Story",
+        "sourceEntityId": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "sourceEntityLabel": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "targetEntityId": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "targetEntityLabel": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "relationshipType": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "relationshipWeight": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "timeField": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "direction": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "edgeValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "frequency": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "edgeRiskScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "edgeStatus": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "sourceCategory": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "targetCategory": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "sourceValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "targetValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "sourceHealthScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "targetHealthScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "sourceRiskScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "targetRiskScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "none"
+        },
+        "layoutAlgorithm": "force",
+        "nodeSizeBy": "degree",
+        "nodeColorBy": "category",
+        "edgeWidthBy": "weight",
+        "edgeColorBy": "relationship_type",
+        "showArrows": true,
+        "highlightDepth": 1,
+        "minWeightFilter": 0,
+        "maxNodes": 300,
+        "maxEdges": 800
+      }
+    },
+    {
+      "id": "template-terrainstory",
+      "codeName": "templateTerrainStory",
+      "type": "TerrainStory",
+      "category": "Visualization",
+      "icon": "TerrainStory",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Terrain Story",
+        "xDimension": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "yDimension": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "heightMetric": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "timeField": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "terrainCategory": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "riskScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "targetValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "baselineValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "forecastValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "volumeMetric": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "status": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "eventName": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "eventDate": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "calloutText": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "terrainMode": "surface",
+        "heightScale": 1,
+        "interpolation": "bilinear",
+        "gridResolution": 60,
+        "colorBy": "height_metric",
+        "showPeakLabels": true,
+        "showValleyLabels": true,
+        "cameraPreset": "angled",
+        "aggregationMethod": "sum"
+      }
+    },
+    {
+      "id": "template-heatmapstory",
+      "codeName": "templateHeatMapStory",
+      "type": "HeatMapStory",
+      "category": "Visualization",
+      "icon": "HeatMapStory",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Heat Map Story",
+        "geographicArea": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "metricValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "timeField": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "secondaryMetric": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "changePct": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "targetValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "riskScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "category": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "forecastValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "notes": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "mapScope": "usa",
+        "geographicLevel": "state",
+        "colorScale": "sequential",
+        "showLabels": true,
+        "showLegend": true,
+        "aggregationMethod": "sum"
+      }
+    },
+    {
+      "id": "template-pulsewavestory",
+      "codeName": "templatePulseWaveStory",
+      "type": "PulseWaveStory",
+      "category": "Visualization",
+      "icon": "PulseWaveStory",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Pulse Wave Story",
+        "metricName": "Metric",
+        "timeField": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "metricValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "baselineValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "eventName": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "eventType": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "impactScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "aggregationMethod": "sum",
+        "showBaseline": true,
+        "showEvents": true,
+        "showAnomalyMarkers": true,
+        "fillUnderWave": true
+      }
+    },
+    {
+      "id": "template-flowfieldstory",
+      "codeName": "templateFlowFieldStory",
+      "type": "FlowFieldStory",
+      "category": "Visualization",
+      "icon": "FlowFieldStory",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Flow Field Story",
+        "sourceStage": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "destinationStage": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "flowVolume": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "stageOrder": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "max"
+        },
+        "timeField": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "conversionPct": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "dropOffCount": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "avgTimeInStage": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "status": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "showDropOffs": true,
+        "showLabels": true
+      }
+    },
+    {
+      "id": "template-honeycombstory",
+      "codeName": "templateHoneycombStory",
+      "type": "HoneycombStory",
+      "category": "Visualization",
+      "icon": "HoneycombStory",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Honeycomb Story",
+        "itemName": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "impactScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "priorityLevel": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "progressPct": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "category": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "timeField": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "trend": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "riskScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "owner": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "dueDate": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "investment": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "benefitValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "notes": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "status": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "showLabels": true,
+        "showRiskBorders": true,
+        "showTrendArrows": true
+      }
+    },
+    {
+      "id": "template-spiralstory",
+      "codeName": "templateSpiralStory",
+      "type": "SpiralStory",
+      "category": "Visualization",
+      "icon": "SpiralStory",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": [
+        "unityCatalogTable",
+        "lakebaseProvisionedDatabase",
+        "lakebaseAutoscaling"
+      ],
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "title": "Spiral Story",
+        "journeyName": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "stage": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "timelineField": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "progressPct": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "metricValue": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "targetDate": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "actualDate": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "status": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "riskScore": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "avg"
+        },
+        "owner": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "keyAchievement": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "categorical",
+          "transform": "none"
+        },
+        "cost": {
+          "field": null,
+          "displayName": null,
+          "scaleType": "continuous",
+          "transform": "sum"
+        },
+        "showLabels": true,
+        "showRiskGlow": true,
+        "showVariance": true,
+        "spaceByTimeline": false
+      }
+    },
+    {
+      "id": "template-tabs",
+      "codeName": "templateTabs",
+      "type": "Tabs",
+      "category": "Layout",
+      "icon": "LayoutPanelTop",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "tabs": [
+          "Tab 1",
+          "Tab 2"
+        ],
+        "defaultTabIndex": 0
+      }
+    },
+    {
+      "id": "template-dashboard-embed",
+      "codeName": "templateDashboardEmbed",
+      "type": "DashboardEmbed",
+      "category": "Visualization",
+      "icon": "LayoutPanelTop",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "src": "",
+        "height": 600,
+        "scrolling": true
+      }
+    },
+    {
+      "id": "template-genie-chat",
+      "codeName": "templateGenieChat",
+      "type": "GenieChat",
+      "category": "Visualization",
+      "icon": "MessageCircle",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "genieSpaceId": "",
+        "genieSpaceTitle": "",
+        "title": "Genie Chat",
+        "showBorder": false,
+        "chatTotalHeightPixels": 600
+      }
+    },
+    {
+      "id": "template-model-chat",
+      "codeName": "templateModelChat",
+      "type": "ModelChat",
+      "category": "Visualization",
+      "icon": "Bot",
+      "layout": null,
+      "schemaVersion": 1,
+      "bindings": null,
+      "supportedBindings": null,
+      "supportedEvents": null,
+      "children": null,
+      "props": {
+        "servingEndpointName": "",
+        "title": "Model Chat",
+        "showBorder": false,
+        "chatTotalHeightPixels": 600
+      }
+    }
+  ],
+  "bindingSchemas": [
+    {
+      "type": "unityCatalogTable",
+      "label": "Unity Catalog Table",
+      "editorType": "UnityCatalogTableSelector",
+      "defaultConfig": {
+        "bindingType": "unityCatalogTable",
+        "source": {
+          "kind": "resource",
+          "valueType": "table",
+          "resource": {
+            "type": "unityCatalogTable",
+            "catalog": null,
+            "schema": null,
+            "table": null,
+            "primaryKeyColumn": null
+          }
+        }
+      }
+    },
+    {
+      "type": "databricksVolume",
+      "label": "Databricks Volume",
+      "editorType": "DatabricksVolumeSelector",
+      "defaultConfig": {
+        "bindingType": "databricksVolume",
+        "source": {
+          "kind": "resource",
+          "valueType": "file",
+          "resource": {
+            "type": "databricksVolume",
+            "catalog": null,
+            "schema": null,
+            "volume": null,
+            "filePath": ""
+          }
+        }
+      }
+    },
+    {
+      "type": "lakebaseProvisionedDatabase",
+      "label": "Lakebase Provisioned Database",
+      "editorType": "LakebaseProvisionedDatabaseSelector",
+      "defaultConfig": {
+        "bindingType": "lakebaseProvisionedDatabase",
+        "source": {
+          "kind": "resource",
+          "valueType": "table",
+          "resource": {
+            "type": "lakebaseProvisionedDatabase",
+            "database": null,
+            "instanceName": null,
+            "catalog": null,
+            "schema": null,
+            "table": null,
+            "primaryKeyColumn": null
+          }
+        }
+      }
+    },
+    {
+      "type": "lakebaseAutoscaling",
+      "label": "Lakebase Autoscaling",
+      "editorType": "LakebaseAutoscalingTableSelector",
+      "defaultConfig": {
+        "bindingType": "lakebaseAutoscaling",
+        "source": {
+          "kind": "resource",
+          "valueType": "table",
+          "resource": {
+            "type": "lakebaseAutoscaling",
+            "projectId": null,
+            "branchId": null,
+            "endpointId": null,
+            "database": null,
+            "catalog": null,
+            "schema": null,
+            "table": null,
+            "primaryKeyColumn": null
+          }
+        }
+      }
+    }
+  ],
+  "version": 1
+}

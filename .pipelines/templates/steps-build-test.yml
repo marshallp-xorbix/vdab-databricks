@@ -73,6 +73,45 @@ steps:
     workingDirectory: "${{ parameters.uiDirectory }}"
     retryCountOnTaskFailure: 1
 
+  - script: npm run lint:standalone
+    displayName: Lint standalone frontend slice
+    workingDirectory: "${{ parameters.uiDirectory }}"
+
+  - script: npm test -- --run
+    displayName: Test frontend
+    workingDirectory: "${{ parameters.uiDirectory }}"
+
+  - task: NodeTool@0
+    displayName: Install Databricks Apps Node.js 22.16 runtime
+    inputs:
+      versionSpec: 22.16.x
+
+  # Build and smoke-test the standalone Databricks artifact without Azure/.NET runtime coupling.
+  # This is a local-process smoke test only; a live workspace deploy requires the approved disposable target.
+  - script: npm ci --include=dev
+    displayName: Install Node App dependencies
+    workingDirectory: databricks-app
+
+  - script: npm run typecheck
+    displayName: Typecheck Node App
+    workingDirectory: databricks-app
+
+  - script: npm test
+    displayName: Test Node App
+    workingDirectory: databricks-app
+
+  - script: npm run build:client
+    displayName: Build standalone client
+    workingDirectory: databricks-app
+
+  - script: npm run package
+    displayName: Package Databricks App
+    workingDirectory: databricks-app
+
+  - script: npm run smoke
+    displayName: Smoke-test packaged Databricks App locally
+    workingDirectory: databricks-app
+
   - task: PowerShell@2
     displayName: Prepare API wwwroot and copy frontend build
     inputs:

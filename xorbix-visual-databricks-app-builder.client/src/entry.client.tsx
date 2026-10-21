@@ -12,10 +12,16 @@ interface IClientConfig {
 // never blocks hydration; the telemetry helpers no-op safely until initialization completes. Fetching the
 // Application Insights connection string at runtime (rather than baking it into the build) is what lets one
 // build artifact be promoted across dev/stg/prd unchanged.
-fetch(`${API_BASE_URL}/api/config`)
-  .then((response) => (response.ok ? (response.json() as Promise<IClientConfig>) : null))
-  .then((config) => initTelemetry(config?.applicationInsightsConnectionString))
-  .catch(() => initTelemetry(undefined));
+if (import.meta.env.VITE_VDAB_RUNTIME === "databricks") {
+  initTelemetry(undefined);
+} else {
+  fetch(`${API_BASE_URL}/api/config`)
+    .then((response) =>
+      response.ok ? (response.json() as Promise<IClientConfig>) : null,
+    )
+    .then((config) => initTelemetry(config?.applicationInsightsConnectionString))
+    .catch(() => initTelemetry(undefined));
+}
 
 ReactDOM.hydrateRoot(
   document,
