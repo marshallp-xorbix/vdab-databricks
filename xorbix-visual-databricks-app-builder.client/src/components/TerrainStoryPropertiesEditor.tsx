@@ -5,7 +5,7 @@ import TerrainStoryFieldMappingsEditor from "./TerrainStoryFieldMappingsEditor";
 import TerrainStoryVisualPropertiesEditor from "./TerrainStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
 import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface ITerrainStoryPropertiesEditorProps {
   componentKey: string;
@@ -24,7 +24,7 @@ function TerrainStoryPropertiesEditor({
   onPropertiesChange,
   onBindingsChange,
 }: Readonly<ITerrainStoryPropertiesEditorProps>) {
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Terrain Story";
   const columns: IWorkspaceTableColumn[] = table?.columns ?? [];
 

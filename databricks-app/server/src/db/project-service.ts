@@ -3,6 +3,7 @@ import type {
   ProjectCollaborator,
   ProjectSummary,
 } from "../contracts.ts";
+import { PROJECT_COLLABORATOR_DIRECTORY_UNAVAILABLE_CODE } from "../contracts.ts";
 import { ApplicationError } from "../application-error.ts";
 import type { ProjectActor, ProjectRepository } from "./project-repository.ts";
 import type { ProjectMetadata } from "./project-repository.ts";
@@ -17,10 +18,7 @@ export class ProjectService {
   private readonly repository: ProjectRepository;
   private readonly workspaceId: string;
 
-  constructor(
-    repository: ProjectRepository,
-    workspaceId: string,
-  ) {
+  constructor(repository: ProjectRepository, workspaceId: string) {
     this.repository = repository;
     this.workspaceId = workspaceId;
   }
@@ -45,7 +43,9 @@ export class ProjectService {
     caller: CallerIdentity,
     requestId: string,
   ): Promise<ProjectSummary[]> {
-    return this.repository.listProjects(toProjectActor(caller, this.workspaceId, requestId));
+    return this.repository.listProjects(
+      toProjectActor(caller, this.workspaceId, requestId),
+    );
   }
 
   async getProject(
@@ -85,6 +85,22 @@ export class ProjectService {
     return project;
   }
 
+  /** Removes a project from active access for its owner or installation admin. */
+  async deleteProject(
+    caller: CallerIdentity,
+    requestId: string,
+    projectId: string,
+  ): Promise<void> {
+    const wasDeleted = await this.repository.deleteProject(
+      projectId,
+      toProjectActor(caller, this.workspaceId, requestId),
+    );
+
+    if (!wasDeleted) {
+      throw projectNotFound();
+    }
+  }
+
   async listCollaborators(
     caller: CallerIdentity,
     requestId: string,
@@ -108,6 +124,15 @@ export class ProjectService {
     projectId: string,
     body: unknown,
   ): Promise<void> {
+    if (caller.authenticationMode === "databricks") {
+      throw new ApplicationError(
+        501,
+        PROJECT_COLLABORATOR_DIRECTORY_UNAVAILABLE_CODE,
+        "Collaborator selection unavailable",
+        "Project access cannot be granted until a supported Databricks identity selection flow is available.",
+      );
+    }
+
     const collaboratorId = readCollaboratorId(body);
 
     if (collaboratorId === caller.userId) {
@@ -176,7 +201,10 @@ function readProjectInput(value: unknown): {
   name: string;
   description: string | null;
 } {
-  if (!isRecord(value) || hasUnexpectedProperties(value, ["name", "description"])) {
+  if (
+    !isRecord(value) ||
+    hasUnexpectedProperties(value, ["name", "description"])
+  ) {
     throw invalidProjectInput();
   }
 
@@ -184,10 +212,7 @@ function readProjectInput(value: unknown): {
   const description =
     value.description === undefined || value.description === null
       ? null
-      : readOptionalText(
-          value.description,
-          MAX_PROJECT_DESCRIPTION_LENGTH,
-        );
+      : readOptionalText(value.description, MAX_PROJECT_DESCRIPTION_LENGTH);
 
   return { name, description };
 }
@@ -252,10 +277,7 @@ function readCollaboratorPathId(value: string): string {
   return userId;
 }
 
-function readRequiredText(
-  value: unknown,
-  maximumLength: number,
-): string {
+function readRequiredText(value: unknown, maximumLength: number): string {
   if (typeof value !== "string") {
     throw invalidProjectInput();
   }

@@ -2,8 +2,46 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { addDefaultSqlWarehouseResourceBinding } from "../../scripts/builder-app-manifest.ts";
 
 const runtimeDirectory = resolve(import.meta.dirname, "../../runtime");
+
+test("PackageArtifact_AddsOptionalSqlWarehouseResourceBinding", async () => {
+  const sourceAppManifest = await readFile(
+    resolve(import.meta.dirname, "../../app.yaml"),
+    "utf8",
+  );
+  const withoutWarehouse = addDefaultSqlWarehouseResourceBinding(
+    sourceAppManifest,
+    undefined,
+  );
+  const withWarehouse = addDefaultSqlWarehouseResourceBinding(
+    sourceAppManifest,
+    "vdab-default-sql-warehouse",
+  );
+
+  assert.equal(withoutWarehouse, sourceAppManifest);
+  assert.match(
+    withWarehouse,
+    /name: DATABRICKS_SQL_WAREHOUSE_ID\r?\n\s+valueFrom: vdab-default-sql-warehouse/,
+  );
+});
+
+test("PackageArtifact_RejectsInvalidSqlWarehouseResourceBinding", async () => {
+  const sourceAppManifest = await readFile(
+    resolve(import.meta.dirname, "../../app.yaml"),
+    "utf8",
+  );
+
+  assert.throws(
+    () =>
+      addDefaultSqlWarehouseResourceBinding(
+        sourceAppManifest,
+        "warehouse\nvalue: injected",
+      ),
+    /resource key is invalid/,
+  );
+});
 
 test("PackageArtifact_RuntimeManifestAndLockArePinnedAndSynchronized", async () => {
   const manifest = readRecord(

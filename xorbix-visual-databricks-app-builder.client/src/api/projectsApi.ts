@@ -15,7 +15,9 @@ import {
 const PROJECTS_PATH = "/api/v1/projects";
 
 /** Lists projects visible to the current user in the installed workspace. */
-export async function listProjects(signal?: AbortSignal): Promise<IProjectList> {
+export async function listProjects(
+  signal?: AbortSignal,
+): Promise<IProjectList> {
   const response = await fetch(PROJECTS_PATH, {
     headers: { Accept: "application/json" },
     credentials: "same-origin",
@@ -30,9 +32,10 @@ export async function listProjects(signal?: AbortSignal): Promise<IProjectList> 
 }
 
 /** Creates a project in the workspace hosting VDAB. */
-export async function createProject(
-  input: { name: string; description: string | null },
-): Promise<IProject> {
+export async function createProject(input: {
+  name: string;
+  description: string | null;
+}): Promise<IProject> {
   const response = await fetch(PROJECTS_PATH, {
     method: "POST",
     headers: {
@@ -69,9 +72,12 @@ export async function getProject(
 }
 
 /** Saves editable project metadata using optimistic version checking. */
-export async function updateProject(
-  input: { id: string; name: string; description: string | null; version: number },
-): Promise<IProject> {
+export async function updateProject(input: {
+  id: string;
+  name: string;
+  description: string | null;
+  version: number;
+}): Promise<IProject> {
   const response = await fetch(projectPath(input.id), {
     method: "PUT",
     headers: {
@@ -93,8 +99,23 @@ export async function updateProject(
   return parseProject(await response.json());
 }
 
+/** Removes a project from the current user's active project list. */
+export async function deleteProject(projectId: string): Promise<void> {
+  const response = await fetch(projectPath(projectId), {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+}
+
 /** Downloads one ACL-authorized project in the standalone v1 file format. */
-export async function exportProject(projectId: string): Promise<IStandaloneProjectExport> {
+export async function exportProject(
+  projectId: string,
+): Promise<IStandaloneProjectExport> {
   const response = await fetch(`${projectPath(projectId)}/export`, {
     headers: { Accept: "application/json" },
     credentials: "same-origin",
@@ -104,7 +125,9 @@ export async function exportProject(projectId: string): Promise<IStandaloneProje
 }
 
 /** Imports a standalone v1 project into the workspace hosting this VDAB. */
-export async function importProject(value: unknown): Promise<IProjectImportResult> {
+export async function importProject(
+  value: unknown,
+): Promise<IProjectImportResult> {
   const response = await fetch(`${PROJECTS_PATH}/import`, {
     method: "POST",
     headers: {
@@ -159,8 +182,11 @@ function parseProject(value: unknown): IProject {
 
 function parseProjectExport(value: unknown): IStandaloneProjectExport {
   if (
-    !isRecord(value) || value.format !== "vdab-project" || value.schemaVersion !== 1 ||
-    typeof value.exportedAt !== "string" || !Number.isFinite(Date.parse(value.exportedAt)) ||
+    !isRecord(value) ||
+    value.format !== "vdab-project" ||
+    value.schemaVersion !== 1 ||
+    typeof value.exportedAt !== "string" ||
+    !Number.isFinite(Date.parse(value.exportedAt)) ||
     !isRecord(value.project)
   ) {
     throw new Error("The project export service returned an invalid document.");
@@ -175,24 +201,33 @@ function parseProjectExport(value: unknown): IStandaloneProjectExport {
 
 function parseProjectImportResult(value: unknown): IProjectImportResult {
   if (
-    !isRecord(value) || value.requiresChildAppSelection !== true ||
+    !isRecord(value) ||
+    value.requiresChildAppSelection !== true ||
     !Array.isArray(value.unresolvedResources)
   ) {
     throw new Error("The project import service returned an invalid result.");
   }
   return {
     project: parseProject(value.project),
-    unresolvedResources: value.unresolvedResources.map(parsePortableResourceReference),
+    unresolvedResources: value.unresolvedResources.map(
+      parsePortableResourceReference,
+    ),
     requiresChildAppSelection: true,
   };
 }
 
-function parsePortableResourceReference(value: unknown): IPortableResourceReference {
+function parsePortableResourceReference(
+  value: unknown,
+): IPortableResourceReference {
   if (
-    !isRecord(value) || typeof value.key !== "string" ||
-    typeof value.kind !== "string" || typeof value.label !== "string"
+    !isRecord(value) ||
+    typeof value.key !== "string" ||
+    typeof value.kind !== "string" ||
+    typeof value.label !== "string"
   ) {
-    throw new Error("The project import service returned an invalid resource reference.");
+    throw new Error(
+      "The project import service returned an invalid resource reference.",
+    );
   }
   const componentKeys = readOptionalStringArray(value.componentKeys);
   const workflowNodeIds = readOptionalStringArray(value.workflowNodeIds);
@@ -208,7 +243,9 @@ function parsePortableResourceReference(value: unknown): IPortableResourceRefere
 function readOptionalStringArray(value: unknown): string[] | undefined {
   if (value === undefined) return undefined;
   if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    throw new Error("The project import service returned invalid resource usage.");
+    throw new Error(
+      "The project import service returned invalid resource usage.",
+    );
   }
   return value;
 }

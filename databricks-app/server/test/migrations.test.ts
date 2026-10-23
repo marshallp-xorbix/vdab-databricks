@@ -31,6 +31,12 @@ test("LakebaseMigrations_AppliesInitialSchemaOnce_AndRecordsChecksum", async () 
   const projectPortabilityMigrationRecord = database.migrations.get(
     "005_project_portability",
   );
+  const projectDeploymentsMigrationRecord = database.migrations.get(
+    "006_project_deployments",
+  );
+  const deploymentAppResourcesMigrationRecord = database.migrations.get(
+    "007_deployment_app_resources",
+  );
 
   assert.equal(schemaCalls.length, 1);
   assert.equal(componentCalls.length, 1);
@@ -40,6 +46,14 @@ test("LakebaseMigrations_AppliesInitialSchemaOnce_AndRecordsChecksum", async () 
   assert.ok(nullableComponentMigrationRecord?.checksum);
   assert.ok(workflowAggregateMigrationRecord?.checksum);
   assert.ok(projectPortabilityMigrationRecord?.checksum);
+  assert.ok(projectDeploymentsMigrationRecord?.checksum);
+  assert.ok(deploymentAppResourcesMigrationRecord?.checksum);
+  assert.equal(
+    database.statements.filter((statement) =>
+      statement.text.includes("ux_vdab_project_child_apps_workspace_app_name"),
+    ).length,
+    1,
+  );
   assert.ok(database.statements.some((statement) =>
     statement.text.includes("pg_advisory_xact_lock"),
   ));
@@ -193,6 +207,20 @@ test("LakebaseMigrations_SchemaContainsNoSaasOrCredentialAuthorityColumns", asyn
   assert.match(projectPortabilityMigration, /ADD COLUMN theme jsonb NULL/);
   assert.doesNotMatch(
     projectPortabilityMigration,
+    /tenant_id|workspace_connection_id|access_token|refresh_token|client_secret|password/i,
+  );
+
+  const projectDeploymentsMigration = await readFile(
+    resolve(import.meta.dirname, "../src/db/migrations/006_project_deployments.sql"),
+    "utf8",
+  );
+  assert.match(projectDeploymentsMigration, /ADD COLUMN IF NOT EXISTS create_marker text NULL/);
+  assert.match(projectDeploymentsMigration, /ADD COLUMN IF NOT EXISTS required_user_api_scopes jsonb/);
+  assert.match(projectDeploymentsMigration, /ux_vdab_project_child_apps_workspace_app_name/);
+  assert.match(projectDeploymentsMigration, /ux_vdab_project_child_apps_workspace_app_id/);
+  assert.match(projectDeploymentsMigration, /ux_vdab_project_deployments_active/);
+  assert.doesNotMatch(
+    projectDeploymentsMigration,
     /tenant_id|workspace_connection_id|access_token|refresh_token|client_secret|password/i,
   );
 });

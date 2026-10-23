@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readGeneratedPythonFixture } from "./generated-python-fixture.ts";
 import test from "node:test";
 import type { ProjectSummary } from "../src/contracts.ts";
 import { ApplicationError } from "../src/application-error.ts";
@@ -31,17 +31,18 @@ const columns = [
 ];
 
 test("FlowFieldStoryPreview_MatchesAcceptedCanvasFixtureAndViewerQuery", async () => {
-  const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/flow-field-story-app.py",
-    import.meta.url,
+  const expectedPython = await readGeneratedPythonFixture(
+    "flow-field-story-app.py",
   );
-  const expectedPython = await readFile(fixturePath, "utf8");
   const python = generate(createFlowFieldStory());
 
   assert.equal(python, expectedPython);
   assert.match(python, /MAX\(`event_time`\)/);
   assert.match(python, /GROUP BY `source_stage`, `destination_stage`/);
-  assert.match(python, /_vdab_sql_query_df\('main', 'sales', 'flows', 500, query_statement=/);
+  assert.match(
+    python,
+    /_vdab_sql_query_df\('main', 'sales', 'flows', 500, query_statement=/,
+  );
   assert.match(python, /statement \+= f' LIMIT \{max_rows:d\}'/);
   assert.match(python, /'show_drop_offs': True/);
   assert.match(python, /'show_labels': True/);
@@ -54,13 +55,15 @@ test("FlowFieldStoryPreview_MatchesAcceptedCanvasFixtureAndViewerQuery", async (
 });
 
 test("FlowFieldStoryPreview_UsesAllOptionalMeasuresAndVisibilitySettings", () => {
-  const python = generate(createFlowFieldStory({
-    properties: {
-      ...defaultProperties(),
-      showDropOffs: false,
-      showLabels: false,
-    },
-  }));
+  const python = generate(
+    createFlowFieldStory({
+      properties: {
+        ...defaultProperties(),
+        showDropOffs: false,
+        showLabels: false,
+      },
+    }),
+  );
 
   assert.match(python, /AVG\(`conversion`\) AS conversion_pct/);
   assert.match(python, /SUM\(`drop_count`\) AS drop_off/);
@@ -68,59 +71,101 @@ test("FlowFieldStoryPreview_UsesAllOptionalMeasuresAndVisibilitySettings", () =>
   assert.match(python, /MAX\(`status`\) AS status/);
   assert.match(python, /'show_drop_offs': False/);
   assert.match(python, /'show_labels': False/);
-  assert.match(python, /st\.context\.headers\.get\('x-forwarded-access-token'\)/);
+  assert.match(
+    python,
+    /st\.context\.headers\.get\('x-forwarded-access-token'\)/,
+  );
 });
 
 test("FlowFieldStoryPreview_PreservesIncompleteAndLakebaseBindings", () => {
-  const incompletePython = generate(createFlowFieldStory({
-    properties: { ...defaultProperties(), stageOrder: axis("", "continuous", "max") },
-  }));
-  const lakebasePython = generate(createFlowFieldStory({ bindings: createLakebaseBinding() }));
+  const incompletePython = generate(
+    createFlowFieldStory({
+      properties: {
+        ...defaultProperties(),
+        stageOrder: axis("", "continuous", "max"),
+      },
+    }),
+  );
+  const lakebasePython = generate(
+    createFlowFieldStory({ bindings: createLakebaseBinding() }),
+  );
 
   assert.match(incompletePython, /Map the required FlowFieldStory fields/);
   assert.doesNotMatch(incompletePython, /query_statement=/);
   assert.match(lakebasePython, /_vdab_sql_query_df\(/);
-  assert.match(lakebasePython, /source_kind='lakebaseAutoscaling', database='appdb'/);
+  assert.match(
+    lakebasePython,
+    /source_kind='lakebaseAutoscaling', database='appdb'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/,
+  );
 });
 
 test("FlowFieldStoryInput_RejectsInvalidSettingsMappingsAndShape", () => {
   const invalidComponents = [
-    createFlowFieldStory({ properties: { ...defaultProperties(), showLabels: "true" } }),
-    createFlowFieldStory({ properties: { ...defaultProperties(), flowVolume: axis("flow_volume", "categorical", "sum") } }),
-    createFlowFieldStory({ properties: { ...defaultProperties(), unknown: true } }),
     createFlowFieldStory({
-      properties: { ...defaultProperties(), flowVolume: axis("source_stage", "continuous", "sum") },
+      properties: { ...defaultProperties(), showLabels: "true" },
+    }),
+    createFlowFieldStory({
+      properties: {
+        ...defaultProperties(),
+        flowVolume: axis("flow_volume", "categorical", "sum"),
+      },
+    }),
+    createFlowFieldStory({
+      properties: { ...defaultProperties(), unknown: true },
+    }),
+    createFlowFieldStory({
+      properties: {
+        ...defaultProperties(),
+        flowVolume: axis("source_stage", "continuous", "sum"),
+      },
     }),
     createFlowFieldStory({ children: ["nested-child"] }),
     createFlowFieldStory({ layout: { columns: 2 } }),
-    createFlowFieldStory({ bindings: { ...createUnityCatalogBinding(), workspaceHost: "https://outside.invalid" } }),
+    createFlowFieldStory({
+      bindings: {
+        ...createUnityCatalogBinding(),
+        workspaceHost: "https://outside.invalid",
+      },
+    }),
   ];
 
   for (const component of invalidComponents) {
     assert.throws(
       () => readComponentsInput({ version: 1, components: [component] }),
-      (error: unknown) => error instanceof ApplicationError && error.status === 400,
+      (error: unknown) =>
+        error instanceof ApplicationError && error.status === 400,
     );
   }
 });
 
 test("FlowFieldStoryPreview_RejectsMalformedPersistedComponent", () => {
   assert.throws(
-    () => generate(createFlowFieldStory({ properties: { ...defaultProperties(), unexpected: true } })),
-    (error: unknown) => error instanceof ApplicationError && error.status === 422 &&
+    () =>
+      generate(
+        createFlowFieldStory({
+          properties: { ...defaultProperties(), unexpected: true },
+        }),
+      ),
+    (error: unknown) =>
+      error instanceof ApplicationError &&
+      error.status === 422 &&
       error.code === "invalid_flow_field_story_properties",
   );
 });
 
 function generate(component: ProjectComponent): string {
-  return new ProjectPreviewGenerator().generate(project, {
-    projectId: project.id,
-    version: 1,
-    components: [component],
-  }).files[0]?.content ?? "";
+  return (
+    new ProjectPreviewGenerator().generate(project, {
+      projectId: project.id,
+      version: 1,
+      components: [component],
+    }).files[0]?.content ?? ""
+  );
 }
 
-function createFlowFieldStory(overrides: Partial<ProjectComponent> = {}): ProjectComponent {
+function createFlowFieldStory(
+  overrides: Partial<ProjectComponent> = {},
+): ProjectComponent {
   return {
     key: "flow-field-story-main",
     type: "FlowFieldStory",
@@ -153,7 +198,11 @@ function defaultProperties(): ProjectComponent["properties"] {
   };
 }
 
-function axis(field: string, scaleType: "categorical" | "continuous", transform: string) {
+function axis(
+  field: string,
+  scaleType: "categorical" | "continuous",
+  transform: string,
+) {
   return { field, displayName: "", scaleType, transform };
 }
 
@@ -188,6 +237,7 @@ function createLakebaseBinding(): ProjectComponent["bindings"] {
         resource: {
           type: "lakebaseAutoscaling",
           database: "appdb",
+          databaseId: "database-id",
           projectId: "db-project",
           branchId: "production",
           endpointId: "read-write",

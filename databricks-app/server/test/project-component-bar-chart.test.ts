@@ -126,6 +126,7 @@ test("BarChartPreview_QueriesLakebaseWithTheInstalledWorkspaceEndpoint", () => {
           resource: {
             type: "lakebaseAutoscaling",
             database: "appdb",
+            databaseId: "database-id",
             projectId: "project",
             branchId: "branch",
             endpointId: "endpoint",
@@ -147,7 +148,7 @@ test("BarChartPreview_QueriesLakebaseWithTheInstalledWorkspaceEndpoint", () => {
   const python = generate(component);
 
   assert.match(python, /SELECT "region" AS category, SUM\("revenue"\) AS value/);
-  assert.match(python, /source_kind='lakebaseAutoscaling', database='appdb'/);
+  assert.match(python, /source_kind='lakebaseAutoscaling', database='appdb'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/);
   assert.match(python, /endpoint='projects\/project\/branches\/branch\/endpoints\/endpoint'/);
 });
 

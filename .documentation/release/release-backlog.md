@@ -1,5 +1,7 @@
 # Release Readiness Backlog
 
+> **Historical SaaS backlog:** This backlog records the former signup, subscription, tenant, and Azure-hosted product. The active standalone scope and remaining gates are in the [Databricks App transition plan](../databricks-app-transition/README.md).
+
 **Last Updated:** 2026-07-18
 **Purpose:** Board-ready work items derived from [Release & Deployment Workflow](./release-workflow.md) and [QA Strategy](./qa-strategy.md).
 **Target board:** Azure DevOps — copy each item as an Epic / Story / Bug / Task.

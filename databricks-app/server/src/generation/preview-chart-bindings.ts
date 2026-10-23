@@ -1,6 +1,10 @@
 import type { ProjectJsonObject } from "../db/project-components-contract.ts";
 import { hasUnexpectedProperties, isRecord } from "../db/project-component-json.ts";
 import { pythonString } from "./preview-python.ts";
+import {
+  createAutoscalingAppResourceBinding,
+  createProvisionedAppResourceBinding,
+} from "../lakebase-app-resource-binding.ts";
 
 export interface ChartColumn {
   name: string;
@@ -8,12 +12,14 @@ export interface ChartColumn {
 }
 
 export interface ChartBinding {
-  kind: "none" | "unityCatalogTable" | "lakebaseAutoscaling" | "unsupported";
+  kind: "none" | "unityCatalogTable" | "lakebaseProvisionedDatabase" | "lakebaseAutoscaling" | "unsupported";
   catalog: string | null;
   schema: string | null;
   table: string | null;
   database: string | null;
+  instanceName: string | null;
   endpoint: string | null;
+  resourceEnvironmentVariable: string | null;
   columns: ChartColumn[];
 }
 
@@ -39,28 +45,43 @@ export function readChartBinding(
       throw invalidChart("Chart table binding is not supported.");
     }
     const resource = validateBindingShape(bindings[bindingType], bindingType, invalidChart);
-    if (bindingType !== "lakebaseAutoscaling") {
-      return emptyBinding("unsupported");
-    }
     const database = readResourceName(resource.database, invalidChart);
-    const projectId = readLakebaseIdentifier(resource.projectId, "project", invalidChart);
-    const branchId = readLakebaseIdentifier(resource.branchId, "branch", invalidChart);
-    const endpointId = readLakebaseIdentifier(resource.endpointId, "endpoint", invalidChart);
+    const instanceName = bindingType === "lakebaseProvisionedDatabase"
+      ? readLakebaseIdentifier(resource.instanceName, "instance", invalidChart)
+      : null;
+    const projectId = bindingType === "lakebaseAutoscaling"
+      ? readLakebaseIdentifier(resource.projectId, "project", invalidChart)
+      : null;
+    const branchId = bindingType === "lakebaseAutoscaling"
+      ? readLakebaseIdentifier(resource.branchId, "branch", invalidChart)
+      : null;
+    const endpointId = bindingType === "lakebaseAutoscaling"
+      ? readLakebaseIdentifier(resource.endpointId, "endpoint", invalidChart)
+      : null;
+    const databaseId = bindingType === "lakebaseAutoscaling"
+      ? readLakebaseIdentifier(resource.databaseId, "database", invalidChart)
+      : null;
     const schema = readResourceName(resource.schema, invalidChart);
     const table = readResourceName(resource.table, invalidChart);
     const columns = readColumns(resource.columns, invalidChart);
-    const complete = database !== null && projectId !== null && branchId !== null &&
-      endpointId !== null && schema !== null && table !== null && columns.length > 0;
+    const complete = database !== null && schema !== null && table !== null && columns.length > 0 &&
+      (bindingType === "lakebaseProvisionedDatabase"
+        ? instanceName !== null
+        : projectId !== null && branchId !== null && endpointId !== null && databaseId !== null);
     if (!complete) {
       return emptyBinding("none");
     }
     return {
-      kind: "lakebaseAutoscaling",
+      kind: bindingType,
       catalog: null,
       schema,
       table,
       database,
-      endpoint: `projects/${projectId}/branches/${branchId}/endpoints/${endpointId}`,
+      instanceName,
+      endpoint: endpointId === null ? null : `projects/${projectId}/branches/${branchId}/endpoints/${endpointId}`,
+      resourceEnvironmentVariable: bindingType === "lakebaseAutoscaling"
+        ? createAutoscalingAppResourceBinding({ projectId: projectId as string, branchId: branchId as string, endpointId: endpointId as string, databaseId: databaseId as string }).environmentVariable
+        : createProvisionedAppResourceBinding({ instanceName: instanceName as string, databaseName: database as string }).environmentVariable,
       columns,
     };
   }
@@ -80,7 +101,9 @@ export function readChartBinding(
     schema,
     table,
     database: null,
+    instanceName: null,
     endpoint: null,
+    resourceEnvironmentVariable: null,
     columns,
   };
 }
@@ -90,7 +113,7 @@ export function quoteChartIdentifier(
   value: string,
   kind: ChartBinding["kind"] = "unityCatalogTable",
 ): string {
-  if (kind === "lakebaseAutoscaling") {
+  if (kind === "lakebaseAutoscaling" || kind === "lakebaseProvisionedDatabase") {
     return `"${value.replaceAll('"', '""')}"`;
   }
   return `\`${value.replaceAll("`", "``")}\``;
@@ -98,7 +121,7 @@ export function quoteChartIdentifier(
 
 /** Builds a table reference using the catalog structure of the selected source. */
 export function quoteChartTable(binding: ChartBinding): string {
-  const names = binding.kind === "lakebaseAutoscaling"
+  const names = binding.kind === "lakebaseAutoscaling" || binding.kind === "lakebaseProvisionedDatabase"
     ? [binding.schema, binding.table]
     : [binding.catalog, binding.schema, binding.table];
   return names.map((name) => quoteChartIdentifier(name ?? "", binding.kind)).join(".");
@@ -109,7 +132,22 @@ export function lakebaseQueryOptions(binding: ChartBinding): string {
   if (binding.kind !== "lakebaseAutoscaling") {
     return "";
   }
-  return `, source_kind='lakebaseAutoscaling', database=${pythonString(binding.database ?? "")}, endpoint=${pythonString(binding.endpoint ?? "")}`;
+  return `, source_kind='lakebaseAutoscaling', database=${pythonString(binding.database ?? "")}, endpoint=${pythonString(binding.endpoint ?? "")}, resource_environment_variable=${pythonString(binding.resourceEnvironmentVariable ?? "")}`;
+}
+
+/** Builds a generated query call using the selected workspace database source. */
+export function lakebaseQueryExpression(
+  binding: ChartBinding,
+  maxRows: number,
+  queryStatement?: string,
+): string {
+  const queryArgument = queryStatement === undefined
+    ? ""
+    : `, query_statement=${pythonString(queryStatement)}`;
+  if (binding.kind === "lakebaseProvisionedDatabase") {
+    return `_vdab_lakebase_provisioned_query_df(${pythonString(binding.schema ?? "")}, ${pythonString(binding.table ?? "")}, ${maxRows}${queryArgument}, database=${pythonString(binding.database ?? "")}, instance_name=${pythonString(binding.instanceName ?? "")}, resource_environment_variable=${pythonString(binding.resourceEnvironmentVariable ?? "")})`;
+  }
+  return `_vdab_sql_query_df(${pythonString(binding.catalog ?? "")}, ${pythonString(binding.schema ?? "")}, ${pythonString(binding.table ?? "")}, ${maxRows}${queryArgument}${lakebaseQueryOptions(binding)})`;
 }
 
 /** Builds an allowlisted aggregate expression over a quoted field identifier. */
@@ -161,7 +199,7 @@ function validateBindingShape(
   if (bindingType === "lakebaseProvisionedDatabase") {
     expectedResourceProperties.push("database", "instanceName");
   } else if (bindingType === "lakebaseAutoscaling") {
-    expectedResourceProperties.push("database", "projectId", "branchId", "endpointId");
+    expectedResourceProperties.push("database", "databaseId", "projectId", "branchId", "endpointId");
   }
   if (
     binding === null || hasUnexpectedProperties(binding, ["bindingType", "source"]) ||
@@ -175,7 +213,7 @@ function validateBindingShape(
 
   readColumns(resource.columns, invalidChart);
   for (const name of [
-    "catalog", "schema", "table", "primaryKeyColumn", "database", "instanceName", "projectId", "branchId", "endpointId",
+    "catalog", "schema", "table", "primaryKeyColumn", "database", "databaseId", "instanceName", "projectId", "branchId", "endpointId",
   ]) {
     if (resource[name] !== undefined && resource[name] !== null) {
       readResourceName(resource[name], invalidChart);
@@ -251,5 +289,15 @@ function readNullableType(value: unknown, invalidChart: ChartErrorFactory): stri
 }
 
 function emptyBinding(kind: ChartBinding["kind"]): ChartBinding {
-  return { kind, catalog: null, schema: null, table: null, database: null, endpoint: null, columns: [] };
+  return {
+    kind,
+    catalog: null,
+    schema: null,
+    table: null,
+    database: null,
+    instanceName: null,
+    endpoint: null,
+    resourceEnvironmentVariable: null,
+    columns: [],
+  };
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readGeneratedPythonFixture } from "./generated-python-fixture.ts";
 import test from "node:test";
 import vm from "node:vm";
 import type { ProjectSummary } from "../src/contracts.ts";
@@ -21,60 +21,101 @@ const project: ProjectSummary = {
 };
 
 const columnDefinitions: ReadonlyArray<readonly [string, string]> = [
-  ["month", "DATE"], ["line", "STRING"], ["part", "STRING"], ["output", "DOUBLE"],
-  ["category", "STRING"], ["risk", "DOUBLE"], ["target", "DOUBLE"], ["baseline", "DOUBLE"],
-  ["forecast", "DOUBLE"], ["volume", "INT"], ["status", "STRING"], ["event", "STRING"],
-  ["event_date", "DATE"], ["callout", "STRING"],
+  ["month", "DATE"],
+  ["line", "STRING"],
+  ["part", "STRING"],
+  ["output", "DOUBLE"],
+  ["category", "STRING"],
+  ["risk", "DOUBLE"],
+  ["target", "DOUBLE"],
+  ["baseline", "DOUBLE"],
+  ["forecast", "DOUBLE"],
+  ["volume", "INT"],
+  ["status", "STRING"],
+  ["event", "STRING"],
+  ["event_date", "DATE"],
+  ["callout", "STRING"],
 ];
-const columns = columnDefinitions.map(([name, type]) => ({ name, type, dataType: type }));
+const columns = columnDefinitions.map(([name, type]) => ({
+  name,
+  type,
+  dataType: type,
+}));
 
 test("TerrainStoryPreview_MatchesFixtureAndViewerAuthorizedGroupedQuery", async () => {
-  const fixture = await readFile(new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/terrain-story-app.py",
-    import.meta.url,
-  ), "utf8");
+  const fixture = await readGeneratedPythonFixture("terrain-story-app.py");
   const python = generate(createTerrainStory());
 
   assert.equal(python, fixture);
-  assert.match(python, /SELECT `line` AS x_value, `part` AS y_value, SUM\(`output`\) AS height_value/);
-  assert.match(python, /MAX\(`category`\) AS category, MAX\(`status`\) AS status/);
-  assert.match(python, /AVG\(`risk`\) AS risk_score, AVG\(`target`\) AS target_value/);
+  assert.match(
+    python,
+    /SELECT `line` AS x_value, `part` AS y_value, SUM\(`output`\) AS height_value/,
+  );
+  assert.match(
+    python,
+    /MAX\(`category`\) AS category, MAX\(`status`\) AS status/,
+  );
+  assert.match(
+    python,
+    /AVG\(`risk`\) AS risk_score, AVG\(`target`\) AS target_value/,
+  );
   assert.match(python, /MAX\(`month`\) FROM/);
   assert.match(python, /GROUP BY `line`, `part`/);
-  assert.match(python, /_vdab_sql_query_df\('main', 'analytics', 'production_grid', 500, query_statement=/);
+  assert.match(
+    python,
+    /_vdab_sql_query_df\('main', 'analytics', 'production_grid', 500, query_statement=/,
+  );
   assert.doesNotMatch(python, /LIMIT 500/);
   assert.match(python, /x-forwarded-access-token/);
   assert.match(python, /const payload = __TERRAIN_PAYLOAD__/);
-  assert.match(python, /components\.html\(vdab_productionterrain_html, height=580, scrolling=False\)/);
+  assert.match(
+    python,
+    /components\.html\(vdab_productionterrain_html, height=580, scrolling=False\)/,
+  );
 });
 
 test("TerrainStoryPreview_MapsOptionalFieldsAndAllVisualSettings", () => {
-  const python = generate(createTerrainStory({ properties: {
-    ...defaultProperties(),
-    heightMetric: axis("output", "continuous", "max"),
-    timeField: axis("month", "categorical"),
-    terrainCategory: axis("category", "categorical"),
-    riskScore: axis("risk", "continuous", "count"),
-    targetValue: axis("target", "continuous", "min"),
-    baselineValue: axis("baseline", "continuous", "max"),
-    forecastValue: axis("forecast", "continuous", "avg"),
-    volumeMetric: axis("volume", "continuous", "count_distinct"),
-    status: axis("status", "categorical"),
-    eventName: axis("event", "categorical"),
-    eventDate: axis("event_date", "categorical"),
-    calloutText: axis("callout", "categorical"),
-    terrainMode: "ridge",
-    heightScale: 2.4,
-    interpolation: "none",
-    gridResolution: 120,
-    colorBy: "variance",
-    showPeakLabels: false,
-    showValleyLabels: false,
-    cameraPreset: "top",
-    aggregationMethod: "min",
-  } }));
+  const python = generate(
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        heightMetric: axis("output", "continuous", "max"),
+        timeField: axis("month", "categorical"),
+        terrainCategory: axis("category", "categorical"),
+        riskScore: axis("risk", "continuous", "count"),
+        targetValue: axis("target", "continuous", "min"),
+        baselineValue: axis("baseline", "continuous", "max"),
+        forecastValue: axis("forecast", "continuous", "avg"),
+        volumeMetric: axis("volume", "continuous", "count_distinct"),
+        status: axis("status", "categorical"),
+        eventName: axis("event", "categorical"),
+        eventDate: axis("event_date", "categorical"),
+        calloutText: axis("callout", "categorical"),
+        terrainMode: "ridge",
+        heightScale: 2.4,
+        interpolation: "none",
+        gridResolution: 120,
+        colorBy: "variance",
+        showPeakLabels: false,
+        showValleyLabels: false,
+        cameraPreset: "top",
+        aggregationMethod: "min",
+      },
+    }),
+  );
 
-  for (const alias of ["category", "risk_score", "target_value", "baseline_value", "forecast_value", "volume_value", "status", "event_name", "event_date", "callout_text"]) {
+  for (const alias of [
+    "category",
+    "risk_score",
+    "target_value",
+    "baseline_value",
+    "forecast_value",
+    "volume_value",
+    "status",
+    "event_name",
+    "event_date",
+    "callout_text",
+  ]) {
     assert.match(python, new RegExp(`AS ${alias}`));
   }
   assert.match(python, /MAX\(`output`\) AS height_value/);
@@ -89,59 +130,127 @@ test("TerrainStoryPreview_MapsOptionalFieldsAndAllVisualSettings", () => {
 
 test("TerrainStoryInput_RejectsMalformedPropertiesBindingsAndShape", () => {
   const invalidComponents = [
-    createTerrainStory({ properties: { ...defaultProperties(), unknown: true } }),
+    createTerrainStory({
+      properties: { ...defaultProperties(), unknown: true },
+    }),
     createTerrainStory({ properties: { ...defaultProperties(), title: 23 } }),
-    createTerrainStory({ properties: { ...defaultProperties(), heightScale: 0.05 } }),
-    createTerrainStory({ properties: { ...defaultProperties(), heightScale: Number.POSITIVE_INFINITY } }),
-    createTerrainStory({ properties: { ...defaultProperties(), gridResolution: 10.5 } }),
-    createTerrainStory({ properties: { ...defaultProperties(), terrainMode: "contour" } }),
-    createTerrainStory({ properties: { ...defaultProperties(), xDimension: axis("line", "categorical", "max") } }),
-    createTerrainStory({ properties: { ...defaultProperties(), heightMetric: axis("output", "categorical", "sum") } }),
-    createTerrainStory({ properties: { ...defaultProperties(), heightMetric: axis("output", "continuous", "sum; DROP TABLE") } }),
-    createTerrainStory({ properties: { ...defaultProperties(), heightMetric: axis("outside", "continuous", "sum") } }),
-    createTerrainStory({ properties: { ...defaultProperties(), heightMetric: axis("status", "continuous", "sum") } }),
+    createTerrainStory({
+      properties: { ...defaultProperties(), heightScale: 0.05 },
+    }),
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        heightScale: Number.POSITIVE_INFINITY,
+      },
+    }),
+    createTerrainStory({
+      properties: { ...defaultProperties(), gridResolution: 10.5 },
+    }),
+    createTerrainStory({
+      properties: { ...defaultProperties(), terrainMode: "contour" },
+    }),
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        xDimension: axis("line", "categorical", "max"),
+      },
+    }),
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        heightMetric: axis("output", "categorical", "sum"),
+      },
+    }),
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        heightMetric: axis("output", "continuous", "sum; DROP TABLE"),
+      },
+    }),
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        heightMetric: axis("outside", "continuous", "sum"),
+      },
+    }),
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        heightMetric: axis("status", "continuous", "sum"),
+      },
+    }),
     createTerrainStory({ children: ["nested"] }),
     createTerrainStory({ layout: { columns: 2 } }),
     createTerrainStory({ schemaVersion: 2 }),
-    createTerrainStory({ bindings: { ...createUnityCatalogBinding(), workspaceHost: "https://outside.invalid" } }),
+    createTerrainStory({
+      bindings: {
+        ...createUnityCatalogBinding(),
+        workspaceHost: "https://outside.invalid",
+      },
+    }),
   ];
 
   for (const component of invalidComponents) {
     assert.throws(
       () => readComponentsInput({ version: 1, components: [component] }),
-      (error: unknown) => error instanceof ApplicationError && error.status === 400,
+      (error: unknown) =>
+        error instanceof ApplicationError && error.status === 400,
     );
   }
 });
 
 test("TerrainStoryPreview_RejectsMalformedPersistedPropertiesAndRequiresMappings", () => {
   for (const component of [
-    createTerrainStory({ properties: { ...defaultProperties(), cameraPreset: "orbit" } }),
-    createTerrainStory({ properties: { ...defaultProperties(), showPeakLabels: "true" } }),
-    createTerrainStory({ properties: { ...defaultProperties(), baselineValue: axis("baseline", "continuous", "avg; select") } }),
+    createTerrainStory({
+      properties: { ...defaultProperties(), cameraPreset: "orbit" },
+    }),
+    createTerrainStory({
+      properties: { ...defaultProperties(), showPeakLabels: "true" },
+    }),
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        baselineValue: axis("baseline", "continuous", "avg; select"),
+      },
+    }),
   ]) {
     assert.throws(
       () => generate(component),
-      (error: unknown) => error instanceof ApplicationError && error.status === 422 &&
+      (error: unknown) =>
+        error instanceof ApplicationError &&
+        error.status === 422 &&
         error.code === "invalid_terrain_story_properties",
     );
   }
 
-  const incomplete = generate(createTerrainStory({
-    properties: { ...defaultProperties(), heightMetric: axis("", "continuous", "sum") },
-  }));
+  const incomplete = generate(
+    createTerrainStory({
+      properties: {
+        ...defaultProperties(),
+        heightMetric: axis("", "continuous", "sum"),
+      },
+    }),
+  );
   assert.match(incomplete, /Map the required TerrainStory fields/);
   assert.doesNotMatch(incomplete, /query_statement=/);
 });
 
 test("TerrainStoryPreview_PreservesLakebaseBindingWithExplicitLimitation", () => {
-  const python = generate(createTerrainStory({ bindings: createLakebaseBinding() }));
+  const python = generate(
+    createTerrainStory({ bindings: createLakebaseBinding() }),
+  );
   assert.match(python, /_vdab_sql_query_df\(/);
-  assert.match(python, /source_kind='lakebaseAutoscaling', database='builder'/);
+  assert.match(
+    python,
+    /source_kind='lakebaseAutoscaling', database='builder'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/,
+  );
 });
 
 test("TerrainStoryCanvas_KeyboardCellInspectionAnnouncesDetailsAndEscapesTooltips", () => {
-  assert.match(TERRAIN_STORY_HTML, /id="toolbar" aria-label="Terrain overlays"/);
+  assert.match(
+    TERRAIN_STORY_HTML,
+    /id="toolbar" aria-label="Terrain overlays"/,
+  );
   assert.match(TERRAIN_STORY_HTML, /aria-pressed="true"/);
   assert.match(TERRAIN_STORY_HTML, /tabindex="0" role="img"/);
   assert.match(TERRAIN_STORY_HTML, /ArrowRight/);
@@ -154,7 +263,15 @@ test("TerrainStoryCanvas_KeyboardCellInspectionAnnouncesDetailsAndEscapesTooltip
 
   const listeners = new Map<string, (event: unknown) => void>();
   const rectangle = { left: 0, top: 0, width: 800, height: 580 };
-  const context = new Proxy({}, { get: (_target, name) => name === "createLinearGradient" ? () => ({ addColorStop() {} }) : () => {} });
+  const context = new Proxy(
+    {},
+    {
+      get: (_target, name) =>
+        name === "createLinearGradient"
+          ? () => ({ addColorStop() {} })
+          : () => {},
+    },
+  );
   const wrap = {
     clientWidth: 800,
     clientHeight: 580,
@@ -167,43 +284,70 @@ test("TerrainStoryCanvas_KeyboardCellInspectionAnnouncesDetailsAndEscapesTooltip
     parentElement: wrap,
     getContext: () => context,
     getBoundingClientRect: () => rectangle,
-    addEventListener: (name: string, handler: (event: unknown) => void) => listeners.set(name, handler),
+    addEventListener: (name: string, handler: (event: unknown) => void) =>
+      listeners.set(name, handler),
   };
   const announcer = { textContent: "" };
   const tip = { style: { display: "", left: "", top: "" }, innerHTML: "" };
   const button = { classList: { add() {}, toggle() {} }, setAttribute() {} };
   const elements = new Map<string, object>([
-    ["wrap", wrap], ["c", canvas], ["tip", tip], ["announce", announcer],
-    ["togPeaks", button], ["togValleys", button], ["togEvents", button],
+    ["wrap", wrap],
+    ["c", canvas],
+    ["tip", tip],
+    ["announce", announcer],
+    ["togPeaks", button],
+    ["togValleys", button],
+    ["togEvents", button],
   ]);
   const script = /<script>([\s\S]*?)<\/script>/.exec(TERRAIN_STORY_HTML)?.[1];
   assert.ok(script);
-  new vm.Script(script.replace("__TERRAIN_PAYLOAD__", JSON.stringify({
-    records: [{ x: "North", y: "West", height: 30, category: "Engine", risk_score: 75, variance: 5 }],
-    callouts: [],
-    visualConfig: { terrain_mode: "heat_surface" },
-    summary: { top_peaks: [], bottom_valleys: [] },
-  }))).runInNewContext({
+  new vm.Script(
+    script.replace(
+      "__TERRAIN_PAYLOAD__",
+      JSON.stringify({
+        records: [
+          {
+            x: "North",
+            y: "West",
+            height: 30,
+            category: "Engine",
+            risk_score: 75,
+            variance: 5,
+          },
+        ],
+        callouts: [],
+        visualConfig: { terrain_mode: "heat_surface" },
+        summary: { top_peaks: [], bottom_valleys: [] },
+      }),
+    ),
+  ).runInNewContext({
     document: { getElementById: (id: string) => elements.get(id) },
     window: { devicePixelRatio: 1 },
     requestAnimationFrame() {},
   });
 
   listeners.get("keydown")?.({ key: "ArrowRight", preventDefault() {} });
-  assert.match(announcer.textContent, /Cell 1 of 1\. Cell North by West\. Height 30\. Category Engine\. Risk 75\. Variance 5/);
+  assert.match(
+    announcer.textContent,
+    /Cell 1 of 1\. Cell North by West\. Height 30\. Category Engine\. Risk 75\. Variance 5/,
+  );
   listeners.get("keydown")?.({ key: "Escape", preventDefault() {} });
   assert.equal(announcer.textContent, "Terrain cell selection cleared.");
 });
 
 function generate(component: ProjectComponent): string {
-  return new ProjectPreviewGenerator().generate(project, {
-    projectId: project.id,
-    version: 1,
-    components: [component],
-  }).files[0]?.content ?? "";
+  return (
+    new ProjectPreviewGenerator().generate(project, {
+      projectId: project.id,
+      version: 1,
+      components: [component],
+    }).files[0]?.content ?? ""
+  );
 }
 
-function createTerrainStory(overrides: Partial<ProjectComponent> = {}): ProjectComponent {
+function createTerrainStory(
+  overrides: Partial<ProjectComponent> = {},
+): ProjectComponent {
   return {
     key: "terrain-main",
     type: "TerrainStory",
@@ -248,7 +392,11 @@ function defaultProperties(): ProjectComponent["properties"] {
   };
 }
 
-function axis(field: string, scaleType: "categorical" | "continuous", transform = "none") {
+function axis(
+  field: string,
+  scaleType: "categorical" | "continuous",
+  transform = "none",
+) {
   return { field, displayName: "", scaleType, transform };
 }
 
@@ -286,6 +434,7 @@ function createLakebaseBinding(): ProjectComponent["bindings"] {
           schema: "analytics",
           table: "production_grid",
           database: "builder",
+          databaseId: "database-id",
           projectId: "project-1",
           branchId: "branch-1",
           endpointId: "endpoint-1",

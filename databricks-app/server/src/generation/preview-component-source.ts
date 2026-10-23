@@ -24,7 +24,13 @@ import {
   appendDataWindowHelpers,
   appendDataWindowReadHelpers,
 } from "./preview-data-window-helpers.ts";
-import { appendLakebaseHelpers, projectUsesLakebase } from "./preview-lakebase-helpers.ts";
+import {
+  appendLakebaseHelpers,
+  projectUsesLakebase,
+  projectUsesProvisionedLakebase,
+} from "./preview-lakebase-helpers.ts";
+import { appendLakebaseProvisionedHelpers } from "./preview-lakebase-provisioned-helpers.ts";
+import { appendEditableLakebaseHelpers } from "./preview-editable-lakebase-helpers.ts";
 
 /** Builds the complete deterministic preview source for a project. */
 export function generateProjectSource(
@@ -34,9 +40,19 @@ export function generateProjectSource(
 ): string {
   const imports = new Set(["import streamlit as st"]);
   const usesLakebase = projectUsesLakebase(components, workflow);
+  const usesProvisionedLakebase = projectUsesProvisionedLakebase(components, workflow);
+  const usesEditableLakebase = components.some((component) =>
+    component.type === "EditableDataWindow" && component.bindings !== null && (
+      Object.hasOwn(component.bindings, "lakebaseAutoscaling") ||
+      Object.hasOwn(component.bindings, "lakebaseProvisionedDatabase")
+    ),
+  );
   if (usesLakebase) {
     imports.add("import asyncio");
     imports.add("import asyncpg");
+  }
+  if (usesEditableLakebase) {
+    imports.add("import math");
   }
   if (components.some((component) => component.type === "Label" || component.type === "ModelChat")) {
     imports.add("import html");
@@ -136,7 +152,7 @@ export function generateProjectSource(
       : "ui_overrides = {'labels': {}}",
   ];
   const workflowEventKeys = workflow.workflows.length > 0
-    ? appendWorkflowRuntime(lines, workflow, components)
+    ? appendWorkflowRuntime(lines, workflow, components, usesProvisionedLakebase)
     : undefined;
   if (workflow.workflows.length > 0) {
     lines.push("");
@@ -180,6 +196,12 @@ export function generateProjectSource(
   }
   if (usesLakebase) {
     appendLakebaseHelpers(lines);
+  }
+  if (usesProvisionedLakebase) {
+    appendLakebaseProvisionedHelpers(lines);
+  }
+  if (usesEditableLakebase) {
+    appendEditableLakebaseHelpers(lines);
   }
   if (components.some((component) => component.type === "PieChart" || component.type === "DonutChart")) {
     appendRadialChartHelpers(lines);

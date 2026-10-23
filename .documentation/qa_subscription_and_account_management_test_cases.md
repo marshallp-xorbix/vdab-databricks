@@ -1,5 +1,7 @@
 # QA Test Cases — Signup, Subscription, Account / Tenant / User Management
 
+> **Legacy SaaS test cases:** These cases cover the former signup, billing, tenant, and account workflows; they are not evidence for standalone VDAB parity. Use the [current feature parity matrix](databricks-app-transition/feature-parity-matrix.md) and [manual workspace checklist](databricks-app-transition/manual-workspace-testing.md) for the standalone product.
+
 Manual QA test cases covering the end-to-end **signup**, **subscription/billing**, **seat & team
 membership**, **self-service account/tenant/user management** (across subscription tiers), and
 **global-administrator** workflows for the Xorbix Visual Databricks App Builder (VDAB).

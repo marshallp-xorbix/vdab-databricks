@@ -1,10 +1,27 @@
 import { defineConfig } from "vite";
+import { resolve } from "node:path";
 import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
+
+const isStandaloneDatabricksRuntime =
+  process.env.VITE_VDAB_RUNTIME === "databricks";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter()],
+  resolve: {
+    alias: isStandaloneDatabricksRuntime
+      ? [
+          {
+            find: /^(?:\.\.\/|\.\/)*telemetry$/,
+            replacement: resolve(
+              import.meta.dirname,
+              "src/telemetry/standalone.ts",
+            ),
+          },
+        ]
+      : [],
+  },
   build: {
     rollupOptions: {
       output: {

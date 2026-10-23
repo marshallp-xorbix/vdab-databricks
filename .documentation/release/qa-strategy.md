@@ -1,5 +1,7 @@
 # QA Strategy — What We Test, and Where
 
+> **Legacy SaaS release guidance:** This document describes the former .NET/Azure product and is retained only for transition reference. The standalone builder package is documented in [the Databricks App runbook](../../databricks-app/DEPLOYMENT.md); the current Azure pipeline only publishes that package and does not deploy it to Databricks.
+
 **Last Updated:** 2026-07-18
 **Applies to:** VDAB `dev`, `stg`, `prd` and the promotion pipeline in [`.pipelines/azure-pipelines.yml`](../../.pipelines/azure-pipelines.yml)
 **Companion document:** [Release & Deployment Workflow](./release-workflow.md)

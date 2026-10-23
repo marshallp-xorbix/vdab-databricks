@@ -1,4 +1,4 @@
-# Packaging steps — publish the App Service zip, the EF Core migration bundle, and the pipeline artifacts.
+# Packaging steps — publish the standalone Databricks App, temporary legacy App Service zip, and EF bundle.
 # Used ONLY by the full CI/CD job (templates/build.yml). The PR validation pipeline deliberately does NOT
 # run these: PR validation builds and tests, but produces no artifacts and never deploys.
 # These steps assume steps-build-test.yml has already run in the same job (checkout done, backend built).
@@ -44,6 +44,15 @@ steps:
     inputs:
       targetPath: "$(Build.ArtifactStagingDirectory)/package"
       artifact: "${{ parameters.artifactName }}"
+      publishLocation: "pipeline"
+
+  # Publish the exact self-contained package that operators deploy with the Databricks CLI.
+  # This is a pipeline artifact only; workspace deployment remains a separately authorized manual gate.
+  - task: PublishPipelineArtifact@1
+    displayName: Publish standalone Databricks App package
+    inputs:
+      targetPath: "$(Build.SourcesDirectory)/databricks-app/.build"
+      artifact: "vdab-databricks-app"
       publishLocation: "pipeline"
 
   # EF Core migration bundle (a self-contained migrate.exe applied during each deploy).

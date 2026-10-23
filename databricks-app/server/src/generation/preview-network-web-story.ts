@@ -5,7 +5,7 @@ import {
 } from "../db/project-component-network-web-story.ts";
 import { invalidNetworkWebStory } from "./preview-errors.ts";
 import { pythonString, formatPythonNumber } from "./preview-python.ts";
-import { lakebaseQueryOptions, quoteChartIdentifier, quoteChartTable, readChartBinding } from "./preview-chart-bindings.ts";
+import { lakebaseQueryExpression, quoteChartIdentifier, quoteChartTable, readChartBinding } from "./preview-chart-bindings.ts";
 import type { ChartBinding } from "./preview-chart-bindings.ts";
 import { NETWORK_WEB_STORY_HTML } from "./network-web-story-html.ts";
 
@@ -54,12 +54,8 @@ export function appendNetworkWebStory(
   const binding = readChartBinding(component.bindings, invalid);
   appendTitle(lines, component, variableName, properties.title);
 
-  if (binding.kind === "unsupported") {
-    lines.push("st.info('Lakebase Provisioned is retained for imported projects. Reselect a Lakebase Autoscaling table before previewing.')");
-    return;
-  }
-  if (binding.kind !== "unityCatalogTable" && binding.kind !== "lakebaseAutoscaling") {
-    lines.push("st.info('Bind a Unity Catalog or Lakebase Autoscaling table in the hosting workspace to continue.')");
+  if (binding.kind !== "unityCatalogTable" && binding.kind !== "lakebaseAutoscaling" && binding.kind !== "lakebaseProvisionedDatabase") {
+    lines.push("st.info('Bind a Unity Catalog or Lakebase table in the hosting workspace to continue.')");
     return;
   }
 
@@ -125,7 +121,7 @@ function appendQueryAndCanvas(
   const data = `${variableName}_data`;
   lines.push(
     "try:",
-    `    ${data} = _vdab_sql_query_df(${pythonString(binding.catalog ?? "")}, ${pythonString(binding.schema ?? "")}, ${pythonString(binding.table ?? "")}, ${MAX_NETWORK_QUERY_ROWS}, query_statement=${pythonString(query)}${lakebaseQueryOptions(binding)})`,
+    `    ${data} = ${lakebaseQueryExpression(binding, MAX_NETWORK_QUERY_ROWS, query)}`,
     `except RuntimeError as vdab_error_${variableName}:`,
     `    st.error(str(vdab_error_${variableName}))`,
     `    ${data} = pd.DataFrame(columns=['source_entity_id', 'target_entity_id', 'relationship_type', 'relationship_weight'])`,

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readGeneratedPythonFixture } from "./generated-python-fixture.ts";
 import test from "node:test";
 import type { ProjectSummary } from "../src/contracts.ts";
 import { ApplicationError } from "../src/application-error.ts";
@@ -43,60 +43,91 @@ const columns = [
 ];
 
 test("NetworkWebStoryPreview_MatchesLegacyGraphFixtureAndViewerQuery", async () => {
-  const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/network-web-story-app.py",
-    import.meta.url,
+  const expectedPython = await readGeneratedPythonFixture(
+    "network-web-story-app.py",
   );
-  const expectedPython = await readFile(fixturePath, "utf8");
   const python = generate(createNetworkWebStory());
 
   assert.equal(python, expectedPython);
   assert.match(python, /SELECT `source_id` AS source_entity_id/);
   assert.match(python, /`weight` AS relationship_weight/);
-  assert.match(python, /WHERE `snapshot_date` = \(SELECT MAX\(`snapshot_date`\)/);
-  assert.match(python, /_vdab_sql_query_df\('main', 'supply', 'edges', 1000, query_statement=/);
+  assert.match(
+    python,
+    /WHERE `snapshot_date` = \(SELECT MAX\(`snapshot_date`\)/,
+  );
+  assert.match(
+    python,
+    /_vdab_sql_query_df\('main', 'supply', 'edges', 1000, query_statement=/,
+  );
   assert.doesNotMatch(python, /LIMIT 1000/);
-  assert.match(python, /st\.context\.headers\.get\('x-forwarded-access-token'\)/);
+  assert.match(
+    python,
+    /st\.context\.headers\.get\('x-forwarded-access-token'\)/,
+  );
   assert.match(python, /const payload = __NETWORK_WEB_PAYLOAD__/);
   assert.match(python, /Search nodes by label/);
   assert.match(python, /function neighborhood\(rootId, depth\)/);
   assert.match(python, /pointerdown/);
   assert.match(python, /searchEl\.addEventListener/);
   assert.match(python, /function esc\(s\)/);
-  assert.match(python, /components\.html\(vdab_networkwebstory1_html, height=620, scrolling=False\)/);
+  assert.match(
+    python,
+    /components\.html\(vdab_networkwebstory1_html, height=620, scrolling=False\)/,
+  );
 });
 
 test("NetworkWebStoryCanvas_SupportsKeyboardAndAnnouncesStateChanges", () => {
-  assert.match(NETWORK_WEB_STORY_HTML, /role="group" tabindex="0" aria-describedby="hint"/);
-  assert.match(NETWORK_WEB_STORY_HTML, /setAttribute\('aria-label','Toggle category /);
+  assert.match(
+    NETWORK_WEB_STORY_HTML,
+    /role="group" tabindex="0" aria-describedby="hint"/,
+  );
+  assert.match(
+    NETWORK_WEB_STORY_HTML,
+    /setAttribute\('aria-label','Toggle category /,
+  );
   assert.match(NETWORK_WEB_STORY_HTML, /aria-pressed/);
   assert.match(NETWORK_WEB_STORY_HTML, /ArrowRight/);
   assert.match(NETWORK_WEB_STORY_HTML, /aria-live="polite"/);
-  assert.match(NETWORK_WEB_STORY_HTML, /announcer\.textContent='Focused node '/);
+  assert.match(
+    NETWORK_WEB_STORY_HTML,
+    /announcer\.textContent='Focused node '/,
+  );
   assert.match(NETWORK_WEB_STORY_HTML, /document\.createElement\('button'\)/);
 });
 
 test("NetworkWebStoryPreview_MapsEveryOptionalRoleAndAppearanceSetting", () => {
-  const python = generate(createNetworkWebStory({
-    properties: {
-      ...defaultProperties(),
-      layoutAlgorithm: "radial",
-      nodeSizeBy: "value",
-      nodeColorBy: "risk_score",
-      edgeWidthBy: "frequency",
-      edgeColorBy: "status",
-      showArrows: false,
-      highlightDepth: 3,
-      minWeightFilter: 25.5,
-      maxNodes: 120,
-      maxEdges: 400,
-    },
-  }));
+  const python = generate(
+    createNetworkWebStory({
+      properties: {
+        ...defaultProperties(),
+        layoutAlgorithm: "radial",
+        nodeSizeBy: "value",
+        nodeColorBy: "risk_score",
+        edgeWidthBy: "frequency",
+        edgeColorBy: "status",
+        showArrows: false,
+        highlightDepth: 3,
+        minWeightFilter: 25.5,
+        maxNodes: 120,
+        maxEdges: 400,
+      },
+    }),
+  );
 
   for (const alias of [
-    "direction", "edge_value", "frequency", "edge_risk_score", "edge_status", "source_category",
-    "target_category", "source_value", "target_value", "source_health_score", "target_health_score",
-    "source_risk_score", "target_risk_score",
+    "direction",
+    "edge_value",
+    "frequency",
+    "edge_risk_score",
+    "edge_status",
+    "source_category",
+    "target_category",
+    "source_value",
+    "target_value",
+    "source_health_score",
+    "target_health_score",
+    "source_risk_score",
+    "target_risk_score",
   ]) {
     assert.match(python, new RegExp(`AS ${alias}`));
   }
@@ -119,68 +150,126 @@ test("NetworkWebStoryInput_AcceptsAnyFiniteNonNegativeWeightThreshold", () => {
     properties: { ...defaultProperties(), minWeightFilter: Number.MAX_VALUE },
   });
 
-  assert.doesNotThrow(() => readComponentsInput({ version: 1, components: [story] }));
-  assert.ok(generate(story).includes("'min_weight_filter': 1.7976931348623157e+308"));
+  assert.doesNotThrow(() =>
+    readComponentsInput({ version: 1, components: [story] }),
+  );
+  assert.ok(
+    generate(story).includes("'min_weight_filter': 1.7976931348623157e+308"),
+  );
 });
 
 test("NetworkWebStoryPreview_PreservesIncompleteAndLakebaseBindings", () => {
-  const incompletePython = generate(createNetworkWebStory({
-    properties: { ...defaultProperties(), relationshipWeight: axis("", "continuous") },
-  }));
-  const lakebasePython = generate(createNetworkWebStory({ bindings: createLakebaseBinding() }));
+  const incompletePython = generate(
+    createNetworkWebStory({
+      properties: {
+        ...defaultProperties(),
+        relationshipWeight: axis("", "continuous"),
+      },
+    }),
+  );
+  const lakebasePython = generate(
+    createNetworkWebStory({ bindings: createLakebaseBinding() }),
+  );
 
   assert.match(incompletePython, /Map the required NetworkWebStory fields/);
   assert.doesNotMatch(incompletePython, /query_statement=/);
   assert.match(lakebasePython, /_vdab_sql_query_df\(/);
-  assert.match(lakebasePython, /source_kind='lakebaseAutoscaling', database='appdb'/);
+  assert.match(
+    lakebasePython,
+    /source_kind='lakebaseAutoscaling', database='appdb'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/,
+  );
 });
 
 test("NetworkWebStoryInput_RejectsMalformedPropertiesBindingsAndShape", () => {
   const invalidComponents: ProjectComponent[] = [
-    createNetworkWebStory({ properties: { ...defaultProperties(), unknown: true } }),
-    createNetworkWebStory({ properties: { ...defaultProperties(), sourceEntityId: axis("source_id", "continuous") } }),
-    createNetworkWebStory({ properties: { ...defaultProperties(), relationshipWeight: axis("weight", "continuous", "sum") } }),
-    createNetworkWebStory({ properties: { ...defaultProperties(), layoutAlgorithm: "circular" } }),
-    createNetworkWebStory({ properties: { ...defaultProperties(), maxNodes: 501 } }),
-    createNetworkWebStory({ properties: { ...defaultProperties(), minWeightFilter: -1 } }),
-    createNetworkWebStory({ properties: { ...defaultProperties(), sourceEntityLabel: axis("missing_label", "categorical") } }),
-    createNetworkWebStory({ properties: { ...defaultProperties(), edgeValue: axis("source_label", "continuous") } }),
+    createNetworkWebStory({
+      properties: { ...defaultProperties(), unknown: true },
+    }),
+    createNetworkWebStory({
+      properties: {
+        ...defaultProperties(),
+        sourceEntityId: axis("source_id", "continuous"),
+      },
+    }),
+    createNetworkWebStory({
+      properties: {
+        ...defaultProperties(),
+        relationshipWeight: axis("weight", "continuous", "sum"),
+      },
+    }),
+    createNetworkWebStory({
+      properties: { ...defaultProperties(), layoutAlgorithm: "circular" },
+    }),
+    createNetworkWebStory({
+      properties: { ...defaultProperties(), maxNodes: 501 },
+    }),
+    createNetworkWebStory({
+      properties: { ...defaultProperties(), minWeightFilter: -1 },
+    }),
+    createNetworkWebStory({
+      properties: {
+        ...defaultProperties(),
+        sourceEntityLabel: axis("missing_label", "categorical"),
+      },
+    }),
+    createNetworkWebStory({
+      properties: {
+        ...defaultProperties(),
+        edgeValue: axis("source_label", "continuous"),
+      },
+    }),
     createNetworkWebStory({ children: ["nested-child"] }),
     createNetworkWebStory({ layout: { columns: 2 } }),
-    createNetworkWebStory({ bindings: { ...createUnityCatalogBinding(), workspaceHost: "https://outside.invalid" } }),
+    createNetworkWebStory({
+      bindings: {
+        ...createUnityCatalogBinding(),
+        workspaceHost: "https://outside.invalid",
+      },
+    }),
   ];
 
   for (const component of invalidComponents) {
     assert.throws(
       () => readComponentsInput({ version: 1, components: [component] }),
-      (error: unknown) => error instanceof ApplicationError && error.status === 400,
+      (error: unknown) =>
+        error instanceof ApplicationError && error.status === 400,
     );
   }
 });
 
 test("NetworkWebStoryPreview_RejectsMalformedPersistedComponent", () => {
   for (const component of [
-    createNetworkWebStory({ properties: { ...defaultProperties(), showArrows: "true" } }),
-    createNetworkWebStory({ properties: { ...defaultProperties(), edgeColorBy: "external_value" } }),
+    createNetworkWebStory({
+      properties: { ...defaultProperties(), showArrows: "true" },
+    }),
+    createNetworkWebStory({
+      properties: { ...defaultProperties(), edgeColorBy: "external_value" },
+    }),
     createNetworkWebStory({ schemaVersion: 2 }),
   ]) {
     assert.throws(
       () => generate(component),
-      (error: unknown) => error instanceof ApplicationError && error.status === 422 &&
+      (error: unknown) =>
+        error instanceof ApplicationError &&
+        error.status === 422 &&
         error.code === "invalid_network_web_story_properties",
     );
   }
 });
 
 function generate(component: ProjectComponent): string {
-  return new ProjectPreviewGenerator().generate(project, {
-    projectId: project.id,
-    version: 1,
-    components: [component],
-  }).files[0]?.content ?? "";
+  return (
+    new ProjectPreviewGenerator().generate(project, {
+      projectId: project.id,
+      version: 1,
+      components: [component],
+    }).files[0]?.content ?? ""
+  );
 }
 
-function createNetworkWebStory(overrides: Partial<ProjectComponent> = {}): ProjectComponent {
+function createNetworkWebStory(
+  overrides: Partial<ProjectComponent> = {},
+): ProjectComponent {
   return {
     key: "network-web-main",
     type: "NetworkWebStory",
@@ -232,7 +321,11 @@ function defaultProperties(): ProjectComponent["properties"] {
   };
 }
 
-function axis(field: string, scaleType: "categorical" | "continuous", transform = "none") {
+function axis(
+  field: string,
+  scaleType: "categorical" | "continuous",
+  transform = "none",
+) {
   return { field, displayName: "", scaleType, transform };
 }
 
@@ -267,6 +360,7 @@ function createLakebaseBinding(): ProjectComponent["bindings"] {
         resource: {
           type: "lakebaseAutoscaling",
           database: "appdb",
+          databaseId: "database-id",
           projectId: "db-project",
           branchId: "production",
           endpointId: "read-write",
@@ -281,4 +375,3 @@ function createLakebaseBinding(): ProjectComponent["bindings"] {
     },
   };
 }
-

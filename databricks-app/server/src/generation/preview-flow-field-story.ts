@@ -7,7 +7,7 @@ import { invalidFlowFieldStory } from "./preview-errors.ts";
 import { pythonString } from "./preview-python.ts";
 import {
   chartMeasureExpression,
-  lakebaseQueryOptions,
+  lakebaseQueryExpression,
   quoteChartIdentifier,
   quoteChartTable,
   readChartBinding,
@@ -45,12 +45,8 @@ export function appendFlowFieldStory(
   const binding = readChartBinding(component.bindings, invalid);
   appendTitle(lines, component, variableName, properties.title);
 
-  if (binding.kind === "unsupported") {
-    lines.push("st.info('Lakebase Provisioned is retained for imported projects. Reselect a Lakebase Autoscaling table before previewing.')");
-    return;
-  }
-  if (binding.kind !== "unityCatalogTable" && binding.kind !== "lakebaseAutoscaling") {
-    lines.push("st.info('Bind a Unity Catalog or Lakebase Autoscaling table in the hosting workspace to continue.')");
+  if (binding.kind !== "unityCatalogTable" && binding.kind !== "lakebaseAutoscaling" && binding.kind !== "lakebaseProvisionedDatabase") {
+    lines.push("st.info('Bind a Unity Catalog or Lakebase table in the hosting workspace to continue.')");
     return;
   }
 
@@ -159,7 +155,7 @@ function appendQueryAndCanvas(
   const data = `${variableName}_data`;
   lines.push(
     "try:",
-    `    ${data} = _vdab_sql_query_df(${pythonString(binding.catalog ?? "")}, ${pythonString(binding.schema ?? "")}, ${pythonString(binding.table ?? "")}, ${MAX_FLOW_FIELD_QUERY_ROWS}, query_statement=${pythonString(query)}${lakebaseQueryOptions(binding)})`,
+    `    ${data} = ${lakebaseQueryExpression(binding, MAX_FLOW_FIELD_QUERY_ROWS, query)}`,
     `except RuntimeError as vdab_error_${variableName}:`,
     `    st.error(str(vdab_error_${variableName}))`,
     `    ${data} = pd.DataFrame(columns=['source_stage', 'destination_stage', 'flow_volume', 'stage_order'])`,

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readGeneratedPythonFixture } from "./generated-python-fixture.ts";
 import test from "node:test";
 import type { ProjectSummary } from "../src/contracts.ts";
 import { ApplicationError } from "../src/application-error.ts";
@@ -36,22 +36,32 @@ const columns = [
 ];
 
 test("HoneycombStoryPreview_MatchesFixtureAndUsesViewerAuthorizedItemQuery", async () => {
-  const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/honeycomb-story-app.py",
-    import.meta.url,
+  const expectedPython = await readGeneratedPythonFixture(
+    "honeycomb-story-app.py",
   );
-  const expectedPython = await readFile(fixturePath, "utf8");
   const python = generate(createHoneycombStory());
 
   assert.equal(python, expectedPython);
-  assert.match(python, /SELECT `item_id` AS item_name, AVG\(`impact`\) AS impact_score/);
+  assert.match(
+    python,
+    /SELECT `item_id` AS item_name, AVG\(`impact`\) AS impact_score/,
+  );
   assert.match(python, /MAX\(`priority`\) AS priority_level/);
   assert.match(python, /MAX\(`category`\) AS category/);
   assert.match(python, /GROUP BY `item_id`'\)/);
   assert.doesNotMatch(python, /GROUP BY `item_id` LIMIT 100/);
-  assert.match(python, /WHERE `snapshot_date` = \(SELECT MAX\(`snapshot_date`\)/);
-  assert.match(python, /_vdab_sql_query_df\('main', 'sales', 'portfolio_items', 100, query_statement=/);
-  assert.match(python, /st\.context\.headers\.get\('x-forwarded-access-token'\)/);
+  assert.match(
+    python,
+    /WHERE `snapshot_date` = \(SELECT MAX\(`snapshot_date`\)/,
+  );
+  assert.match(
+    python,
+    /_vdab_sql_query_df\('main', 'sales', 'portfolio_items', 100, query_statement=/,
+  );
+  assert.match(
+    python,
+    /st\.context\.headers\.get\('x-forwarded-access-token'\)/,
+  );
   assert.match(python, /high_impact_low_progress/);
   assert.match(python, /delivery_health/);
   assert.match(python, /const RISK_THRESHOLD = 70/);
@@ -59,20 +69,25 @@ test("HoneycombStoryPreview_MatchesFixtureAndUsesViewerAuthorizedItemQuery", asy
   assert.match(python, /wheel/);
   assert.match(python, /__HONEYCOMB_PAYLOAD__/);
   assert.match(python, /\.replace\('<', '\\\\u003c'\)/);
-  assert.match(python, /components\.html\(vdab_honeycombstory1_html, height=560, scrolling=False\)/);
+  assert.match(
+    python,
+    /components\.html\(vdab_honeycombstory1_html, height=560, scrolling=False\)/,
+  );
 });
 
 test("HoneycombStoryPreview_UsesOptionalRolesAndVisualSettings", () => {
-  const python = generate(createHoneycombStory({
-    properties: {
-      ...defaultProperties(),
-      showLabels: false,
-      showRiskBorders: false,
-      showTrendArrows: false,
-      impactScore: axis("impact", "continuous", "max"),
-      investment: axis("investment", "continuous", "avg"),
-    },
-  }));
+  const python = generate(
+    createHoneycombStory({
+      properties: {
+        ...defaultProperties(),
+        showLabels: false,
+        showRiskBorders: false,
+        showTrendArrows: false,
+        impactScore: axis("impact", "continuous", "max"),
+        investment: axis("investment", "continuous", "avg"),
+      },
+    }),
+  );
 
   assert.match(python, /MAX\(`impact`\) AS impact_score/);
   assert.match(python, /MAX\(`due_date`\) AS due_date/);
@@ -85,59 +100,110 @@ test("HoneycombStoryPreview_UsesOptionalRolesAndVisualSettings", () => {
 });
 
 test("HoneycombStoryPreview_PreservesIncompleteAndLakebaseBindings", () => {
-  const incompletePython = generate(createHoneycombStory({
-    properties: { ...defaultProperties(), itemName: axis("", "categorical", "none") },
-  }));
-  const lakebasePython = generate(createHoneycombStory({ bindings: createLakebaseBinding() }));
+  const incompletePython = generate(
+    createHoneycombStory({
+      properties: {
+        ...defaultProperties(),
+        itemName: axis("", "categorical", "none"),
+      },
+    }),
+  );
+  const lakebasePython = generate(
+    createHoneycombStory({ bindings: createLakebaseBinding() }),
+  );
 
   assert.match(incompletePython, /Map the required HoneycombStory fields/);
   assert.doesNotMatch(incompletePython, /query_statement=/);
   assert.match(lakebasePython, /_vdab_sql_query_df\(/);
-  assert.match(lakebasePython, /source_kind='lakebaseAutoscaling', database='appdb'/);
+  assert.match(
+    lakebasePython,
+    /source_kind='lakebaseAutoscaling', database='appdb'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/,
+  );
 });
 
 test("HoneycombStoryInput_RejectsInvalidMappingsTypesAndComponentShape", () => {
   const invalidComponents = [
-    createHoneycombStory({ properties: { ...defaultProperties(), unexpected: true } }),
-    createHoneycombStory({ properties: { ...defaultProperties(), impactScore: axis("impact", "categorical", "avg") } }),
-    createHoneycombStory({ properties: { ...defaultProperties(), impactScore: axis("impact", "continuous", "median") } }),
-    createHoneycombStory({ properties: { ...defaultProperties(), impactScore: axis("missing", "continuous", "avg") } }),
-    createHoneycombStory({ properties: { ...defaultProperties(), status: axis("missing", "categorical", "none") } }),
+    createHoneycombStory({
+      properties: { ...defaultProperties(), unexpected: true },
+    }),
+    createHoneycombStory({
+      properties: {
+        ...defaultProperties(),
+        impactScore: axis("impact", "categorical", "avg"),
+      },
+    }),
+    createHoneycombStory({
+      properties: {
+        ...defaultProperties(),
+        impactScore: axis("impact", "continuous", "median"),
+      },
+    }),
+    createHoneycombStory({
+      properties: {
+        ...defaultProperties(),
+        impactScore: axis("missing", "continuous", "avg"),
+      },
+    }),
+    createHoneycombStory({
+      properties: {
+        ...defaultProperties(),
+        status: axis("missing", "categorical", "none"),
+      },
+    }),
     createHoneycombStory({ children: ["nested-child"] }),
     createHoneycombStory({ layout: { columns: 2 } }),
-    createHoneycombStory({ bindings: { ...createUnityCatalogBinding(), workspaceHost: "https://outside.invalid" } }),
+    createHoneycombStory({
+      bindings: {
+        ...createUnityCatalogBinding(),
+        workspaceHost: "https://outside.invalid",
+      },
+    }),
   ];
 
   for (const component of invalidComponents) {
     assert.throws(
       () => readComponentsInput({ version: 1, components: [component] }),
-      (error: unknown) => error instanceof ApplicationError && error.status === 400,
+      (error: unknown) =>
+        error instanceof ApplicationError && error.status === 400,
     );
   }
 });
 
 test("HoneycombStoryPreview_RejectsMalformedPersistedPropertiesAndShape", () => {
   assert.throws(
-    () => generate(createHoneycombStory({ properties: { ...defaultProperties(), showLabels: "yes" } })),
-    (error: unknown) => error instanceof ApplicationError && error.status === 422 &&
+    () =>
+      generate(
+        createHoneycombStory({
+          properties: { ...defaultProperties(), showLabels: "yes" },
+        }),
+      ),
+    (error: unknown) =>
+      error instanceof ApplicationError &&
+      error.status === 422 &&
       error.code === "invalid_honeycomb_story_properties",
   );
   assert.throws(
     () => generate(createHoneycombStory({ children: ["nested-child"] })),
-    (error: unknown) => error instanceof ApplicationError && error.status === 422 &&
+    (error: unknown) =>
+      error instanceof ApplicationError &&
+      error.status === 422 &&
       error.code === "invalid_honeycomb_story_properties",
   );
 });
 
 function generate(component: ProjectComponent): string {
-  return new ProjectPreviewGenerator().generate(project, {
-    projectId: project.id,
-    version: 1,
-    components: [component],
-  }).files[0]?.content ?? "";
+  return (
+    new ProjectPreviewGenerator().generate(project, {
+      projectId: project.id,
+      version: 1,
+      components: [component],
+    }).files[0]?.content ?? ""
+  );
 }
 
-function createHoneycombStory(overrides: Partial<ProjectComponent> = {}): ProjectComponent {
+function createHoneycombStory(
+  overrides: Partial<ProjectComponent> = {},
+): ProjectComponent {
   return {
     key: "honeycomb-story-main",
     type: "HoneycombStory",
@@ -176,7 +242,11 @@ function defaultProperties(): ProjectComponent["properties"] {
   };
 }
 
-function axis(field: string, scaleType: "categorical" | "continuous", transform: string) {
+function axis(
+  field: string,
+  scaleType: "categorical" | "continuous",
+  transform: string,
+) {
   return { field, displayName: "", scaleType, transform };
 }
 
@@ -211,6 +281,7 @@ function createLakebaseBinding(): ProjectComponent["bindings"] {
         resource: {
           type: "lakebaseAutoscaling",
           database: "appdb",
+          databaseId: "database-id",
           projectId: "db-project",
           branchId: "production",
           endpointId: "read-write",

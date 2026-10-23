@@ -46,6 +46,18 @@ vi.mock("../../../../../hooks/useWorkspaceLakebaseEndpoints", () => ({
   }),
 }));
 
+vi.mock("../../../../../hooks/useWorkspaceLakebaseProvisionedInstances", () => ({
+  useWorkspaceLakebaseProvisionedInstances: () => ({
+    data: {
+      items: [{ instanceName: "legacy-provisioned", state: "AVAILABLE" }],
+      authenticationMode: "local-test",
+    },
+    error: null,
+    isError: false,
+    isPending: false,
+  }),
+}));
+
 describe("BuildSqlEditor", () => {
   it("selects a current-workspace warehouse without saving workspace authority", async () => {
     const user = userEvent.setup();
@@ -131,5 +143,50 @@ describe("BuildSqlEditor", () => {
 
     expect(screen.queryByText("SQL warehouse")).not.toBeInTheDocument();
     expect(screen.getByText(/Prefer escaped placeholders over raw/i)).toBeInTheDocument();
+  });
+
+  it("binds Provisioned SQL to a current-workspace instance and generated database resource", async () => {
+    const user = userEvent.setup();
+    const node: BuildSqlNode = {
+      id: "build-query",
+      actionType: "BuildSql",
+      schemaVersion: 1,
+      params: {
+        sqlSourceKind: "lakebaseProvisionedDatabase",
+        sqlTemplate: "SELECT 1",
+        placeholders: [],
+      },
+    };
+    const workflow: Workflow = {
+      codeName: "refreshData",
+      trigger: { componentCodeName: "refreshButton", eventKey: "onClick" },
+      nodes: [node],
+      edges: [],
+    };
+    const onUpdateNode = vi.fn<WorkflowActionEditorProps["onUpdateNode"]>();
+
+    render(
+      <BuildSqlEditor
+        workflowId="refreshData"
+        workflow={workflow}
+        node={node}
+        components={[]}
+        onUpdateNode={onUpdateNode}
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox", { name: "Current-workspace Provisioned instance" }));
+    await user.click(await screen.findByRole("option", { name: "legacy-provisioned · AVAILABLE" }));
+
+    await waitFor(() => expect(onUpdateNode).toHaveBeenCalledTimes(1));
+    const update = onUpdateNode.mock.calls[0]?.[2];
+    expect(update?.(node)).toMatchObject({
+      params: {
+        sqlSourceKind: "lakebaseProvisionedDatabase",
+        lakebaseInstanceName: "legacy-provisioned",
+        lakebaseAppResourceName: "database",
+        lakebaseDatabaseName: "databricks_postgres",
+      },
+    });
   });
 });

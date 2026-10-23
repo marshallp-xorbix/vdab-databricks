@@ -11,6 +11,10 @@ export interface BuildSqlParams {
   lakebaseAppResourceName?: string;
   /** Postgres database name for the selected Lakebase resource. */
   lakebaseDatabaseName?: string;
+  /** Current-workspace Autoscaling database ID used to bind a child App resource. */
+  lakebaseDatabaseId?: string;
+  /** Current-workspace Provisioned instance for caller-scoped credentials. */
+  lakebaseInstanceName?: string;
   /** Current-workspace Autoscaling endpoint components for user-scoped credentials. */
   lakebaseProjectId?: string;
   lakebaseBranchId?: string;

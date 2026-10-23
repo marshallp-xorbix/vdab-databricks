@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { ProjectCollaborator, ProjectSummary } from "../contracts.ts";
 import { ApplicationError } from "../application-error.ts";
+import { PostgresProjectCollaboratorRepository } from "./project-collaborator-repository.ts";
+import { insertAuditEvent } from "./project-repository-audit.ts";
+import { rollbackProjectTransaction } from "./project-repository-transaction.ts";
 import type { SqlPool } from "./sql.ts";
+
+export { insertAuditEvent } from "./project-repository-audit.ts";
 
 /** Trusted caller data used by project persistence authorization predicates. */
 export interface ProjectActor {
@@ -42,12 +47,16 @@ export interface ProjectAuditEvent {
 export interface ProjectRepository {
   createProject(input: NewProject): Promise<ProjectSummary>;
   listProjects(actor: ProjectActor): Promise<ProjectSummary[]>;
-  getProject(projectId: string, actor: ProjectActor): Promise<ProjectSummary | null>;
+  getProject(
+    projectId: string,
+    actor: ProjectActor,
+  ): Promise<ProjectSummary | null>;
   updateProject(
     projectId: string,
     metadata: ProjectMetadata,
     actor: ProjectActor,
   ): Promise<ProjectSummary | null>;
+  deleteProject(projectId: string, actor: ProjectActor): Promise<boolean>;
   listCollaborators(
     projectId: string,
     actor: ProjectActor,
@@ -75,13 +84,6 @@ interface ProjectRow extends Record<string, unknown> {
   caller_role?: ProjectSummary["callerRole"];
 }
 
-interface CollaboratorRow extends Record<string, unknown> {
-  user_id: string;
-  role: "editor";
-  granted_by: string;
-  created_at: Date | string;
-}
-
 const PROJECT_NOT_FOUND = () =>
   new ApplicationError(
     404,
@@ -93,9 +95,13 @@ const PROJECT_NOT_FOUND = () =>
 /** PostgreSQL implementation using parameterized queries and explicit transactions. */
 export class PostgresProjectRepository implements ProjectRepository {
   private readonly pool: SqlPool;
+  private readonly collaboratorRepository: PostgresProjectCollaboratorRepository;
 
   constructor(pool: SqlPool) {
     this.pool = pool;
+    this.collaboratorRepository = new PostgresProjectCollaboratorRepository(
+      pool,
+    );
   }
 
   async createProject(input: NewProject): Promise<ProjectSummary> {
@@ -109,7 +115,13 @@ export class PostgresProjectRepository implements ProjectRepository {
           (id, workspace_id, name, description, created_by)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, name, description, version, created_by, created_at, updated_at`,
-        [projectId, input.workspaceId, input.name, input.description, input.actorId],
+        [
+          projectId,
+          input.workspaceId,
+          input.name,
+          input.description,
+          input.actorId,
+        ],
       );
       const row = requireRow(result.rows[0]);
       await insertAuditEvent(client, {
@@ -123,7 +135,7 @@ export class PostgresProjectRepository implements ProjectRepository {
       await client.query("COMMIT");
       return toProjectSummary(row, "owner");
     } catch (error) {
-      await rollback(client);
+      await rollbackProjectTransaction(client);
 
       if (isProjectNameConflict(error)) {
         throw new ApplicationError(
@@ -259,7 +271,12 @@ export class PostgresProjectRepository implements ProjectRepository {
                WHERE c.project_id = p.id AND c.user_id = $3 AND c.role = 'editor'
              ) OR $4)
            LIMIT 1`,
-          [projectId, actor.workspaceId, actor.userId, actor.isInstallationAdmin],
+          [
+            projectId,
+            actor.workspaceId,
+            actor.userId,
+            actor.isInstallationAdmin,
+          ],
         );
 
         if (accessibleProject.rows[0]) {
@@ -292,7 +309,7 @@ export class PostgresProjectRepository implements ProjectRepository {
       await client.query("COMMIT");
       return toProjectSummary(row, row.caller_role ?? "viewer");
     } catch (error) {
-      await rollback(client);
+      await rollbackProjectTransaction(client);
 
       if (isProjectNameConflict(error)) {
         throw new ApplicationError(
@@ -309,49 +326,55 @@ export class PostgresProjectRepository implements ProjectRepository {
     }
   }
 
+  /** Soft-deletes an owned project and records the action in one transaction. */
+  async deleteProject(
+    projectId: string,
+    actor: ProjectActor,
+  ): Promise<boolean> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+      const deletion = await client.query<{ created_by: string }>(
+        `UPDATE vdab_projects
+         SET deleted_at = now(), version = version + 1, updated_at = now()
+         WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+           AND (created_by = $3 OR $4)
+         RETURNING created_by`,
+        [projectId, actor.workspaceId, actor.userId, actor.isInstallationAdmin],
+      );
+      const project = deletion.rows[0];
+
+      if (!project) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+
+      await insertAuditEvent(client, {
+        workspaceId: actor.workspaceId,
+        projectId,
+        actorId: actor.userId,
+        action:
+          actor.isInstallationAdmin && project.created_by !== actor.userId
+            ? "project.delete.recovery"
+            : "project.delete",
+        requestId: actor.requestId,
+      });
+      await client.query("COMMIT");
+      return true;
+    } catch (error) {
+      await rollbackProjectTransaction(client);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async listCollaborators(
     projectId: string,
     actor: ProjectActor,
   ): Promise<ProjectCollaborator[] | null> {
-    const projectResult = await this.pool.query<{ created_by: string }>(
-      `SELECT created_by FROM vdab_projects
-       WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-         AND (created_by = $3 OR $4)
-       LIMIT 1`,
-      [projectId, actor.workspaceId, actor.userId, actor.isInstallationAdmin],
-    );
-
-    if (!projectResult.rows[0]) {
-      return null;
-    }
-
-    const result = await this.pool.query<CollaboratorRow>(
-      `SELECT user_id, role, granted_by, created_at
-       FROM vdab_project_collaborators
-       WHERE project_id = $1
-       ORDER BY created_at, user_id`,
-      [projectId],
-    );
-
-    if (
-      actor.isInstallationAdmin &&
-      projectResult.rows[0].created_by !== actor.userId
-    ) {
-      await insertAuditEvent(this.pool, {
-        workspaceId: actor.workspaceId,
-        projectId,
-        actorId: actor.userId,
-        action: "project.collaborators.read.recovery",
-        requestId: actor.requestId,
-      });
-    }
-
-    return result.rows.map((row) => ({
-      userId: row.user_id,
-      role: row.role,
-      grantedBy: row.granted_by,
-      createdAt: toIsoString(row.created_at),
-    }));
+    return this.collaboratorRepository.listCollaborators(projectId, actor);
   }
 
   async grantEditor(
@@ -359,48 +382,11 @@ export class PostgresProjectRepository implements ProjectRepository {
     collaboratorId: string,
     actor: ProjectActor,
   ): Promise<boolean> {
-    const client = await this.pool.connect();
-
-    try {
-      await client.query("BEGIN");
-      const ownerResult = await client.query<{ created_by: string }>(
-        `SELECT created_by FROM vdab_projects
-         WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-           AND (created_by = $3 OR $4)
-         FOR UPDATE`,
-        [projectId, actor.workspaceId, actor.userId, actor.isInstallationAdmin],
-      );
-
-      if (!ownerResult.rows[0]) {
-        await client.query("ROLLBACK");
-        return false;
-      }
-
-      await client.query(
-        `INSERT INTO vdab_project_collaborators
-          (project_id, user_id, role, granted_by)
-         VALUES ($1, $2, 'editor', $3)
-         ON CONFLICT (project_id, user_id)
-         DO UPDATE SET role = 'editor', granted_by = EXCLUDED.granted_by,
-                       created_at = now()`,
-        [projectId, collaboratorId, actor.userId],
-      );
-      await insertAuditEvent(client, {
-        workspaceId: actor.workspaceId,
-        projectId,
-        actorId: actor.userId,
-        action: "project.collaborator.grant-editor",
-        requestId: actor.requestId,
-        metadata: { targetUserId: collaboratorId },
-      });
-      await client.query("COMMIT");
-      return true;
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
-    }
+    return this.collaboratorRepository.grantEditor(
+      projectId,
+      collaboratorId,
+      actor,
+    );
   }
 
   async removeEditor(
@@ -408,93 +394,11 @@ export class PostgresProjectRepository implements ProjectRepository {
     collaboratorId: string,
     actor: ProjectActor,
   ): Promise<boolean> {
-    const client = await this.pool.connect();
-
-    try {
-      await client.query("BEGIN");
-      const ownerResult = await client.query<{ created_by: string }>(
-        `SELECT created_by FROM vdab_projects
-         WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-           AND (created_by = $3 OR $4)
-         FOR UPDATE`,
-        [projectId, actor.workspaceId, actor.userId, actor.isInstallationAdmin],
-      );
-
-      const owner = ownerResult.rows[0];
-
-      if (!owner) {
-        await client.query("ROLLBACK");
-        return false;
-      }
-
-      const removal = await client.query<{ user_id: string }>(
-        `DELETE FROM vdab_project_collaborators
-         WHERE project_id = $1 AND user_id = $2 AND user_id <> $3 AND user_id <> $4
-         RETURNING user_id`,
-        [projectId, collaboratorId, owner.created_by, actor.userId],
-      );
-
-      if ((removal.rowCount ?? 0) > 0) {
-        await insertAuditEvent(client, {
-          workspaceId: actor.workspaceId,
-          projectId,
-          actorId: actor.userId,
-          action: "project.collaborator.revoke-editor",
-          requestId: actor.requestId,
-          metadata: { targetUserId: collaboratorId },
-        });
-      }
-
-      await client.query("COMMIT");
-      return true;
-    } catch (error) {
-      await rollback(client);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-}
-
-/** Appends a parameterized install-local audit event on the supplied connection. */
-export async function insertAuditEvent(
-  client: Pick<SqlPool, "query">,
-  event: ProjectAuditEvent,
-): Promise<void> {
-  const values: unknown[] = [
-    randomUUID(),
-    event.workspaceId,
-    event.projectId,
-    event.actorId,
-    event.action,
-  ];
-  if (event.parameterizeOutcome) {
-    values.push("success");
-  }
-
-  values.push(event.requestId);
-
-  if (event.metadata) {
-    values.push(JSON.stringify(event.metadata));
-  }
-
-  const placeholders = values.map((_, index) => `$${index + 1}`);
-  const query = event.parameterizeOutcome
-    ? `INSERT INTO vdab_audit_events
-        (id, workspace_id, project_id, actor_id, action, outcome, source_request_id${event.metadata ? ", metadata" : ""})
-       VALUES (${placeholders.join(", ")})`
-    : `INSERT INTO vdab_audit_events
-        (id, workspace_id, project_id, actor_id, action, source_request_id, outcome${event.metadata ? ", metadata" : ""})
-       VALUES (${placeholders.slice(0, 5).join(", ")}, ${placeholders[5]}, 'success'${event.metadata ? `, ${placeholders[6]}` : ""})`;
-
-  await client.query(query, values);
-}
-
-async function rollback(client: { query(text: string): Promise<unknown> }): Promise<void> {
-  try {
-    await client.query("ROLLBACK");
-  } catch {
-    // Preserve the original repository error when PostgreSQL has ended the transaction.
+    return this.collaboratorRepository.removeEditor(
+      projectId,
+      collaboratorId,
+      actor,
+    );
   }
 }
 
@@ -523,7 +427,9 @@ function toProjectSummary(
 }
 
 function toIsoString(value: Date | string): string {
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+  return value instanceof Date
+    ? value.toISOString()
+    : new Date(value).toISOString();
 }
 
 function isProjectNameConflict(error: unknown): boolean {

@@ -3,6 +3,11 @@ import type { ProjectSummary } from "../contracts.ts";
 import type { ProjectComponentsDocument } from "../db/project-components-contract.ts";
 import type { ProjectWorkflowDefinition } from "../db/project-workflow-contract.ts";
 import { generateProjectSource } from "./preview-component-source.ts";
+import {
+  ASYNC_PG_LICENSE_FILE_PATH,
+  ASYNC_PG_LICENSE_TEXT,
+  ASYNC_PG_REQUIREMENTS_CONTENT,
+} from "./asyncpg-package-notice.ts";
 import { resolveWorkflowModuleFiles } from "./preview-workflow-modules.ts";
 import { projectUsesLakebase } from "./preview-lakebase-helpers.ts";
 
@@ -62,11 +67,13 @@ export class ProjectPreviewGenerator {
     workflow: ProjectWorkflowDefinition = { version: 1, workflows: [] },
     customModulesSource?: string,
   ): ProjectPreview {
-    const unsupportedTypes = [...new Set(
-      document.components
-        .filter((component) => !SUPPORTED_COMPONENT_TYPES.has(component.type))
-        .map((component) => component.type),
-    )];
+    const unsupportedTypes = [
+      ...new Set(
+        document.components
+          .filter((component) => !SUPPORTED_COMPONENT_TYPES.has(component.type))
+          .map((component) => component.type),
+      ),
+    ];
 
     if (unsupportedTypes.length > 0) {
       throw new ApplicationError(
@@ -77,17 +84,37 @@ export class ProjectPreviewGenerator {
       );
     }
 
-    const moduleFiles = resolveWorkflowModuleFiles(workflow, customModulesSource);
-    const content = generateProjectSource(project.name, document.components, workflow);
+    const moduleFiles = resolveWorkflowModuleFiles(
+      workflow,
+      customModulesSource,
+    );
+    const content = generateProjectSource(
+      project.name,
+      document.components,
+      workflow,
+    );
     const files: PreviewFile[] = [{ path: "app.py", content }];
     if (projectUsesLakebase(document.components, workflow)) {
-      files.push({ path: "requirements.txt", content: "asyncpg==0.32.0\n" });
+      files.push({
+        path: "requirements.txt",
+        content: ASYNC_PG_REQUIREMENTS_CONTENT,
+      });
+      files.push({
+        path: ASYNC_PG_LICENSE_FILE_PATH,
+        content: ASYNC_PG_LICENSE_TEXT,
+      });
     }
     if (moduleFiles.customModulesSource !== null) {
-      files.push({ path: "custom_modules.py", content: moduleFiles.customModulesSource });
+      files.push({
+        path: "custom_modules.py",
+        content: moduleFiles.customModulesSource,
+      });
     }
     if (moduleFiles.prebuiltModulesLibrarySource !== null) {
-      files.push({ path: "prebuilt_modules_library.py", content: moduleFiles.prebuiltModulesLibrarySource });
+      files.push({
+        path: "prebuilt_modules_library.py",
+        content: moduleFiles.prebuiltModulesLibrarySource,
+      });
     }
 
     return {

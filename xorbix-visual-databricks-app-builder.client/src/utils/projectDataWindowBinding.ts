@@ -10,6 +10,21 @@ export interface IUnityCatalogTableBinding {
   columns: Array<{ name: string; type: string | null; dataType: string | null }>;
 }
 
+export type ProjectTableBindingKind =
+  | "unityCatalogTable"
+  | "lakebaseAutoscaling"
+  | "lakebaseProvisionedDatabase";
+
+export interface IProjectTableBinding extends IUnityCatalogTableBinding {
+  kind: ProjectTableBindingKind;
+  database: string | null;
+  instanceName: string | null;
+  projectId: string | null;
+  branchId: string | null;
+  endpointId: string | null;
+  databaseId: string | null;
+}
+
 /** Reads a Unity Catalog binding while leaving other saved binding types untouched. */
 export function readUnityCatalogTableBinding(
   bindings: ProjectJsonObject | null,
@@ -34,13 +49,60 @@ export function readUnityCatalogTableBinding(
   };
 }
 
+/** Reads the selected UC or Lakebase table as a shared editor column model. */
+export function readProjectTableBinding(
+  bindings: ProjectJsonObject | null,
+): IProjectTableBinding | null {
+  if (bindings === null || Object.keys(bindings).length !== 1) return null;
+  const [kind] = Object.keys(bindings) as ProjectTableBindingKind[];
+  if (kind === "unityCatalogTable") {
+    const selection = readUnityCatalogTableBinding(bindings);
+    return selection ? {
+      ...selection,
+      kind,
+      database: null,
+      instanceName: null,
+      projectId: null,
+      branchId: null,
+      endpointId: null,
+      databaseId: null,
+    } : null;
+  }
+  if (kind !== "lakebaseProvisionedDatabase" && kind !== "lakebaseAutoscaling") return null;
+  const value = bindings[kind];
+  if (!isRecord(value) || value.bindingType !== kind || !isRecord(value.source) ||
+      !isRecord(value.source.resource) || value.source.kind !== "resource" || value.source.valueType !== "table") {
+    return null;
+  }
+  const resource = value.source.resource;
+  if (resource.type !== kind) return null;
+  const database = readNullableString(resource.database);
+  return {
+    kind,
+    catalog: database,
+    schema: readNullableString(resource.schema),
+    table: readNullableString(resource.table),
+    dataSourceFormat: null,
+    primaryKeyColumn: readNullableString(resource.primaryKeyColumn),
+    columns: readColumns(resource.columns),
+    database,
+    instanceName: kind === "lakebaseProvisionedDatabase" ? readNullableString(resource.instanceName) : null,
+    projectId: kind === "lakebaseAutoscaling" ? readNullableString(resource.projectId) : null,
+    branchId: kind === "lakebaseAutoscaling" ? readNullableString(resource.branchId) : null,
+    endpointId: kind === "lakebaseAutoscaling" ? readNullableString(resource.endpointId) : null,
+    databaseId: kind === "lakebaseAutoscaling" ? readNullableString(resource.databaseId) : null,
+  };
+}
+
 /** Returns whether a saved table binding is from a non-UC resource family. */
 export function hasUnsupportedDataWindowBinding(
   bindings: ProjectJsonObject | null,
 ): boolean {
   return (
     bindings !== null &&
-    Object.keys(bindings).some((key) => key !== "unityCatalogTable")
+    Object.keys(bindings).some((key) =>
+      key !== "unityCatalogTable" && key !== "lakebaseAutoscaling" && key !== "lakebaseProvisionedDatabase",
+    )
   );
 }
 
@@ -70,6 +132,29 @@ export function createUnityCatalogTableBinding(
       },
     },
   };
+}
+
+/** Creates the portable binding for one discovered Lakebase Autoscaling table. */
+export function createLakebaseAutoscalingTableBinding(
+  selection: IProjectTableBinding,
+): ProjectJsonObject {
+  return createLakebaseTableBinding("lakebaseAutoscaling", selection, {
+    database: selection.database,
+    projectId: selection.projectId,
+    branchId: selection.branchId,
+    endpointId: selection.endpointId,
+    databaseId: selection.databaseId,
+  });
+}
+
+/** Creates the portable binding for one discovered Provisioned Lakebase table. */
+export function createLakebaseProvisionedTableBinding(
+  selection: IProjectTableBinding,
+): ProjectJsonObject {
+  return createLakebaseTableBinding("lakebaseProvisionedDatabase", selection, {
+    database: selection.database,
+    instanceName: selection.instanceName,
+  });
 }
 
 /** Converts a discovered workspace table into the project's binding contract. */
@@ -108,6 +193,32 @@ function readColumns(value: unknown): Array<{ name: string; type: string | null;
       dataType: typeof column.dataType === "string" ? column.dataType : null,
     }];
   });
+}
+
+function createLakebaseTableBinding(
+  kind: "lakebaseAutoscaling" | "lakebaseProvisionedDatabase",
+  selection: IProjectTableBinding,
+  resourceFields: Record<string, string | null>,
+): ProjectJsonObject {
+  return {
+    [kind]: {
+      bindingType: kind,
+      source: {
+        kind: "resource",
+        valueType: "table",
+        resource: {
+          type: kind,
+          catalog: null,
+          schema: selection.schema,
+          table: selection.table,
+          dataSourceFormat: null,
+          primaryKeyColumn: selection.primaryKeyColumn,
+          columns: selection.columns.map((column) => ({ ...column })),
+          ...resourceFields,
+        },
+      },
+    },
+  };
 }
 
 function readNullableString(value: unknown): string | null {

@@ -56,6 +56,9 @@ export const validateBuildSqlReferences = (
         "The selected Lakebase resource must include a database name.",
       );
     }
+    if (normalizedAppResources !== undefined && !node.params.lakebaseInstanceName?.trim()) {
+      errors.push("Select a current-workspace Provisioned Lakebase instance.");
+    }
     if (normalizedAppResources && node.params.lakebaseAppResourceName?.trim()) {
       const name = node.params.lakebaseAppResourceName.trim();
       const match = normalizedAppResources.find(
@@ -77,6 +80,12 @@ export const validateBuildSqlReferences = (
         errors.push(
           `Database name does not match resource '${name}' (expected '${match.database.database_name.trim()}').`,
         );
+      } else if (
+        node.params.lakebaseInstanceName?.trim() &&
+        match.database?.instance_name?.trim() &&
+        match.database.instance_name.trim().toLowerCase() !== node.params.lakebaseInstanceName.trim().toLowerCase()
+      ) {
+        errors.push(`Lakebase instance does not match resource '${name}' (expected '${match.database.instance_name.trim()}').`);
       }
     }
   }

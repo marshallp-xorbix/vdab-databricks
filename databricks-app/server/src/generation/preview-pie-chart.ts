@@ -9,7 +9,7 @@ import {
   chartMeasureExpression,
   classifyChartColumnType,
   MAX_CHART_ROWS,
-  lakebaseQueryOptions,
+  lakebaseQueryExpression,
   quoteChartIdentifier,
   quoteChartTable,
   readChartBinding,
@@ -102,7 +102,7 @@ function appendRadialChart(
     return;
   }
 
-  const query = binding.kind === "unityCatalogTable" || binding.kind === "lakebaseAutoscaling"
+  const query = binding.kind === "unityCatalogTable" || binding.kind === "lakebaseAutoscaling" || binding.kind === "lakebaseProvisionedDatabase"
     ? buildRadialQuery(binding, properties, invalidChart)
     : null;
   if (query === null && !supportsWorkflowBinding) {
@@ -257,7 +257,7 @@ function appendRadialQueryOutput(
     ]
     : [
       "try:",
-      `    ${data} = _vdab_sql_query_df(${pythonString(binding.catalog ?? "")}, ${pythonString(binding.schema ?? "")}, ${pythonString(binding.table ?? "")}, ${MAX_CHART_ROWS}, query_statement=${pythonString(query)}${lakebaseQueryOptions(binding)})`,
+      `    ${data} = ${lakebaseQueryExpression(binding, MAX_CHART_ROWS, query)}`,
       `except RuntimeError as vdab_error_${variableName}:`,
       `    st.error(str(vdab_error_${variableName}))`,
       `    ${data} = pd.DataFrame(columns=${emptyColumns})`,

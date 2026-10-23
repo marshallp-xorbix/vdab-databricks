@@ -4,13 +4,13 @@ import { useWorkspaceLakebaseEndpoints } from "../hooks/useWorkspaceLakebaseEndp
 import { useWorkspaceLakebaseProjects } from "../hooks/useWorkspaceLakebaseProjects";
 import { useWorkspaceLakebaseSchemas } from "../hooks/useWorkspaceLakebaseSchemas";
 import { useWorkspaceLakebaseTables } from "../hooks/useWorkspaceLakebaseTables";
-import type { LakebaseMetadataSelection } from "../models/WorkspaceLakebaseResources";
+import type { IWorkspaceLakebaseTable, LakebaseMetadataSelection } from "../models/WorkspaceLakebaseResources";
 import type { LakebaseAutoscalingTableRef } from "../types/workflow/sharedReferences";
 import InstalledWorkspaceResourceSelect from "./InstalledWorkspaceResourceSelect";
 
 interface InstalledWorkspaceLakebaseTableSelectorFieldsProps {
   value: LakebaseAutoscalingTableRef;
-  onChange: (next: LakebaseAutoscalingTableRef) => void;
+  onChange: (next: LakebaseAutoscalingTableRef, table?: IWorkspaceLakebaseTable | null) => void;
 }
 
 /** Selects a Lakebase table using short-lived credentials for the signed-in user. */
@@ -56,6 +56,7 @@ export default function InstalledWorkspaceLakebaseTableSelectorFields({
       projectId,
       branchId: "",
       endpointId: "",
+      databaseId: "",
       database: "",
       catalog: "",
       schema: "",
@@ -68,6 +69,7 @@ export default function InstalledWorkspaceLakebaseTableSelectorFields({
       ...value,
       branchId,
       endpointId: "",
+      databaseId: "",
       database: "",
       catalog: "",
       schema: "",
@@ -79,6 +81,7 @@ export default function InstalledWorkspaceLakebaseTableSelectorFields({
     onChange({
       ...value,
       endpointId,
+      databaseId: "",
       database: "",
       catalog: "",
       schema: "",
@@ -87,8 +90,12 @@ export default function InstalledWorkspaceLakebaseTableSelectorFields({
   }
 
   function updateDatabase(databaseName: string) {
+    const databaseId = databasesQuery.data?.items.find(
+      (database) => database.databaseName === databaseName,
+    )?.databaseId ?? "";
     onChange({
       ...value,
+      databaseId,
       database: databaseName,
       catalog: databaseName,
       schema: "",
@@ -101,7 +108,8 @@ export default function InstalledWorkspaceLakebaseTableSelectorFields({
   }
 
   function updateTable(table: string) {
-    onChange({ ...value, table });
+    const tableMetadata = tablesQuery.data?.items.find((item) => item.name === table) ?? null;
+    onChange({ ...value, table }, tableMetadata);
   }
 
   return (

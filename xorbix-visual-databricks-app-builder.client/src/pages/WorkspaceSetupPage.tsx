@@ -1,9 +1,14 @@
 import { Link } from "react-router-dom";
+import WorkspaceSetupDiagnosticsPanel from "../components/WorkspaceSetupDiagnosticsPanel";
+import { useWorkspaceSetupDiagnostics } from "../hooks/useWorkspaceSetupDiagnostics";
 import { useWorkspaceSession } from "../hooks/useWorkspaceSession";
 
 /** Shows identity and install-local setup guidance without requesting credentials. */
 function WorkspaceSetupPage() {
   const sessionQuery = useWorkspaceSession();
+  const diagnosticsQuery = useWorkspaceSetupDiagnostics(
+    sessionQuery.data?.userId ?? null,
+  );
 
   return (
     <main className="mx-auto w-full max-w-5xl space-y-6 px-6 py-8">
@@ -71,7 +76,9 @@ function WorkspaceSetupPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Install recovery access</dt>
+                <dt className="text-muted-foreground">
+                  Install recovery access
+                </dt>
                 <dd className="font-medium">
                   {sessionQuery.data.installationAdmin
                     ? "Configured"
@@ -80,6 +87,15 @@ function WorkspaceSetupPage() {
               </div>
             </dl>
           </section>
+
+          <WorkspaceSetupDiagnosticsPanel
+            diagnostics={diagnosticsQuery.data}
+            error={diagnosticsQuery.error}
+            isChecking={diagnosticsQuery.isFetching}
+            onCheck={() => {
+              void diagnosticsQuery.refetch();
+            }}
+          />
 
           <section
             aria-labelledby="requirements-heading"

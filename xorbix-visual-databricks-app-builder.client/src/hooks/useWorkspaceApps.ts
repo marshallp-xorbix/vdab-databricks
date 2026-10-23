@@ -7,11 +7,12 @@ export const workspaceAppKeys = {
 };
 
 /** Queries the workspace app list and follows its continuation tokens. */
-export function useWorkspaceApps() {
+export function useWorkspaceApps(enabled = true) {
   return useInfiniteQuery({
     queryKey: workspaceAppKeys.lists(),
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) => listWorkspaceApps(pageParam, signal),
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
+    enabled,
   });
 }

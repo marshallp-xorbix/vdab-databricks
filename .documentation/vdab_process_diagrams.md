@@ -1,5 +1,7 @@
 # VDAB Process Diagrams
 
+> **Legacy SaaS architecture diagrams:** These diagrams document the former application flows and are not the standalone Node/Databricks architecture. See the [active Node architecture](standards/node-databricks-app-architecture.md) and [transition plan](databricks-app-transition/README.md).
+
 Six architectural process diagrams showing how key systems work in the Visual Databricks App Builder.
 
 ---

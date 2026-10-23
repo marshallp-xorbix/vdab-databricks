@@ -1,5 +1,7 @@
 # 2. Databricks feasibility spikes
 
+**Current gate status (2026-10-21):** No Databricks workspace, CLI profile, app, or Marketplace provider was accessed for these spikes, per the owner's no-connect instruction. Local adapter, fake-runtime, and PostgreSQL evidence is documented separately but does not pass Spike A/B/C. Spike D still needs Databricks partner/provider action. Record the first authorized disposable-workspace session in `manual-workspace-testing.md`; keep G2/G3/G4 and the Step 5–8 workspace exit criteria open until then.
+
 **Depends on:** Product contract and access to a disposable Databricks workspace.  
 **Output:** Reproducible evidence that the requested product is possible with customer-workspace permissions.
 

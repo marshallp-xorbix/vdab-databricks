@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { MAX_WORKSPACE_JSON_RESPONSE_BYTES } from "../src/bounded-json-response.ts";
 import { createWorkspaceAppsClient } from "../src/workspace-apps-client.ts";
 import type { CallerIdentity } from "../src/contracts.ts";
 
@@ -9,11 +10,13 @@ const FORWARDED_TOKEN = "caller-token-never-return-this";
 test("WorkspaceAppsClient_ListsCallerVisibleApps_UsingPinnedWorkspaceAndUserToken", async () => {
   let requestedUrl = "";
   let authorizationHeader: string | null = null;
+  let redirectMode: RequestRedirect | undefined;
   const workspaceAppsClient = createWorkspaceAppsClient(
     WORKSPACE_HOST,
     async (input, init) => {
       requestedUrl = input.toString();
       authorizationHeader = new Headers(init?.headers).get("authorization");
+      redirectMode = init?.redirect;
 
       return new Response(
         JSON.stringify({
@@ -43,6 +46,7 @@ test("WorkspaceAppsClient_ListsCallerVisibleApps_UsingPinnedWorkspaceAndUserToke
   assert.equal(parsedUrl.searchParams.get("page_size"), "25");
   assert.equal(parsedUrl.searchParams.get("page_token"), "page-one");
   assert.equal(authorizationHeader, "Bearer caller-token-never-return-this");
+  assert.equal(redirectMode, "error");
   assert.equal(result.items.length, 1);
   assert.deepEqual(result.items[0], {
     name: "orders-dashboard",
@@ -54,12 +58,41 @@ test("WorkspaceAppsClient_ListsCallerVisibleApps_UsingPinnedWorkspaceAndUserToke
   assert.doesNotMatch(JSON.stringify(result), /caller-token/);
 });
 
+test("WorkspaceAppsClient_RejectsOversizedResponseWithSanitizedError", async () => {
+  const workspaceAppsClient = createWorkspaceAppsClient(
+    WORKSPACE_HOST,
+    async () =>
+      new Response("{}", {
+        status: 200,
+        headers: {
+          "content-length": String(MAX_WORKSPACE_JSON_RESPONSE_BYTES + 1),
+        },
+      }),
+  );
+
+  await assert.rejects(
+    () =>
+      workspaceAppsClient.listApps(createTestCaller(), {
+        pageSize: 10,
+        pageToken: null,
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      "code" in error &&
+      error.code === "databricks_invalid_response" &&
+      !error.message.includes("content-length"),
+  );
+});
+
 test("WorkspaceAppsClient_RejectsMissingUserToken_WithoutCallingDatabricks", async () => {
   let callCount = 0;
-  const workspaceAppsClient = createWorkspaceAppsClient(WORKSPACE_HOST, async () => {
-    callCount += 1;
-    return new Response(JSON.stringify({ apps: [] }), { status: 200 });
-  });
+  const workspaceAppsClient = createWorkspaceAppsClient(
+    WORKSPACE_HOST,
+    async () => {
+      callCount += 1;
+      return new Response(JSON.stringify({ apps: [] }), { status: 200 });
+    },
+  );
 
   await assert.rejects(
     () =>
@@ -75,13 +108,16 @@ test("WorkspaceAppsClient_RejectsMissingUserToken_WithoutCallingDatabricks", asy
 
 test("WorkspaceAppsClient_MapsForbiddenScopeOrPermission_WithoutFallback", async () => {
   const authorizationHeaders: string[] = [];
-  const workspaceAppsClient = createWorkspaceAppsClient(WORKSPACE_HOST, async (_input, init) => {
-    authorizationHeaders.push(
-      new Headers(init?.headers).get("authorization") ?? "",
-    );
+  const workspaceAppsClient = createWorkspaceAppsClient(
+    WORKSPACE_HOST,
+    async (_input, init) => {
+      authorizationHeaders.push(
+        new Headers(init?.headers).get("authorization") ?? "",
+      );
 
-    return new Response("denied", { status: 403 });
-  });
+      return new Response("denied", { status: 403 });
+    },
+  );
 
   await assert.rejects(
     () =>
@@ -99,10 +135,13 @@ test("WorkspaceAppsClient_MapsForbiddenScopeOrPermission_WithoutFallback", async
 
 test("WorkspaceAppsClient_RejectsInvalidPaginationBeforeRemoteCall", async () => {
   let callCount = 0;
-  const workspaceAppsClient = createWorkspaceAppsClient(WORKSPACE_HOST, async () => {
-    callCount += 1;
-    return new Response(JSON.stringify({ apps: [] }), { status: 200 });
-  });
+  const workspaceAppsClient = createWorkspaceAppsClient(
+    WORKSPACE_HOST,
+    async () => {
+      callCount += 1;
+      return new Response(JSON.stringify({ apps: [] }), { status: 200 });
+    },
+  );
 
   await assert.rejects(
     () =>
@@ -157,7 +196,9 @@ test("WorkspaceAppsClient_RejectsMalformedResponseInsteadOfReturningPartialData"
   );
 });
 
-function createTestCaller(accessToken: string | null = FORWARDED_TOKEN): CallerIdentity {
+function createTestCaller(
+  accessToken: string | null = FORWARDED_TOKEN,
+): CallerIdentity {
   return {
     userId: "databricks-user-17",
     preferredUsername: "pat@example.com",

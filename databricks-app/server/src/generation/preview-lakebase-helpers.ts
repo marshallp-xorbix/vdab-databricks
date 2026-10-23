@@ -8,20 +8,41 @@ export function projectUsesLakebase(
   workflow: ProjectWorkflowDefinition,
 ): boolean {
   const componentUsesLakebase = components.some((component) =>
-    component.bindings !== null && Object.hasOwn(component.bindings, "lakebaseAutoscaling"),
+    component.bindings !== null && (
+      Object.hasOwn(component.bindings, "lakebaseAutoscaling") ||
+      Object.hasOwn(component.bindings, "lakebaseProvisionedDatabase")
+    ),
   );
   const workflowUsesLakebase = workflow.workflows.some((definition) =>
     definition.nodes.some((node) => {
       if (node.actionType === "buildSql") {
-        return node.params.sqlSourceKind === "lakebaseAutoscaling";
+        return node.params.sqlSourceKind === "lakebaseAutoscaling" ||
+          node.params.sqlSourceKind === "lakebaseProvisionedDatabase";
       }
       if (node.actionType === "saveToTable" && isRecord(node.params.targetTable)) {
-        return node.params.targetTable.tableType === "lakebaseAutoscaling";
+        return node.params.targetTable.tableType === "lakebaseAutoscaling" ||
+          node.params.targetTable.tableType === "lakebaseProvisionedDatabase";
       }
       return false;
     }),
   );
   return componentUsesLakebase || workflowUsesLakebase;
+}
+
+/** Returns whether generated output needs the legacy Database Instance API. */
+export function projectUsesProvisionedLakebase(
+  components: ProjectComponent[],
+  workflow: ProjectWorkflowDefinition,
+): boolean {
+  return components.some((component) =>
+    component.bindings !== null && Object.hasOwn(component.bindings, "lakebaseProvisionedDatabase"),
+  ) || workflow.workflows.some((definition) =>
+    definition.nodes.some((node) =>
+      (node.actionType === "buildSql" && node.params.sqlSourceKind === "lakebaseProvisionedDatabase") ||
+      (node.actionType === "saveToTable" && isRecord(node.params.targetTable) &&
+        node.params.targetTable.tableType === "lakebaseProvisionedDatabase"),
+    ),
+  );
 }
 
 /** Appends viewer-authorized PostgreSQL helpers for generated Lakebase Autoscaling apps. */
@@ -133,26 +154,41 @@ export function appendLakebaseHelpers(lines: string[]): void {
     "        raise RuntimeError('Databricks returned an invalid Lakebase credential.')",
     "    return token",
     "",
-    "def _vdab_lakebase_connection_settings(database: str, endpoint: str) -> dict[str, object]:",
+    "def _vdab_lakebase_endpoint_host(endpoint: str, resource_environment_variable: str) -> str:",
+    "    if not re.fullmatch(r'VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}', resource_environment_variable):",
+    "        raise RuntimeError('The selected Lakebase App resource reference is invalid.')",
+    "    configured_endpoint = os.environ.get(resource_environment_variable, '')",
+    "    if configured_endpoint != endpoint:",
+    "        raise RuntimeError('The selected Lakebase endpoint is not bound to this generated app.')",
+    "    endpoint_path = '/api/2.0/postgres/' + urllib.parse.quote(endpoint, safe='/')",
+    "    endpoint_response, _response_bytes = _vdab_sql_request('GET', endpoint_path)",
+    "    status = endpoint_response.get('status')",
+    "    hosts = status.get('hosts') if isinstance(status, dict) else None",
+    "    host = hosts.get('host') if isinstance(hosts, dict) else None",
+    "    host_pattern = r'ep-[a-z0-9-]+\\.database\\.[a-z0-9-]+\\.(?:(?:dev|cloud)\\.)?databricks\\.com|ep-[a-z0-9-]+\\.database\\.[a-z0-9-]+\\.(?:gcp\\.databricks\\.com|azuredatabricks\\.net)'",
+    "    if not isinstance(host, str) or not re.fullmatch(host_pattern, host):",
+    "        raise RuntimeError('Databricks returned an invalid Lakebase endpoint host.')",
+    "    return host",
+    "",
+    "def _vdab_lakebase_connection_settings(database: str, endpoint: str, resource_environment_variable: str) -> dict[str, object]:",
     "    user_token = st.context.headers.get('x-forwarded-access-token')",
     "    user_email = st.context.headers.get('x-forwarded-email')",
     "    if not user_token or not user_email:",
     "        raise RuntimeError('The current viewer did not grant Lakebase user authorization.')",
     "    if not re.fullmatch(r'[^\\s@]+@[^\\s@]+', user_email) or len(user_email) > 320:",
     "        raise RuntimeError('Databricks did not provide a valid Lakebase user identity.')",
-    "    host = os.environ.get('PGHOST', '')",
-    "    configured_database = os.environ.get('PGDATABASE', '')",
+    "    host = _vdab_lakebase_endpoint_host(endpoint, resource_environment_variable)",
     "    ssl_mode = os.environ.get('PGSSLMODE', '')",
     "    try:",
     "        port = int(os.environ.get('PGPORT', ''))",
     "    except ValueError:",
     "        raise RuntimeError('Lakebase connection settings are incomplete.') from None",
-    "    if not host or not re.fullmatch(r'[A-Za-z0-9.-]{1,253}', host) or configured_database != database or not re.fullmatch(r'[A-Za-z0-9_$-]{1,63}', database) or database.startswith('unresolved_') or not 1 <= port <= 65535 or ssl_mode not in ('require', 'verify-ca', 'verify-full'):",
+    "    if not re.fullmatch(r'[A-Za-z0-9_$-]{1,63}', database) or database.startswith('unresolved_') or not 1 <= port <= 65535 or ssl_mode not in ('require', 'verify-ca', 'verify-full'):",
     "        raise RuntimeError('The selected Lakebase resource is not bound to this generated app.')",
     "    credential = _vdab_lakebase_credential(endpoint)",
     "    return {'host': host, 'port': port, 'user': user_email, 'password': credential, 'database': database, 'ssl': ssl_mode, 'timeout': 30, 'command_timeout': 30, 'server_settings': {'default_transaction_read_only': 'on'}}",
     "",
-    "async def _vdab_lakebase_fetch_async(statement: str, database: str, endpoint: str, max_rows: int):",
+    "async def _vdab_lakebase_fetch_async(statement: str, database: str, endpoint: str, max_rows: int, resource_environment_variable: str):",
     "    if not isinstance(max_rows, int) or max_rows < 1 or max_rows > _VDAB_SQL_MAX_RESULT_ROWS:",
     "        raise RuntimeError('The requested Lakebase result row limit is invalid.')",
     "    bounded_statement = _vdab_postgres_sql(statement.strip().removesuffix(';').strip())",
@@ -160,7 +196,7 @@ export function appendLakebaseHelpers(lines: string[]): void {
     "        raise RuntimeError('Lakebase RunSql accepts read-only SELECT queries.')",
     "    wrapped_statement = 'SELECT * FROM (' + bounded_statement + ') AS _vdab_result LIMIT ' + str(max_rows + 1)",
     "    size_statement = 'SELECT pg_column_size(_vdab_result) FROM (' + bounded_statement + ') AS _vdab_result LIMIT ' + str(max_rows + 1)",
-    "    settings = _vdab_lakebase_connection_settings(database, endpoint)",
+    "    settings = _vdab_lakebase_connection_settings(database, endpoint, resource_environment_variable)",
     "    connection = None",
     "    try:",
     "        connection = await asyncpg.connect(**settings)",
@@ -193,7 +229,9 @@ export function appendLakebaseHelpers(lines: string[]): void {
     "        if connection is not None:",
     "            await connection.close()",
     "",
-    "def _vdab_lakebase_query_df(schema: str, table: str, max_rows: int, query_statement: str | None, database: str, endpoint: str) -> pd.DataFrame:",
+    "def _vdab_lakebase_query_df(schema: str, table: str, max_rows: int, query_statement: str | None, database: str, endpoint: str, resource_environment_variable: str | None) -> pd.DataFrame:",
+    "    if not isinstance(resource_environment_variable, str):",
+    "        raise RuntimeError('The Lakebase App resource must be selected before previewing.')",
     "    if query_statement is None:",
     "        if not schema or not table:",
     "            raise RuntimeError('The selected Lakebase table is incomplete.')",
@@ -202,7 +240,7 @@ export function appendLakebaseHelpers(lines: string[]): void {
     "        raise RuntimeError('The Lakebase SQL query is invalid or too large.')",
     "    effective_limit = _VDAB_SQL_MAX_RESULT_ROWS if max_rows == 0 else max_rows",
     "    try:",
-    "        records = asyncio.run(_vdab_lakebase_fetch_async(query_statement, database, endpoint, effective_limit))",
+    "        records = asyncio.run(_vdab_lakebase_fetch_async(query_statement, database, endpoint, effective_limit, resource_environment_variable))",
     "    except RuntimeError:",
     "        raise",
     "    except Exception:",
@@ -211,8 +249,8 @@ export function appendLakebaseHelpers(lines: string[]): void {
     "        return pd.DataFrame([dict(record) for record in records])",
     "    return pd.DataFrame()",
     "",
-    "async def _vdab_lakebase_execute_async(statement: str, values: list[object], database: str, endpoint: str) -> int:",
-    "    settings = _vdab_lakebase_connection_settings(database, endpoint)",
+    "async def _vdab_lakebase_execute_async(statement: str, values: list[object], database: str, endpoint: str, resource_environment_variable: str) -> int:",
+    "    settings = _vdab_lakebase_connection_settings(database, endpoint, resource_environment_variable)",
     "    settings['server_settings'] = {}",
     "    connection = None",
     "    try:",
@@ -231,11 +269,11 @@ export function appendLakebaseHelpers(lines: string[]): void {
     "        if connection is not None:",
     "            await connection.close()",
     "",
-    "def _vdab_lakebase_execute(statement: str, values: list[object], database: str, endpoint: str) -> int:",
+    "def _vdab_lakebase_execute(statement: str, values: list[object], database: str, endpoint: str, resource_environment_variable: str) -> int:",
     "    if len(statement.encode('utf-8')) > 100000 or len(values) > 500:",
     "        raise RuntimeError('The Lakebase write exceeds its configured query or value limit.')",
     "    try:",
-    "        return asyncio.run(_vdab_lakebase_execute_async(statement, values, database, endpoint))",
+    "        return asyncio.run(_vdab_lakebase_execute_async(statement, values, database, endpoint, resource_environment_variable))",
     "    except RuntimeError:",
     "        raise",
     "    except Exception:",

@@ -5,7 +5,7 @@ import NetworkWebStoryFieldMappingsEditor from "./NetworkWebStoryFieldMappingsEd
 import NetworkWebStoryVisualPropertiesEditor from "./NetworkWebStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
 import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface INetworkWebStoryPropertiesEditorProps {
   componentKey: string;
@@ -24,7 +24,7 @@ function NetworkWebStoryPropertiesEditor({
   onPropertiesChange,
   onBindingsChange,
 }: Readonly<INetworkWebStoryPropertiesEditorProps>) {
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Network Web Story";
   const columns: IWorkspaceTableColumn[] = table?.columns ?? [];
 

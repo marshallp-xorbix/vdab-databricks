@@ -5,7 +5,7 @@ import HoneycombStoryFieldMappingsEditor from "./HoneycombStoryFieldMappingsEdit
 import HoneycombStoryVisualPropertiesEditor from "./HoneycombStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
 import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface IHoneycombStoryPropertiesEditorProps {
   componentKey: string;
@@ -24,7 +24,7 @@ function HoneycombStoryPropertiesEditor({
   onPropertiesChange,
   onBindingsChange,
 }: Readonly<IHoneycombStoryPropertiesEditorProps>) {
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Honeycomb Story";
   const columns: IWorkspaceTableColumn[] = table?.columns ?? [];
 

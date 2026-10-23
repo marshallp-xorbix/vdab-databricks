@@ -13,6 +13,9 @@ import { PostgresProjectCustomModulesRepository } from "./db/project-custom-modu
 import { ProjectCustomModulesService } from "./db/project-custom-modules-service.ts";
 import { PostgresProjectPortabilityRepository } from "./db/project-portability-repository.ts";
 import { ProjectPortabilityService } from "./db/project-portability-service.ts";
+import { PostgresProjectDeploymentRepository } from "./db/project-deployment-repository.ts";
+import { ProjectDeploymentService } from "./project-deployment-service.ts";
+import { createWorkspaceAppDeploymentClient } from "./workspace-app-deployment-client.ts";
 import { createHttpApp } from "./http-app.ts";
 import { createIdentityResolver } from "./identity.ts";
 import { LocalTestWorkspaceAppsClient } from "./local-test-workspace-apps-client.ts";
@@ -29,9 +32,14 @@ import { WorkspaceExecutionResourcesService } from "./workspace-execution-resour
 import { createWorkspaceLakebaseResourcesClient } from "./workspace-lakebase-resources-client.ts";
 import { LocalTestWorkspaceLakebaseResourcesClient } from "./local-test-workspace-lakebase-resources-client.ts";
 import { WorkspaceLakebaseResourcesService } from "./workspace-lakebase-resources-service.ts";
+import { createWorkspaceLakebaseProvisionedResourcesClient } from "./workspace-lakebase-provisioned-resources-client.ts";
+import { LocalTestWorkspaceLakebaseProvisionedResourcesClient } from "./local-test-workspace-lakebase-provisioned-resources-client.ts";
+import { WorkspaceLakebaseProvisionedResourcesService } from "./workspace-lakebase-provisioned-resources-service.ts";
 import { AiBuilderService } from "./ai-builder-service.ts";
 import { AiBuilderResourceContextService } from "./ai-builder-resource-context.ts";
 import { AiBuilderWorkspaceClient } from "./ai-builder-workspace-client.ts";
+import { createWorkspaceSetupDiagnosticsClient } from "./workspace-setup-diagnostics-client.ts";
+import { WorkspaceSetupDiagnosticsService } from "./workspace-setup-diagnostics-service.ts";
 
 const DEFAULT_PORT = 8000;
 const SHUTDOWN_TIMEOUT_MS = 10_000;
@@ -41,10 +49,10 @@ const authenticationMode = process.env.VDAB_AUTH_MODE;
 const isLocalTestMode = authenticationMode === AUTHENTICATION_MODE_LOCAL_TEST;
 const workspaceHost = isLocalTestMode
   ? null
-  : process.env.DATABRICKS_HOST ?? null;
+  : (process.env.DATABRICKS_HOST ?? null);
 const workspaceId = isLocalTestMode
   ? "local-test-workspace"
-  : process.env.DATABRICKS_WORKSPACE_ID ?? null;
+  : (process.env.DATABRICKS_WORKSPACE_ID ?? null);
 const staticDirectory = resolve(import.meta.dirname, "../../public");
 
 await start();
@@ -55,6 +63,13 @@ async function start(): Promise<void> {
     ? new LocalTestWorkspaceAppsClient()
     : createWorkspaceAppsClient(requireWorkspaceHost(workspaceHost));
   const workspaceAppsService = new WorkspaceAppsService(workspaceAppsClient);
+  const workspaceSetupDiagnosticsService = new WorkspaceSetupDiagnosticsService(
+    createWorkspaceSetupDiagnosticsClient(
+      workspaceHost,
+      isLocalTestMode ? null : (process.env.DATABRICKS_APP_NAME ?? null),
+    ),
+    process.env,
+  );
   const workspaceResourcesClient = isLocalTestMode
     ? new LocalTestWorkspaceResourcesClient()
     : createWorkspaceResourcesClient(requireWorkspaceHost(workspaceHost));
@@ -63,16 +78,27 @@ async function start(): Promise<void> {
   );
   const workspaceExecutionResourcesClient = isLocalTestMode
     ? new LocalTestWorkspaceExecutionResourcesClient()
-    : createWorkspaceExecutionResourcesClient(requireWorkspaceHost(workspaceHost));
-  const workspaceExecutionResourcesService = new WorkspaceExecutionResourcesService(
-    workspaceExecutionResourcesClient,
-  );
+    : createWorkspaceExecutionResourcesClient(
+        requireWorkspaceHost(workspaceHost),
+      );
+  const workspaceExecutionResourcesService =
+    new WorkspaceExecutionResourcesService(workspaceExecutionResourcesClient);
   const workspaceLakebaseResourcesClient = isLocalTestMode
     ? new LocalTestWorkspaceLakebaseResourcesClient()
-    : createWorkspaceLakebaseResourcesClient(requireWorkspaceHost(workspaceHost));
-  const workspaceLakebaseResourcesService = new WorkspaceLakebaseResourcesService(
-    workspaceLakebaseResourcesClient,
-  );
+    : createWorkspaceLakebaseResourcesClient(
+        requireWorkspaceHost(workspaceHost),
+      );
+  const workspaceLakebaseResourcesService =
+    new WorkspaceLakebaseResourcesService(workspaceLakebaseResourcesClient);
+  const workspaceLakebaseProvisionedResourcesClient = isLocalTestMode
+    ? new LocalTestWorkspaceLakebaseProvisionedResourcesClient()
+    : createWorkspaceLakebaseProvisionedResourcesClient(
+        requireWorkspaceHost(workspaceHost),
+      );
+  const workspaceLakebaseProvisionedResourcesService =
+    new WorkspaceLakebaseProvisionedResourcesService(
+      workspaceLakebaseProvisionedResourcesClient,
+    );
   const lakebasePool = await createProjectPool();
   const localProjectRepository = new LocalTestProjectRepository();
   const projectRepository = lakebasePool
@@ -115,11 +141,29 @@ async function start(): Promise<void> {
     projectComponentsService,
     projectWorkflowService,
     projectCustomModulesService,
+    undefined,
+    process.env.DATABRICKS_SQL_WAREHOUSE_ID ?? null,
   );
   const projectPortabilityService = new ProjectPortabilityService(
     projectPortabilityRepository,
     requireWorkspaceId(workspaceId),
   );
+  const projectDeploymentRepository = lakebasePool
+    ? new PostgresProjectDeploymentRepository(lakebasePool)
+    : null;
+  const projectDeploymentService =
+    projectDeploymentRepository && workspaceHost
+      ? new ProjectDeploymentService(
+          projectService,
+          projectPreviewService,
+          projectDeploymentRepository,
+          createWorkspaceAppDeploymentClient(
+            workspaceHost,
+            requireInstalledAppName(process.env.DATABRICKS_APP_NAME ?? null),
+          ),
+          requireWorkspaceId(workspaceId),
+        )
+      : undefined;
   const aiBuilderService = workspaceHost
     ? new AiBuilderService(
         projectService,
@@ -142,11 +186,14 @@ async function start(): Promise<void> {
     workspaceResourcesService,
     workspaceExecutionResourcesService,
     workspaceLakebaseResourcesService,
+    workspaceLakebaseProvisionedResourcesService,
+    workspaceSetupDiagnosticsService,
     projectService,
     projectComponentsService,
     projectWorkflowService,
     projectCustomModulesService,
     projectPreviewService,
+    projectDeploymentService,
     projectPortabilityService,
     aiBuilderService,
     componentRegistryService,
@@ -157,9 +204,7 @@ async function start(): Promise<void> {
       process.stdout.write(`${JSON.stringify(record)}\n`);
     },
   });
-  const port = resolvePort(
-    process.env.DATABRICKS_APP_PORT ?? process.env.PORT,
-  );
+  const port = resolvePort(process.env.DATABRICKS_APP_PORT ?? process.env.PORT);
 
   httpApp.listen(port, "0.0.0.0", () => {
     process.stdout.write(
@@ -177,7 +222,9 @@ async function createProjectPool(): Promise<Pool | null> {
   }
 
   if (authenticationMode !== AUTHENTICATION_MODE_DATABRICKS) {
-    throw new Error("Databricks authentication is required for Lakebase access.");
+    throw new Error(
+      "Databricks authentication is required for Lakebase access.",
+    );
   }
 
   const lakebasePool = createLakebasePool();
@@ -207,7 +254,9 @@ function resolvePort(rawPort: string | undefined): number {
 
 function requireWorkspaceHost(host: string | null): string {
   if (!host) {
-    throw new Error("DATABRICKS_HOST is required in Databricks authentication mode.");
+    throw new Error(
+      "DATABRICKS_HOST is required in Databricks authentication mode.",
+    );
   }
 
   return host;
@@ -215,10 +264,21 @@ function requireWorkspaceHost(host: string | null): string {
 
 function requireWorkspaceId(id: string | null): string {
   if (!id) {
-    throw new Error("DATABRICKS_WORKSPACE_ID is required to isolate builder data.");
+    throw new Error(
+      "DATABRICKS_WORKSPACE_ID is required to isolate builder data.",
+    );
   }
 
   return id;
+}
+
+function requireInstalledAppName(appName: string | null): string {
+  if (!appName || !/^[a-z0-9][a-z0-9-]{0,28}[a-z0-9]$/.test(appName)) {
+    throw new Error(
+      "DATABRICKS_APP_NAME must contain a valid installed Databricks App name.",
+    );
+  }
+  return appName;
 }
 
 function shutdown(
@@ -226,7 +286,9 @@ function shutdown(
   lakebasePool: Pool | null,
   signal: string,
 ): void {
-  process.stdout.write(`${JSON.stringify({ event: "server.stopping", signal })}\n`);
+  process.stdout.write(
+    `${JSON.stringify({ event: "server.stopping", signal })}\n`,
+  );
 
   const shutdownTimer = setTimeout(() => {
     server.closeAllConnections();
@@ -249,5 +311,7 @@ async function closeResources(
     await lakebasePool.end();
   }
 
-  process.stdout.write(`${JSON.stringify({ event: "server.stopped", signal })}\n`);
+  process.stdout.write(
+    `${JSON.stringify({ event: "server.stopped", signal })}\n`,
+  );
 }

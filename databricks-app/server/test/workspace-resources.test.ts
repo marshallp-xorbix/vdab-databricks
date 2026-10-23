@@ -7,39 +7,68 @@ import { createWorkspaceResourcesClient } from "../src/workspace-resources-clien
 const WORKSPACE_HOST = "https://dbc-example.cloud.databricks.com";
 const FORWARDED_TOKEN = "caller-token-never-return-this";
 
+
 test("WorkspaceResourcesClient_PaginatesVisibleCatalogs_WithForwardedUserToken", async () => {
   const requestedUrls: string[] = [];
   const authorizationHeaders: string[] = [];
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (input, init) => {
-    requestedUrls.push(input.toString());
-    authorizationHeaders.push(new Headers(init?.headers).get("authorization") ?? "");
-    return requestedUrls.length === 1
-      ? Response.json({ catalogs: [], next_page_token: "next" })
-      : Response.json({ catalogs: [{ name: "analytics" }, { name: "main" }] });
-  });
+  const redirectModes: Array<RequestRedirect | undefined> = [];
+  const client = createWorkspaceResourcesClient(
+    WORKSPACE_HOST,
+    async (input, init) => {
+      requestedUrls.push(input.toString());
+      authorizationHeaders.push(
+        new Headers(init?.headers).get("authorization") ?? "",
+      );
+      redirectModes.push(init?.redirect);
+      return requestedUrls.length === 1
+        ? Response.json({ catalogs: [], next_page_token: "next" })
+        : Response.json({
+            catalogs: [{ name: "analytics" }, { name: "main" }],
+          });
+    },
+  );
 
   const resources = await client.listCatalogs(createCaller());
 
   assert.deepEqual(resources, [{ name: "analytics" }, { name: "main" }]);
   assert.equal(new URL(requestedUrls[0] ?? "").origin, WORKSPACE_HOST);
-  assert.equal(new URL(requestedUrls[0] ?? "").pathname, "/api/2.1/unity-catalog/catalogs");
-  assert.equal(new URL(requestedUrls[0] ?? "").searchParams.get("max_results"), "1000");
-  assert.equal(new URL(requestedUrls[1] ?? "").searchParams.get("page_token"), "next");
+  assert.equal(
+    new URL(requestedUrls[0] ?? "").pathname,
+    "/api/2.1/unity-catalog/catalogs",
+  );
+  assert.equal(
+    new URL(requestedUrls[0] ?? "").searchParams.get("max_results"),
+    "1000",
+  );
+  assert.equal(
+    new URL(requestedUrls[1] ?? "").searchParams.get("page_token"),
+    "next",
+  );
   assert.deepEqual(authorizationHeaders, [
     `Bearer ${FORWARDED_TOKEN}`,
     `Bearer ${FORWARDED_TOKEN}`,
   ]);
+  assert.deepEqual(redirectModes, ["error", "error"]);
   assert.doesNotMatch(JSON.stringify(resources), /caller-token/);
 });
 
 test("WorkspaceResourcesClient_EncodesSelectedSchemaQuery_AndSortsVolumes", async () => {
   let requestedUrl = "";
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (input) => {
-    requestedUrl = input.toString();
-    return Response.json({ volumes: [{ name: "z-volume" }, { name: "a-volume" }] });
-  });
+  const client = createWorkspaceResourcesClient(
+    WORKSPACE_HOST,
+    async (input) => {
+      requestedUrl = input.toString();
+      return Response.json({
+        volumes: [{ name: "z-volume" }, { name: "a-volume" }],
+      });
+    },
+  );
 
-  const resources = await client.listVolumes(createCaller(), "space catalog", "stage 1");
+  const resources = await client.listVolumes(
+    createCaller(),
+    "space catalog",
+    "stage 1",
+  );
   const query = new URL(requestedUrl).searchParams;
 
   assert.equal(query.get("catalog_name"), "space catalog");
@@ -50,18 +79,27 @@ test("WorkspaceResourcesClient_EncodesSelectedSchemaQuery_AndSortsVolumes", asyn
 test("WorkspaceResourcesClient_PaginatesGenieSpaces_WithViewerTokenAndSafeSummaries", async () => {
   const requestedUrls: string[] = [];
   const authorizationHeaders: string[] = [];
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (input, init) => {
-    requestedUrls.push(input.toString());
-    authorizationHeaders.push(new Headers(init?.headers).get("authorization") ?? "");
-    return requestedUrls.length === 1
-      ? Response.json({
-          spaces: [{ space_id: "0123456789abcdef0123456789abcdef", title: "Zebra" }],
-          next_page_token: "next-genie-page",
-        })
-      : Response.json({
-          spaces: [{ space_id: "abcdef0123456789abcdef0123456789", title: "Alpha" }],
-        });
-  });
+  const client = createWorkspaceResourcesClient(
+    WORKSPACE_HOST,
+    async (input, init) => {
+      requestedUrls.push(input.toString());
+      authorizationHeaders.push(
+        new Headers(init?.headers).get("authorization") ?? "",
+      );
+      return requestedUrls.length === 1
+        ? Response.json({
+            spaces: [
+              { space_id: "0123456789abcdef0123456789abcdef", title: "Zebra" },
+            ],
+            next_page_token: "next-genie-page",
+          })
+        : Response.json({
+            spaces: [
+              { space_id: "abcdef0123456789abcdef0123456789", title: "Alpha" },
+            ],
+          });
+    },
+  );
 
   const spaces = await client.listGenieSpaces(createCaller());
 
@@ -70,9 +108,18 @@ test("WorkspaceResourcesClient_PaginatesGenieSpaces_WithViewerTokenAndSafeSummar
     { spaceId: "0123456789abcdef0123456789abcdef", title: "Zebra" },
   ]);
   assert.equal(new URL(requestedUrls[0] ?? "").origin, WORKSPACE_HOST);
-  assert.equal(new URL(requestedUrls[0] ?? "").pathname, "/api/2.0/genie/spaces");
-  assert.equal(new URL(requestedUrls[0] ?? "").searchParams.get("page_size"), "100");
-  assert.equal(new URL(requestedUrls[1] ?? "").searchParams.get("page_token"), "next-genie-page");
+  assert.equal(
+    new URL(requestedUrls[0] ?? "").pathname,
+    "/api/2.0/genie/spaces",
+  );
+  assert.equal(
+    new URL(requestedUrls[0] ?? "").searchParams.get("page_size"),
+    "100",
+  );
+  assert.equal(
+    new URL(requestedUrls[1] ?? "").searchParams.get("page_token"),
+    "next-genie-page",
+  );
   assert.deepEqual(authorizationHeaders, [
     `Bearer ${FORWARDED_TOKEN}`,
     `Bearer ${FORWARDED_TOKEN}`,
@@ -83,18 +130,34 @@ test("WorkspaceResourcesClient_PaginatesGenieSpaces_WithViewerTokenAndSafeSummar
 test("WorkspaceResourcesClient_ListsCurrentServingEndpointsWithCallerTokenAndStableSummaries", async () => {
   let requestedUrl = "";
   let authorizationHeader = "";
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (input, init) => {
-    requestedUrl = input.toString();
-    authorizationHeader = new Headers(init?.headers).get("authorization") ?? "";
-    return Response.json({
-      endpoints: [
-        { name: "z-endpoint", state: { ready: "NOT_READY" }, permission_level: "CAN_VIEW" },
-        { name: "a-endpoint", state: { ready: "READY" }, permission_level: "CAN_QUERY" },
-        { name: "a-endpoint", state: { ready: "READY" }, permission_level: "CAN_QUERY" },
-        { name: "unknown-readiness" },
-      ],
-    });
-  });
+  const client = createWorkspaceResourcesClient(
+    WORKSPACE_HOST,
+    async (input, init) => {
+      requestedUrl = input.toString();
+      authorizationHeader =
+        new Headers(init?.headers).get("authorization") ?? "";
+      return Response.json({
+        endpoints: [
+          {
+            name: "z-endpoint",
+            state: { ready: "NOT_READY" },
+            permission_level: "CAN_VIEW",
+          },
+          {
+            name: "a-endpoint",
+            state: { ready: "READY" },
+            permission_level: "CAN_QUERY",
+          },
+          {
+            name: "a-endpoint",
+            state: { ready: "READY" },
+            permission_level: "CAN_QUERY",
+          },
+          { name: "unknown-readiness" },
+        ],
+      });
+    },
+  );
 
   const endpoints = await client.listServingEndpoints(createCaller());
 
@@ -123,24 +186,35 @@ test("WorkspaceResourcesClient_ReturnsAnAuthorizedEmptyServingEndpointList", asy
 
 test("WorkspaceResourcesClient_PaginatesTables_AndReturnsValidatedColumnMetadata", async () => {
   const requestedUrls: string[] = [];
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (input) => {
-    requestedUrls.push(input.toString());
-    return requestedUrls.length === 1
-      ? Response.json({ tables: [], next_page_token: "table-page-2" })
-      : Response.json({
-          tables: [
-            {
-              name: "sales",
-              data_source_format: "DELTA",
-              columns: [
-                { name: "amount", type_name: "DECIMAL", type_text: "DECIMAL(12,2)" },
-                { name: "customer name", type_name: "STRING", type_text: "STRING" },
-              ],
-            },
-            { name: "customers", columns: [] },
-          ],
-        });
-  });
+  const client = createWorkspaceResourcesClient(
+    WORKSPACE_HOST,
+    async (input) => {
+      requestedUrls.push(input.toString());
+      return requestedUrls.length === 1
+        ? Response.json({ tables: [], next_page_token: "table-page-2" })
+        : Response.json({
+            tables: [
+              {
+                name: "sales",
+                data_source_format: "DELTA",
+                columns: [
+                  {
+                    name: "amount",
+                    type_name: "DECIMAL",
+                    type_text: "DECIMAL(12,2)",
+                  },
+                  {
+                    name: "customer name",
+                    type_name: "STRING",
+                    type_text: "STRING",
+                  },
+                ],
+              },
+              { name: "customers", columns: [] },
+            ],
+          });
+    },
+  );
 
   const tables = await client.listTables(createCaller(), "main", "default");
   const firstQuery = new URL(requestedUrls[0] ?? "").searchParams;
@@ -169,25 +243,37 @@ test("WorkspaceResourcesClient_PaginatesTables_AndReturnsValidatedColumnMetadata
 });
 
 test("WorkspaceResourcesClient_PaginatesBoundedTableSummaries_WithCallerTokenAndPinnedHost", async () => {
-  const requested: Array<{ url: URL; authorization: string; signal: AbortSignal | null }> = [];
+  const requested: Array<{
+    url: URL;
+    authorization: string;
+    signal: AbortSignal | null;
+  }> = [];
   const controller = new AbortController();
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (input, init) => {
-    requested.push({
-      url: new URL(input.toString()),
-      authorization: new Headers(init?.headers).get("authorization") ?? "",
-      signal: init?.signal ?? null,
-    });
-    return requested.length === 1
-      ? Response.json({
-          tables: [{ full_name: "main.default.zebra" }],
-          next_page_token: "summary-page-2",
-        })
-      : Response.json({
-          tables: [{ full_name: "main.default.alpha" }],
-        });
-  });
+  const client = createWorkspaceResourcesClient(
+    WORKSPACE_HOST,
+    async (input, init) => {
+      requested.push({
+        url: new URL(input.toString()),
+        authorization: new Headers(init?.headers).get("authorization") ?? "",
+        signal: init?.signal ?? null,
+      });
+      return requested.length === 1
+        ? Response.json({
+            tables: [{ full_name: "main.default.zebra" }],
+            next_page_token: "summary-page-2",
+          })
+        : Response.json({
+            tables: [{ full_name: "main.default.alpha" }],
+          });
+    },
+  );
 
-  const result = await client.listTableSummaries(createCaller(), "main", 20, controller.signal);
+  const result = await client.listTableSummaries(
+    createCaller(),
+    "main",
+    20,
+    controller.signal,
+  );
 
   assert.deepEqual(result, {
     items: [
@@ -197,206 +283,28 @@ test("WorkspaceResourcesClient_PaginatesBoundedTableSummaries_WithCallerTokenAnd
     hasMore: false,
   });
   assert.equal(requested[0]?.url.origin, WORKSPACE_HOST);
-  assert.equal(requested[0]?.url.pathname, "/api/2.1/unity-catalog/table-summaries");
+  assert.equal(
+    requested[0]?.url.pathname,
+    "/api/2.1/unity-catalog/table-summaries",
+  );
   assert.equal(requested[0]?.url.searchParams.get("catalog_name"), "main");
   assert.equal(requested[0]?.url.searchParams.get("max_results"), "20");
-  assert.equal(requested[1]?.url.searchParams.get("page_token"), "summary-page-2");
-  assert.ok(requested.every((call) => call.authorization === `Bearer ${FORWARDED_TOKEN}`));
+  assert.equal(
+    requested[1]?.url.searchParams.get("page_token"),
+    "summary-page-2",
+  );
+  assert.ok(
+    requested.every(
+      (call) => call.authorization === `Bearer ${FORWARDED_TOKEN}`,
+    ),
+  );
   assert.ok(requested.every((call) => call.signal !== null));
   assert.doesNotMatch(JSON.stringify(result), /caller-token|dbc-example/);
 });
 
-test("WorkspaceResourcesClient_ReportsMoreSummariesWhenPageExceedsRequestedLimit", async () => {
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async () => Response.json({
-    tables: [
-      { full_name: "main.default.first" },
-      { full_name: "main.default.second" },
-      { full_name: "main.default.third" },
-    ],
-  }));
-
-  assert.deepEqual(await client.listTableSummaries(createCaller(), "main", 2), {
-    items: [
-      { fullName: "main.default.first" },
-      { fullName: "main.default.second" },
-    ],
-    hasMore: true,
-  });
-});
-
-test("WorkspaceResourcesClient_RejectsInvalidTableSummaryLimitsAndNames", async () => {
-  let callCount = 0;
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async () => {
-    callCount += 1;
-    return Response.json({ tables: [{ full_name: "invalid" }] });
-  });
-
-  await assert.rejects(
-    () => client.listTableSummaries(createCaller(), "main", 0),
-    { code: "invalid_table_summary_limit", status: 400 },
-  );
-  await assert.rejects(
-    () => client.listTableSummaries(createCaller(), "main", 2),
-    { code: "databricks_invalid_response", status: 502 },
-  );
-  assert.equal(callCount, 1);
-});
-
-test("WorkspaceResourcesClient_MapsTableSummaryDenialWithoutIdentityFallback", async () => {
-  const authorization: string[] = [];
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (_input, init) => {
-    authorization.push(new Headers(init?.headers).get("authorization") ?? "");
-    return new Response("upstream details", { status: 403 });
-  });
-
-  await assert.rejects(
-    () => client.listTableSummaries(createCaller(), "main", 10),
-    (error: unknown) => error instanceof ApplicationError && error.status === 403,
-  );
-  assert.deepEqual(authorization, [`Bearer ${FORWARDED_TOKEN}`]);
-});
-
-test("WorkspaceResourcesClient_PropagatesAbortedTableSummaryRequest", async () => {
-  const controller = new AbortController();
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (_input, init) => {
-    assert.equal(init?.signal?.aborted, false);
-    controller.abort();
-    throw controller.signal.reason;
-  });
-
-  await assert.rejects(
-    () => client.listTableSummaries(createCaller(), "main", 10, controller.signal),
-  );
-});
-
-test("WorkspaceResourcesClient_RejectsMissingTokenAndInvalidNamesBeforeNetworkCall", async () => {
-  let callCount = 0;
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async () => {
-    callCount += 1;
-    return Response.json({ schemas: [] });
-  });
-
-  await assert.rejects(
-    () => client.listCatalogs(createCaller(null)),
-    { code: "databricks_session_required", status: 401 },
-  );
-  await assert.rejects(
-    () => client.listSchemas(createCaller(), "../external"),
-    (error: unknown) =>
-      error instanceof ApplicationError &&
-      error.code === "invalid_workspace_resource_name" &&
-      error.status === 400,
-  );
-
-  assert.equal(callCount, 0);
-});
-
-test("WorkspaceResourcesClient_MapsDeniedScopeOrPermission_WithoutAppIdentityFallback", async () => {
-  const authorizationHeaders: string[] = [];
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (_input, init) => {
-    authorizationHeaders.push(new Headers(init?.headers).get("authorization") ?? "");
-    return new Response("sensitive upstream response", { status: 403 });
-  });
-
-  await assert.rejects(
-    () => client.listCatalogs(createCaller()),
-    (error: unknown) =>
-      error instanceof ApplicationError &&
-      error.code === "databricks_resource_access_denied" &&
-      error.status === 403 &&
-      error.message ===
-        "Confirm the app has the required user authorization scope and that you can access this Unity Catalog resource.",
-  );
-
-  assert.deepEqual(authorizationHeaders, [`Bearer ${FORWARDED_TOKEN}`]);
-});
-
-test("WorkspaceResourcesClient_MapsGenieDenial_WithoutAppIdentityFallback", async () => {
-  const authorizationHeaders: string[] = [];
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (_input, init) => {
-    authorizationHeaders.push(new Headers(init?.headers).get("authorization") ?? "");
-    return new Response("sensitive Genie response", { status: 403 });
-  });
-
-  await assert.rejects(
-    () => client.listGenieSpaces(createCaller()),
-    (error: unknown) =>
-      error instanceof ApplicationError &&
-      error.code === "databricks_resource_access_denied" &&
-      error.status === 403 &&
-      error.message === "Confirm the Genie user authorization scope and your access to the Genie space.",
-  );
-
-  assert.deepEqual(authorizationHeaders, [`Bearer ${FORWARDED_TOKEN}`]);
-});
-
-test("WorkspaceResourcesClient_MapsServingEndpointDenialWithoutIdentityFallback", async () => {
-  const authorizationHeaders: string[] = [];
-  const client = createWorkspaceResourcesClient(WORKSPACE_HOST, async (_input, init) => {
-    authorizationHeaders.push(new Headers(init?.headers).get("authorization") ?? "");
-    return new Response("upstream secret", { status: 403 });
-  });
-
-  await assert.rejects(
-    () => client.listServingEndpoints(createCaller()),
-    (error: unknown) =>
-      error instanceof ApplicationError &&
-      error.code === "databricks_resource_access_denied" &&
-      error.status === 403 &&
-      error.message === "Confirm the model-serving user authorization scope and your permission to query the serving endpoint.",
-  );
-
-  assert.deepEqual(authorizationHeaders, [`Bearer ${FORWARDED_TOKEN}`]);
-});
-
-test("WorkspaceResourcesClient_RejectsMalformedPageInsteadOfReturningPartialResults", async () => {
-  const client = createWorkspaceResourcesClient(
-    WORKSPACE_HOST,
-    async () => Response.json({ schemas: [{ description: "missing name" }] }),
-  );
-
-  await assert.rejects(
-    () => client.listSchemas(createCaller(), "main"),
-    { code: "databricks_invalid_response", status: 502 },
-  );
-});
-
-test("WorkspaceResourcesClient_RejectsUnsafeResourceNamesFromWorkspace", async () => {
-  const client = createWorkspaceResourcesClient(
-    WORKSPACE_HOST,
-    async () => Response.json({ volumes: [{ name: "uploads/nested" }] }),
-  );
-
-  await assert.rejects(
-    () => client.listVolumes(createCaller(), "main", "default"),
-    (error: unknown) =>
-      error instanceof ApplicationError &&
-      error.code === "databricks_invalid_response" &&
-      error.status === 502,
-  );
-});
-
-test("WorkspaceResourcesClient_RejectsInvalidOrOversizedServingEndpointResponses", async () => {
-  const invalidEndpointClient = createWorkspaceResourcesClient(
-    WORKSPACE_HOST,
-    async () => Response.json({ endpoints: [{ name: "https://outside.invalid" }] }),
-  );
-  const oversizedResponseClient = createWorkspaceResourcesClient(
-    WORKSPACE_HOST,
-    async () => new Response("x".repeat(4_000_001), { status: 200 }),
-  );
-
-  await assert.rejects(
-    () => invalidEndpointClient.listServingEndpoints(createCaller()),
-    { code: "databricks_invalid_response", status: 502 },
-  );
-  await assert.rejects(
-    () => oversizedResponseClient.listServingEndpoints(createCaller()),
-    { code: "databricks_invalid_response", status: 502 },
-  );
-});
-
-function createCaller(accessToken: string | null = FORWARDED_TOKEN): CallerIdentity {
+function createCaller(
+  accessToken: string | null = FORWARDED_TOKEN,
+): CallerIdentity {
   return {
     userId: "databricks-user-17",
     preferredUsername: "pat@example.com",

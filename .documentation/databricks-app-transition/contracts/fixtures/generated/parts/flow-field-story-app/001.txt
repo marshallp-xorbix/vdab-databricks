@@ -1,0 +1,240 @@
+import streamlit as st
+import streamlit.components.v1 as components
+import math
+import json
+import os
+import pandas as pd
+import re
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+st.set_page_config(page_title='Flow Field', layout='wide')
+st.title('Flow Field')
+
+ui_overrides = {'labels': {}}
+
+_VDAB_HTTP_TIMEOUT_SECONDS = 30
+
+class _VDABNoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request: urllib.request.Request, file_pointer: object, status_code: int, message: str, headers: object, new_url: str) -> urllib.request.Request | None:
+        return None
+
+def _vdab_open_no_redirect(request: urllib.request.Request) -> object:
+    opener = urllib.request.build_opener(_VDABNoRedirectHandler())
+    return opener.open(request, timeout=_VDAB_HTTP_TIMEOUT_SECONDS)
+
+
+_VDAB_SQL_MAX_HTTP_RESPONSE_BYTES = 5000000
+_VDAB_SQL_MAX_RESULT_BYTES = 20000000
+_VDAB_SQL_MAX_RESULT_ROWS = 10000
+_VDAB_SQL_MAX_RESULT_CHUNKS = 100
+
+def _vdab_sql_request(method: str, path: str, body: dict[str, object] | None = None) -> tuple[dict[str, object], int]:
+    user_token = st.context.headers.get('x-forwarded-access-token')
+    if not user_token:
+        raise RuntimeError('The current viewer did not grant Databricks SQL user authorization.')
+    workspace_host = os.environ.get('DATABRICKS_HOST', '')
+    parsed_host = urllib.parse.urlsplit(workspace_host)
+    if parsed_host.scheme != 'https' or not parsed_host.netloc or parsed_host.username or parsed_host.password or parsed_host.path not in ('', '/') or parsed_host.query or parsed_host.fragment:
+        raise RuntimeError('The Databricks workspace host is not configured safely.')
+    request_body = None if body is None else json.dumps(body).encode('utf-8')
+    request = urllib.request.Request(
+        f'{parsed_host.scheme}://{parsed_host.netloc}{path}',
+        data=request_body,
+        headers={'Authorization': f'Bearer {user_token}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
+        method=method,
+    )
+    try:
+        with _vdab_open_no_redirect(request) as response:
+            response_bytes = response.read(_VDAB_SQL_MAX_HTTP_RESPONSE_BYTES + 1)
+        if len(response_bytes) > _VDAB_SQL_MAX_HTTP_RESPONSE_BYTES:
+            raise RuntimeError('The Databricks SQL response is too large to load safely.')
+        response_body = json.loads(response_bytes.decode('utf-8'))
+    except urllib.error.HTTPError as error:
+        if error.code in (401, 403):
+            raise RuntimeError('SQL access denied. Check the current viewer’s sql authorization, warehouse access, and required table permissions.') from None
+        raise RuntimeError(f'Databricks rejected the SQL request (HTTP {error.code}).') from None
+    except TimeoutError:
+        raise RuntimeError('The Databricks SQL API request timed out.') from None
+    except urllib.error.URLError:
+        raise RuntimeError('The Databricks SQL API could not be reached.') from None
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise RuntimeError('Databricks returned an invalid SQL response.') from None
+    if not isinstance(response_body, dict):
+        raise RuntimeError('Databricks returned an invalid SQL response.')
+    return response_body, len(response_bytes)
+
+def _vdab_quote_sql_identifier(value: str) -> str:
+    return '`' + value.replace('`', '``') + '`'
+
+def _vdab_sql_result_part(response_body: dict[str, object]) -> dict[str, object]:
+    result_part = response_body.get('result', response_body)
+    if not isinstance(result_part, dict):
+        raise RuntimeError('Databricks returned an invalid SQL result.')
+    return result_part
+
+def _vdab_sql_reject_truncated_result(response_body: dict[str, object]) -> None:
+    if response_body.get('truncated') is True:
+        raise RuntimeError('The Databricks SQL result was truncated by its configured row or byte limit.')
+
+def _vdab_sql_query_df(catalog: str, schema: str, table: str, max_rows: int, primary_key: str | None = None, query_statement: str | None = None, warehouse_id_override: str | None = None, source_kind: str = 'unityCatalogTable', database: str | None = None, endpoint: str | None = None, resource_environment_variable: str | None = None) -> pd.DataFrame:
+    if source_kind == 'lakebaseAutoscaling':
+        if not isinstance(database, str) or not isinstance(endpoint, str):
+            raise RuntimeError('The Lakebase database and endpoint must be selected before previewing.')
+        return _vdab_lakebase_query_df(schema, table, max_rows, query_statement, database, endpoint, resource_environment_variable)
+    if source_kind != 'unityCatalogTable':
+        raise RuntimeError('The selected database source is not supported by this generated app.')
+    warehouse_id = warehouse_id_override or os.environ.get('DATABRICKS_SQL_WAREHOUSE_ID', '')
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', warehouse_id):
+        raise RuntimeError('Bind an existing SQL warehouse to this app before loading this table.')
+    if not isinstance(max_rows, int) or max_rows < 0 or max_rows > _VDAB_SQL_MAX_RESULT_ROWS:
+        raise RuntimeError('The requested SQL result row limit is invalid.')
+    table_reference = '.'.join(_vdab_quote_sql_identifier(name) for name in (catalog, schema, table))
+    if query_statement is not None:
+        statement = query_statement.strip()
+        if not statement.upper().startswith('SELECT '):
+            raise RuntimeError('The generated SQL query is invalid.')
+    elif primary_key is None:
+        statement = f'SELECT * FROM {table_reference}'
+    else:
+        key_column = _vdab_quote_sql_identifier(primary_key)
+        statement = f'SELECT COUNT(*) AS total_rows, COUNT({key_column}) AS non_null_rows, COUNT(DISTINCT {key_column}) AS unique_rows FROM {table_reference}'
+    if max_rows > 0:
+        statement += f' LIMIT {max_rows:d}'
+    request_body = {
+        'statement': statement,
+        'warehouse_id': warehouse_id,
+        'wait_timeout': '30s',
+        'on_wait_timeout': 'CONTINUE',
+        'disposition': 'INLINE',
+        'format': 'JSON_ARRAY',
+    }
+    request_body['row_limit'] = max_rows if max_rows > 0 else _VDAB_SQL_MAX_RESULT_ROWS
+    request_body['byte_limit'] = _VDAB_SQL_MAX_RESULT_BYTES
+    response_body, result_bytes = _vdab_sql_request('POST', '/api/2.0/sql/statements', request_body)
+    statement_id = response_body.get('statement_id')
+    if not isinstance(statement_id, str) or not re.fullmatch(r'[A-Za-z0-9-]{1,128}', statement_id):
+        raise RuntimeError('Databricks returned an invalid SQL statement identifier.')
+    status_part = response_body.get('status')
+    if not isinstance(status_part, dict):
+        raise RuntimeError('Databricks returned an invalid SQL statement status.')
+    state = status_part.get('state')
+    for _poll_attempt in range(12):
+        if state == 'SUCCEEDED':
+            break
+        if state not in ('PENDING', 'RUNNING'):
+            raise RuntimeError('The Databricks SQL statement did not complete successfully.')
+        time.sleep(1)
+        statement_path = '/api/2.0/sql/statements/' + urllib.parse.quote(statement_id, safe='')
+        statement_path += '?warehouse_id=' + urllib.parse.quote(warehouse_id, safe='')
+        response_body, response_bytes = _vdab_sql_request('GET', statement_path)
+        result_bytes += response_bytes
+        if result_bytes > _VDAB_SQL_MAX_RESULT_BYTES:
+            raise RuntimeError('The Databricks SQL result is too large to load safely.')
+        status_part = response_body.get('status')
+        if not isinstance(status_part, dict):
+            raise RuntimeError('Databricks returned an invalid SQL statement status.')
+        state = status_part.get('state')
+    if state != 'SUCCEEDED':
+        raise RuntimeError('The Databricks SQL statement timed out before results were ready.')
+    _vdab_sql_reject_truncated_result(response_body)
+    manifest = response_body.get('manifest')
+    if not isinstance(manifest, dict):
+        raise RuntimeError('Databricks returned an invalid SQL result manifest.')
+    schema_part = manifest.get('schema')
+    if not isinstance(schema_part, dict) or not isinstance(schema_part.get('columns'), list):
+        raise RuntimeError('Databricks returned invalid SQL column metadata.')
+    column_names = [column.get('name') for column in schema_part['columns'] if isinstance(column, dict)]
+    if len(column_names) != len(schema_part['columns']) or not all(isinstance(name, str) for name in column_names):
+        raise RuntimeError('Databricks returned invalid SQL column metadata.')
+    result_part = _vdab_sql_result_part(response_body)
+    if result_bytes > _VDAB_SQL_MAX_RESULT_BYTES:
+        raise RuntimeError('The Databricks SQL result is too large to load safely.')
+    rows = []
+    row_limit = max_rows if max_rows > 0 else _VDAB_SQL_MAX_RESULT_ROWS
+    next_chunk_index = 0
+    for _chunk_attempt in range(_VDAB_SQL_MAX_RESULT_CHUNKS):
+        data_array = result_part.get('data_array')
+        if not isinstance(data_array, list) or not all(isinstance(row, list) for row in data_array):
+            raise RuntimeError('Databricks returned invalid SQL row data.')
+        if len(rows) + len(data_array) > row_limit:
+            raise RuntimeError('The Databricks SQL result exceeded its configured row limit.')
+        rows.extend(data_array)
+        next_chunk_index = result_part.get('next_chunk_index')
+        if next_chunk_index is None:
+            break
+        if not isinstance(next_chunk_index, int) or next_chunk_index < 0:
+            raise RuntimeError('Databricks returned an invalid SQL result page.')
+        chunk_path = '/api/2.0/sql/statements/' + urllib.parse.quote(statement_id, safe='')
+        chunk_path += '/result/chunks/' + str(next_chunk_index) + '?warehouse_id=' + urllib.parse.quote(warehouse_id, safe='')
+        chunk_response, chunk_response_bytes = _vdab_sql_request('GET', chunk_path)
+        _vdab_sql_reject_truncated_result(chunk_response)
+        result_bytes += chunk_response_bytes
+        if result_bytes > _VDAB_SQL_MAX_RESULT_BYTES:
+            raise RuntimeError('The Databricks SQL result is too large to load safely.')
+        result_part = _vdab_sql_result_part(chunk_response)
+    else:
+        raise RuntimeError('The Databricks SQL result contains too many pages to load safely.')
+    return pd.DataFrame(rows, columns=column_names)
+
+_vdab_lbl_vdab_flowfieldstory1 = ui_overrides.get('labels', {}).get('flowFieldStory1', None)
+_vdab_disp_lbl_vdab_flowfieldstory1 = _vdab_lbl_vdab_flowfieldstory1 if _vdab_lbl_vdab_flowfieldstory1 is not None else 'Flow Field Story'
+st.subheader(_vdab_disp_lbl_vdab_flowfieldstory1)
+try:
+    vdab_flowfieldstory1_data = _vdab_sql_query_df('main', 'sales', 'flows', 500, query_statement='SELECT `source_stage` AS source_stage, `destination_stage` AS destination_stage, SUM(`flow_volume`) AS flow_volume, MAX(`stage_order`) AS stage_order, AVG(`conversion`) AS conversion_pct, SUM(`drop_count`) AS drop_off, AVG(`avg_time`) AS avg_time_in_stage, MAX(`status`) AS status FROM (SELECT * FROM `main`.`sales`.`flows` WHERE `event_time` = (SELECT MAX(`event_time`) FROM `main`.`sales`.`flows`)) GROUP BY `source_stage`, `destination_stage`')
+except RuntimeError as vdab_error_vdab_flowfieldstory1:
+    st.error(str(vdab_error_vdab_flowfieldstory1))
+    vdab_flowfieldstory1_data = pd.DataFrame(columns=['source_stage', 'destination_stage', 'flow_volume', 'stage_order'])
+if vdab_flowfieldstory1_data.empty or 'source_stage' not in vdab_flowfieldstory1_data.columns or 'destination_stage' not in vdab_flowfieldstory1_data.columns:
+    st.info('No flow records returned. Check bindings and field mappings.')
+else:
+    vdab_flowfieldstory1_data = vdab_flowfieldstory1_data.copy()
+    if 'flow_volume' in vdab_flowfieldstory1_data.columns:
+        vdab_flowfieldstory1_data['flow_volume'] = pd.to_numeric(vdab_flowfieldstory1_data['flow_volume'], errors='coerce')
+        vdab_flowfieldstory1_data['flow_volume'] = vdab_flowfieldstory1_data['flow_volume'].where(vdab_flowfieldstory1_data['flow_volume'].map(math.isfinite))
+    if 'stage_order' in vdab_flowfieldstory1_data.columns:
+        vdab_flowfieldstory1_data['stage_order'] = pd.to_numeric(vdab_flowfieldstory1_data['stage_order'], errors='coerce')
+        vdab_flowfieldstory1_data['stage_order'] = vdab_flowfieldstory1_data['stage_order'].where(vdab_flowfieldstory1_data['stage_order'].map(math.isfinite))
+    if 'conversion_pct' in vdab_flowfieldstory1_data.columns:
+        vdab_flowfieldstory1_data['conversion_pct'] = pd.to_numeric(vdab_flowfieldstory1_data['conversion_pct'], errors='coerce')
+        vdab_flowfieldstory1_data['conversion_pct'] = vdab_flowfieldstory1_data['conversion_pct'].where(vdab_flowfieldstory1_data['conversion_pct'].map(math.isfinite))
+    if 'drop_off' in vdab_flowfieldstory1_data.columns:
+        vdab_flowfieldstory1_data['drop_off'] = pd.to_numeric(vdab_flowfieldstory1_data['drop_off'], errors='coerce')
+        vdab_flowfieldstory1_data['drop_off'] = vdab_flowfieldstory1_data['drop_off'].where(vdab_flowfieldstory1_data['drop_off'].map(math.isfinite))
+    if 'avg_time_in_stage' in vdab_flowfieldstory1_data.columns:
+        vdab_flowfieldstory1_data['avg_time_in_stage'] = pd.to_numeric(vdab_flowfieldstory1_data['avg_time_in_stage'], errors='coerce')
+        vdab_flowfieldstory1_data['avg_time_in_stage'] = vdab_flowfieldstory1_data['avg_time_in_stage'].where(vdab_flowfieldstory1_data['avg_time_in_stage'].map(math.isfinite))
+    vdab_flowfieldstory1_data['source_stage'] = vdab_flowfieldstory1_data['source_stage'].fillna('').astype(str).str.strip()
+    vdab_flowfieldstory1_data['destination_stage'] = vdab_flowfieldstory1_data['destination_stage'].fillna('').astype(str).str.strip()
+    vdab_flowfieldstory1_data = vdab_flowfieldstory1_data[(vdab_flowfieldstory1_data['source_stage'] != '') & (vdab_flowfieldstory1_data['destination_stage'] != '')]
+    vdab_flowfieldstory1_data = vdab_flowfieldstory1_data.dropna(subset=['source_stage', 'destination_stage'])
+    vdab_flowfieldstory1_flows = []
+    for _, _vdab_row in vdab_flowfieldstory1_data.iterrows():
+        _vdab_source = str(_vdab_row.get('source_stage') or '').strip()
+        _vdab_destination = str(_vdab_row.get('destination_stage') or '').strip()
+        if not _vdab_source or not _vdab_destination:
+            continue
+        _vdab_volume = _vdab_row.get('flow_volume', 0)
+        _vdab_order = _vdab_row.get('stage_order', 0)
+        _vdab_flow = {
+            'source': _vdab_source,
+            'destination': _vdab_destination,
+            'volume': 0.0 if pd.isna(_vdab_volume) else float(_vdab_volume),
+            'stage_order': 0.0 if pd.isna(_vdab_order) else float(_vdab_order),
+        }
+        for _vdab_field in ('conversion_pct', 'drop_off', 'avg_time_in_stage'):
+            if _vdab_field in vdab_flowfieldstory1_data.columns and not pd.isna(_vdab_row.get(_vdab_field)):
+                _vdab_flow[_vdab_field] = float(_vdab_row.get(_vdab_field))
+        if 'status' in vdab_flowfieldstory1_data.columns and not pd.isna(_vdab_row.get('status')) and str(_vdab_row.get('status')).strip():
+            _vdab_flow['status'] = str(_vdab_row.get('status')).strip().lower()
+        vdab_flowfieldstory1_flows.append(_vdab_flow)
+    vdab_flowfieldstory1_order_by_stage = {}
+    for _vdab_flow in vdab_flowfieldstory1_flows:
+        _vdab_name = _vdab_flow['source']
+        _vdab_order = _vdab_flow.get('stage_order', 0)
+        if _vdab_name not in vdab_flowfieldstory1_order_by_stage or _vdab_order > vdab_flowfieldstory1_order_by_stage[_vdab_name]:
+            vdab_flowfieldstory1_order_by_stage[_vdab_name] = _vdab_order
+    vdab_flowfieldstory1_all_names = set(vdab_flowfieldstory1_order_by_stage.keys())
+    for _vdab_flow in vdab_flowfieldstory1_flows:

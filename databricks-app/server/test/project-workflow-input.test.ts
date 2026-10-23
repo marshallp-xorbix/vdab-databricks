@@ -115,6 +115,7 @@ test("ProjectWorkflowInput_PreservesPortableLakebaseTargetMetadata", () => {
     projectId: "project-one",
     branchId: "production",
     endpointId: "primary",
+    databaseId: "database-one",
     database: "app",
   };
 
@@ -128,6 +129,7 @@ test("ProjectWorkflowInput_PreservesPortableLakebaseTargetMetadata", () => {
     projectId: "project-one",
     branchId: "production",
     endpointId: "primary",
+    databaseId: "database-one",
     database: "app",
   });
   assert.ok(table);
@@ -182,6 +184,17 @@ test("ProjectWorkflowInput_ValidatesLakebaseEndpointAndImportedUnresolvedReferen
   buildSqlParams.lakebaseEndpointId = "read-write";
   assert.doesNotThrow(() => readProjectWorkflowInput(autoscaling));
 
+  const selectedDatabase = structuredClone(autoscaling);
+  selectedDatabase.workflow.workflows[0]!.nodes[3]!.params.lakebaseDatabaseId = "database-one";
+  assert.equal(
+    readProjectWorkflowInput(selectedDatabase).workflow.workflows[0]?.nodes[3]?.params.lakebaseDatabaseId,
+    "database-one",
+  );
+
+  const malformedDatabaseId = structuredClone(selectedDatabase);
+  malformedDatabaseId.workflow.workflows[0]!.nodes[3]!.params.lakebaseDatabaseId = "database/other-workspace";
+  assertInvalidWorkflow(malformedDatabaseId);
+
   const malformedEndpoint = structuredClone(autoscaling);
   malformedEndpoint.workflow.workflows[0]!.nodes[3]!.params.lakebaseEndpointId = "endpoint/other-project";
   assertInvalidWorkflow(malformedEndpoint);
@@ -202,6 +215,29 @@ test("ProjectWorkflowInput_ValidatesLakebaseEndpointAndImportedUnresolvedReferen
   const wrongSource = structuredClone(validInput);
   wrongSource.workflow.workflows[0]!.nodes[3]!.params.lakebaseEndpointId = "endpoint-one";
   assertInvalidWorkflow(wrongSource);
+});
+
+test("ProjectWorkflowInput_ValidatesProvisionedLakebaseInstanceAndDatabase", () => {
+  const accepted = structuredClone(validInput);
+  const buildSqlParams = accepted.workflow.workflows[0]!.nodes[3]!.params;
+  buildSqlParams.sqlSourceKind = "lakebaseProvisionedDatabase";
+  delete buildSqlParams.sqlWarehouseId;
+  delete buildSqlParams.sqlWarehouseName;
+  buildSqlParams.lakebaseInstanceName = "legacy-instance";
+  buildSqlParams.lakebaseDatabaseName = "databricks_postgres";
+  assert.doesNotThrow(() => readProjectWorkflowInput(accepted));
+
+  const missingInstance = structuredClone(accepted);
+  delete missingInstance.workflow.workflows[0]!.nodes[3]!.params.lakebaseInstanceName;
+  assertInvalidWorkflow(missingInstance);
+
+  const injectedInstance = structuredClone(accepted);
+  injectedInstance.workflow.workflows[0]!.nodes[3]!.params.lakebaseInstanceName = "instance/other-workspace";
+  assertInvalidWorkflow(injectedInstance);
+
+  const unexpectedAutoscalingReference = structuredClone(accepted);
+  unexpectedAutoscalingReference.workflow.workflows[0]!.nodes[3]!.params.lakebaseEndpointId = "endpoint-one";
+  assertInvalidWorkflow(unexpectedAutoscalingReference);
 });
 
 test("ProjectWorkflowInput_ValidatesPositiveInt64DatabricksJobIds", () => {

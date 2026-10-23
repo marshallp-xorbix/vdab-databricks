@@ -4,6 +4,11 @@ import type {
   WorkspaceAppsPage,
 } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
+import {
+  MAX_WORKSPACE_JSON_RESPONSE_BYTES,
+  discardHttpResponseBody,
+  readBoundedJsonResponse,
+} from "./bounded-json-response.ts";
 
 const WORKSPACE_APPS_PATH = "/api/2.0/apps";
 const MAX_PAGE_SIZE = 100;
@@ -90,6 +95,7 @@ async function listWorkspaceApps(
         Authorization: `Bearer ${caller.databricksAccessToken}`,
         Accept: "application/json",
       },
+      redirect: "error",
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
@@ -102,6 +108,7 @@ async function listWorkspaceApps(
   }
 
   if (response.status === 401) {
+    await discardHttpResponseBody(response);
     throw new ApplicationError(
       401,
       "databricks_auth_failed",
@@ -111,6 +118,7 @@ async function listWorkspaceApps(
   }
 
   if (response.status === 403) {
+    await discardHttpResponseBody(response);
     throw new ApplicationError(
       403,
       "databricks_apps_access_denied",
@@ -120,6 +128,7 @@ async function listWorkspaceApps(
   }
 
   if (!response.ok) {
+    await discardHttpResponseBody(response);
     throw new ApplicationError(
       502,
       "databricks_request_failed",
@@ -204,7 +213,10 @@ async function readListResponse(
   response: Response,
 ): Promise<DatabricksAppListResponse> {
   try {
-    const body: unknown = await response.json();
+    const body = await readBoundedJsonResponse(
+      response,
+      MAX_WORKSPACE_JSON_RESPONSE_BYTES,
+    );
 
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
       throw new Error("Invalid response body.");
@@ -230,9 +242,7 @@ function isDatabricksAppRecord(value: unknown): value is DatabricksAppRecord {
   );
 }
 
-function toWorkspaceAppSummary(
-  app: DatabricksAppRecord,
-): WorkspaceAppSummary {
+function toWorkspaceAppSummary(app: DatabricksAppRecord): WorkspaceAppSummary {
   return {
     name: app.name as string,
     description: typeof app.description === "string" ? app.description : null,

@@ -3,17 +3,25 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import type { IProject } from "../models/Project";
-import { createProject, exportProject, importProject, listProjects } from "../api/projectsApi";
+import {
+  createProject,
+  deleteProject,
+  exportProject,
+  importProject,
+  listProjects,
+} from "../api/projectsApi";
 import ProjectManagementPage from "./ProjectManagementPage";
 
 vi.mock("../api/projectsApi", () => ({
   createProject: vi.fn(),
+  deleteProject: vi.fn(),
   exportProject: vi.fn(),
   importProject: vi.fn(),
   listProjects: vi.fn(),
 }));
 
 const createProjectMock = vi.mocked(createProject);
+const deleteProjectMock = vi.mocked(deleteProject);
 const exportProjectMock = vi.mocked(exportProject);
 const importProjectMock = vi.mocked(importProject);
 const listProjectsMock = vi.mocked(listProjects);
@@ -75,8 +83,9 @@ describe("ProjectManagementPage", () => {
       await screen.findByRole("link", { name: "Revenue dashboard" }),
     );
 
-    expect(await screen.findByRole("heading", { name: "Project editor route" }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Project editor route" }),
+    ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/apps/project-1");
   });
 
@@ -98,9 +107,12 @@ describe("ProjectManagementPage", () => {
       name: "Revenue dashboard",
       description: "Finance team",
     });
-    expect(await screen.findByRole("heading", { name: "Project editor route" }))
-      .toBeInTheDocument();
-    await waitFor(() => expect(router.state.location.pathname).toBe("/apps/project-1"));
+    expect(
+      await screen.findByRole("heading", { name: "Project editor route" }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/apps/project-1"),
+    );
   });
 
   it("shows project-list errors", async () => {
@@ -118,22 +130,39 @@ describe("ProjectManagementPage", () => {
     importProjectMock.mockResolvedValue({
       project,
       requiresChildAppSelection: true,
-      unresolvedResources: [{ key: "resource_1", kind: "sqlWarehouse", label: "Shared warehouse" }],
+      unresolvedResources: [
+        { key: "resource_1", kind: "sqlWarehouse", label: "Shared warehouse" },
+      ],
     });
     Object.defineProperty(File.prototype, "text", {
       configurable: true,
-      value: vi.fn().mockResolvedValue(JSON.stringify({ format: "vdab-project", schemaVersion: 1 })),
+      value: vi
+        .fn()
+        .mockResolvedValue(
+          JSON.stringify({ format: "vdab-project", schemaVersion: 1 }),
+        ),
     });
 
     renderProjectManagementPage();
     fireEvent.change(await screen.findByLabelText("Project JSON file"), {
-      target: { files: [new File(["{}"], "project.vdab.json", { type: "application/json" })] },
+      target: {
+        files: [
+          new File(["{}"], "project.vdab.json", { type: "application/json" }),
+        ],
+      },
     });
 
     expect(await screen.findByText(/Imported/)).toBeInTheDocument();
-    expect(screen.getByText("sqlWarehouse: Shared warehouse")).toBeInTheDocument();
-    expect(screen.getByText(/Choose a child App before deploying/)).toBeInTheDocument();
-    expect(importProjectMock.mock.calls[0]?.[0]).toEqual({ format: "vdab-project", schemaVersion: 1 });
+    expect(
+      screen.getByText("sqlWarehouse: Shared warehouse"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Choose a child App before deploying/),
+    ).toBeInTheDocument();
+    expect(importProjectMock.mock.calls[0]?.[0]).toEqual({
+      format: "vdab-project",
+      schemaVersion: 1,
+    });
   });
 
   it("rejects an oversized project file before reading or uploading it", async () => {
@@ -143,16 +172,23 @@ describe("ProjectManagementPage", () => {
       configurable: true,
       value: textMock,
     });
-    const oversizedFile = new File(["{}"], "large-project.vdab.json", { type: "application/json" });
+    const oversizedFile = new File(["{}"], "large-project.vdab.json", {
+      type: "application/json",
+    });
     Object.defineProperty(oversizedFile, "size", { value: 1_048_577 });
 
     renderProjectManagementPage();
     const importInput = await screen.findByLabelText("Project JSON file");
     fireEvent.change(importInput, { target: { files: [oversizedFile] } });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("smaller than 1 MiB");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "smaller than 1 MiB",
+    );
     expect(importInput).toHaveAttribute("aria-invalid", "true");
-    expect(importInput).toHaveAttribute("aria-describedby", "project-import-help project-import-error");
+    expect(importInput).toHaveAttribute(
+      "aria-describedby",
+      "project-import-help project-import-error",
+    );
     expect(textMock).not.toHaveBeenCalled();
     expect(importProjectMock).not.toHaveBeenCalled();
   });
@@ -165,15 +201,68 @@ describe("ProjectManagementPage", () => {
       exportedAt: "2026-10-20T00:00:00.000Z",
       project: { name: project.name },
     });
-    vi.stubGlobal("URL", Object.assign(URL, {
-      createObjectURL: vi.fn(() => "blob:test"),
-      revokeObjectURL: vi.fn(),
-    }));
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, {
+        createObjectURL: vi.fn(() => "blob:test"),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      () => undefined,
+    );
 
     renderProjectManagementPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Export project" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Export project" }),
+    );
 
-    await waitFor(() => expect(exportProjectMock.mock.calls[0]?.[0]).toBe(project.id));
+    await waitFor(() =>
+      expect(exportProjectMock.mock.calls[0]?.[0]).toBe(project.id),
+    );
+  });
+
+  it("confirms owner deletion and refreshes the visible project list", async () => {
+    listProjectsMock
+      .mockResolvedValueOnce({ items: [project] })
+      .mockResolvedValueOnce({ items: [] });
+    deleteProjectMock.mockResolvedValue(undefined);
+
+    renderProjectManagementPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Delete project" }),
+    );
+
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "cannot be undone in the app",
+    );
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "child App and its workspace source files will remain",
+    );
+    expect(deleteProjectMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove project" }));
+
+    await waitFor(() =>
+      expect(deleteProjectMock.mock.calls[0]?.[0]).toBe(project.id),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "No projects yet" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not offer project deletion to an editor", async () => {
+    listProjectsMock.mockResolvedValueOnce({
+      items: [{ ...project, callerRole: "editor" }],
+    });
+
+    renderProjectManagementPage();
+
+    expect(
+      await screen.findByRole("link", { name: "Revenue dashboard" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete project" }),
+    ).not.toBeInTheDocument();
   });
 });

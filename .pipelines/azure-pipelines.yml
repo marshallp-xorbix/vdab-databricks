@@ -1,5 +1,11 @@
 # =====================================================================================
-# VDAB CI/CD — build ONCE, promote the SAME artifact across dev → staging → prod.
+# TRANSITION PIPELINE — build the standalone Databricks package and maintain the temporary SaaS release.
+#
+# This pipeline publishes databricks-app/.build as a separate artifact, but its Deploy_* stages still deploy
+# the legacy .NET/Azure product. It does NOT deploy to Databricks. Retire those Azure stages only after the
+# transition's G5 and Marketplace install gates pass.
+#
+# LEGACY RELEASE FLOW — build ONCE, promote the SAME .NET artifact across dev → staging → prod.
 #
 # HOW IT RUNS
 #   - PR to develop or main:    build + test + Bicep validation only (NO deploy).
@@ -11,8 +17,8 @@
 #   - staging: "stg" Environment approval check.
 #   - prod:    "prd" Environment approval check at a higher bar (more approvers, business-hours, exclusive lock).
 #
-# The build is ENVIRONMENT-AGNOSTIC: the SPA resolves its API base (same-origin), OAuth redirect (window
-# origin) and Application Insights (GET /api/config) at RUNTIME, so the one artifact runs in every environment.
+# The legacy .NET/Azure package is environment-agnostic: its retained SaaS SPA resolves runtime configuration
+# for that reference deployment. The standalone Databricks artifact is published separately and is not deployed here.
 #
 # main is the production record + hotfix base (updated on release), NOT a build trigger. See
 # .documentation/deployment/1-overview.md and 5-pipeline-setup.md.

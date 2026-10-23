@@ -77,6 +77,7 @@ test("LineChartPreview_QueriesLakebaseWithTheInstalledWorkspaceEndpoint", () => 
           resource: {
             type: "lakebaseAutoscaling",
             database: "appdb",
+            databaseId: "database-id",
             projectId: "project",
             branchId: "branch",
             endpointId: "endpoint",
@@ -98,7 +99,7 @@ test("LineChartPreview_QueriesLakebaseWithTheInstalledWorkspaceEndpoint", () => 
 
   assert.match(incompletePython, /Bind a Unity Catalog table and choose X and Y columns/);
   assert.match(lakebasePython, /SELECT "sold_at" AS x, "revenue" AS y/);
-  assert.match(lakebasePython, /source_kind='lakebaseAutoscaling', database='appdb'/);
+  assert.match(lakebasePython, /source_kind='lakebaseAutoscaling', database='appdb'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/);
   assert.match(lakebasePython, /endpoint='projects\/project\/branches\/branch\/endpoints\/endpoint'/);
 });
 

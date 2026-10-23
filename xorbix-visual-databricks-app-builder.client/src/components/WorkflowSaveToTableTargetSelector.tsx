@@ -1,5 +1,6 @@
 import type { SaveTargetTableRef } from "../types/workflow/sharedReferences";
 import InstalledWorkspaceLakebaseTableSelectorFields from "./InstalledWorkspaceLakebaseTableSelectorFields";
+import InstalledWorkspaceLakebaseProvisionedTableSelectorFields from "./InstalledWorkspaceLakebaseProvisionedTableSelectorFields";
 import InstalledWorkspaceUnityCatalogTableSelectorFields from "./InstalledWorkspaceUnityCatalogTableSelectorFields";
 import { Label } from "./ui/label";
 import {
@@ -31,8 +32,19 @@ export default function WorkflowSaveToTableTargetSelector({
         projectId: "",
         branchId: "",
         endpointId: "",
+        databaseId: "",
         database: "",
         catalog: "",
+        schema: "",
+        table: "",
+      });
+    } else if (tableType === "lakebaseProvisionedDatabase") {
+      onChange({
+        tableType,
+        workspaceConnectionId,
+        instanceName: "",
+        database: "databricks_postgres",
+        catalog: "databricks_postgres",
         schema: "",
         table: "",
       });
@@ -61,11 +73,7 @@ export default function WorkflowSaveToTableTargetSelector({
           <SelectContent>
             <SelectItem value="unityCatalogTable">Unity Catalog</SelectItem>
             <SelectItem value="lakebaseAutoscaling">Lakebase Autoscaling</SelectItem>
-            {value.tableType === "lakebaseProvisionedDatabase" && (
-              <SelectItem value="lakebaseProvisionedDatabase" disabled>
-                Legacy Lakebase (reselect target)
-              </SelectItem>
-            )}
+            <SelectItem value="lakebaseProvisionedDatabase">Lakebase Provisioned (existing)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -80,9 +88,7 @@ export default function WorkflowSaveToTableTargetSelector({
         <InstalledWorkspaceLakebaseTableSelectorFields value={value} onChange={onChange} />
       )}
       {value.tableType === "lakebaseProvisionedDatabase" && (
-        <p className="rounded-md border border-warning/30 bg-warning-subtle px-3 py-2 text-xs text-warning-foreground">
-          This legacy binding uses a retired external workspace connection. Select Unity Catalog or Lakebase Autoscaling, then choose a target in this workspace.
-        </p>
+        <InstalledWorkspaceLakebaseProvisionedTableSelectorFields value={value} onChange={onChange} />
       )}
     </div>
   );

@@ -4,7 +4,7 @@ import DataWindowTableBindingEditor from "./DataWindowTableBindingEditor";
 import AmoebaStoryFieldMappingsEditor from "./AmoebaStoryFieldMappingsEditor";
 import AmoebaStoryVisualPropertiesEditor from "./AmoebaStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface IAmoebaStoryPropertiesEditorProps {
   componentKey: string;
@@ -23,7 +23,7 @@ function AmoebaStoryPropertiesEditor({
   onPropertiesChange,
   onBindingsChange,
 }: Readonly<IAmoebaStoryPropertiesEditorProps>) {
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Amoeba Story";
 
   return (

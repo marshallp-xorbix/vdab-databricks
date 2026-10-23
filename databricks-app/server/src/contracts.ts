@@ -1,3 +1,11 @@
+/** Current fixed Databricks Apps limit per workspace. */
+export const MAX_APPS_PER_WORKSPACE = 100;
+export const MAX_CHILD_APP_SECRET_IDENTIFIER_LENGTH = 128;
+export const MAX_CHILD_APP_SECRET_RESOURCES = 100;
+export const CHILD_APP_SECRET_RESOURCE_DESCRIPTION =
+  "VDAB secret read binding";
+export const CHILD_APP_SECRET_ENVIRONMENT_PREFIX = "VDAB_SECRET_";
+
 /** Identity established at the Databricks App proxy boundary. */
 export interface CallerIdentity {
   userId: string;
@@ -31,6 +39,10 @@ export interface ProjectCollaborator {
   createdAt: string;
 }
 
+/** Production collaborator grants stay disabled until a supported directory lookup exists. */
+export const PROJECT_COLLABORATOR_DIRECTORY_UNAVAILABLE_CODE =
+  "collaborator_identity_directory_unavailable";
+
 /** Safe summary of one App visible in the installed workspace. */
 export interface WorkspaceAppSummary {
   name: string;
@@ -46,6 +58,135 @@ export interface WorkspaceAppsPage {
   authenticationMode: "databricks" | "local-test";
 }
 
+/** Deployment source mode selected by the project editor. */
+export type ProjectChildAppMode = "createNew" | "linkExisting";
+
+/** Lifecycle state recorded for one immutable generated source snapshot. */
+export type ProjectDeploymentStatus =
+  | "pending"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
+
+/** One generated source file saved with a deployment for recovery. */
+export interface ProjectDeploymentSourceFile {
+  path: string;
+  content: string;
+}
+
+/** Safe child-App link returned with project deployment history. */
+export interface ProjectChildAppLink {
+  appId: string | null;
+  appName: string;
+  mode: ProjectChildAppMode;
+  sourceCodePath: string | null;
+}
+
+/** Safe deployment history item; source contents never leave Lakebase. */
+export interface ProjectDeploymentSummary {
+  id: string;
+  projectId: string;
+  appName: string;
+  mode: ProjectChildAppMode;
+  sourceVersion: number;
+  status: ProjectDeploymentStatus;
+  deploymentId: string | null;
+  sourceCodePath: string | null;
+  failureCode: string | null;
+  attemptOf: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+/** Project child-App link and recent deployment history. */
+export interface ProjectDeploymentHistory {
+  childApp: ProjectChildAppLink | null;
+  items: ProjectDeploymentSummary[];
+}
+
+/** Project-specific scopes and unsupported workflow operations found before deployment. */
+export interface ProjectDeploymentReadiness {
+  userApiScopes: string[];
+  appResources: WorkspaceAppResource[];
+  blockers: Array<{ code: string; detail: string }>;
+}
+
+/** Existing Lakebase resource Databricks must bind to a generated child App. */
+export type WorkspaceAppResource =
+  | WorkspaceLakebaseAppResource
+  | WorkspaceSqlWarehouseAppResource
+  | WorkspaceSecretAppResource;
+
+export type WorkspaceLakebaseAppResource =
+  | {
+      name: string;
+      description: string;
+      postgres: {
+        database: string;
+        permission: "CAN_CONNECT_AND_CREATE";
+      };
+    }
+  | {
+      name: string;
+      description: string;
+      database: {
+        instance_name: string;
+        database_name: string;
+        permission: "CAN_CONNECT_AND_CREATE";
+      };
+    };
+
+export interface WorkspaceSqlWarehouseAppResource {
+  name: string;
+  description: string;
+  sql_warehouse: {
+    id: string;
+    permission: "CAN_USE" | "CAN_MANAGE" | "IS_OWNER";
+  };
+}
+
+/** Secret scope binding attached to a generated or linked child App. */
+export interface WorkspaceSecretAppResource {
+  name: string;
+  description: string;
+  secret: {
+    scope: string;
+    key: string;
+    permission: "READ" | "WRITE" | "MANAGE";
+  };
+}
+
+/** Secret identifiers chosen for a generated child App; this never contains a value. */
+export interface WorkspaceSecretResourceSelection {
+  name: string;
+  scope: string;
+  key: string;
+}
+
+/** Result of creating or refreshing one Databricks App deployment. */
+export interface WorkspaceAppDeploymentStatus {
+  deploymentId: string;
+  state: "pending" | "running" | "succeeded" | "failed" | "cancelled";
+}
+
+/** Safe current deployment details for a workspace App selected for linking. */
+export interface WorkspaceAppDeploymentTarget {
+  appId: string | null;
+  name: string;
+  description: string | null;
+  spaceName: string | null;
+  effectiveUserApiScopes: string[] | null;
+  appState: string | null;
+  computeState: string | null;
+  appUrl: string | null;
+  activeDeploymentId: string | null;
+  sourceCodePath: string | null;
+  usesGitSource: boolean;
+  userApiScopes: string[];
+  secretResources: WorkspaceSecretAppResource[];
+}
+
 /** Safe name exposed for a resource visible to the current workspace user. */
 export interface WorkspaceResource {
   name: string;
@@ -54,7 +195,11 @@ export interface WorkspaceResource {
 /** Table metadata visible to the current Databricks user. */
 export interface WorkspaceTableResource extends WorkspaceResource {
   dataSourceFormat: string | null;
-  columns: Array<{ name: string; type: string | null; dataType: string | null }>;
+  columns: Array<{
+    name: string;
+    type: string | null;
+    dataType: string | null;
+  }>;
 }
 
 /** One Unity Catalog table name returned without column metadata. */
@@ -174,6 +319,12 @@ export interface WorkspaceLakebaseTableResource {
   }>;
 }
 
+/** Lakebase Provisioned instance visible to the acting Databricks user. */
+export interface WorkspaceLakebaseProvisionedInstanceResource {
+  instanceName: string;
+  state: string | null;
+}
+
 /** One Lakebase resource list resolved in the installed workspace. */
 export interface WorkspaceLakebaseResourcesPage<T> {
   items: T[];
@@ -191,4 +342,26 @@ export interface SessionResponse {
   };
   authenticationMode: "databricks" | "local-test";
   installationAdmin: boolean;
+}
+
+/** Safe summary of install-local resources and the caller's optional authorization check. */
+export interface WorkspaceSetupDiagnostics {
+  lakebase: {
+    status: "configured" | "incomplete" | "missing" | "local-test";
+    configuredFields: string[];
+    missingFields: string[];
+    message: string;
+  };
+  defaultSqlWarehouse: {
+    status: "configured" | "invalid" | "missing" | "local-test";
+    message: string;
+  };
+  authorization: {
+    status: "verified" | "missing-scopes" | "unavailable" | "local-test";
+    requestedScopes: string[];
+    effectiveScopes: string[];
+    consentedScopes: string[];
+    missingScopes: string[];
+    message: string;
+  };
 }

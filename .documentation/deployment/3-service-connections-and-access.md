@@ -1,5 +1,7 @@
 # 3 — Service Connections, Variable Groups & Approval Gates
 
+> **Legacy .NET/Azure deployment reference:** These instructions describe the former SaaS App Service deployment retained while transition gates remain open. They do not install or deploy the standalone Databricks App. Use [the standalone runbook](../../databricks-app/DEPLOYMENT.md) and [manual workspace checklist](../databricks-app-transition/manual-workspace-testing.md) for the new product.
+
 Back to the guide index: [README.md](./README.md)
 
 This is the Azure DevOps side of the setup, and the part that enforces the **manual + approval** gating for

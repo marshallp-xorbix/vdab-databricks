@@ -5,7 +5,11 @@ import type {
 import { hasUnexpectedProperties, isRecord } from "../db/project-component-json.ts";
 import { invalidDataWindow } from "./preview-errors.ts";
 import { pythonString, pythonStringList } from "./preview-python.ts";
-import { lakebaseQueryOptions } from "./preview-chart-bindings.ts";
+import { lakebaseQueryExpression } from "./preview-chart-bindings.ts";
+import {
+  createAutoscalingAppResourceBinding,
+  createProvisionedAppResourceBinding,
+} from "../lakebase-app-resource-binding.ts";
 
 const DATA_WINDOW_PROPERTY_NAMES = [
   "label",
@@ -34,12 +38,14 @@ interface TableColumn {
 }
 
 interface TableBinding {
-  kind: "none" | "unityCatalogTable" | "lakebaseAutoscaling" | "unsupported";
+  kind: "none" | "unityCatalogTable" | "lakebaseProvisionedDatabase" | "lakebaseAutoscaling" | "unsupported";
   catalog: string | null;
   schema: string | null;
   table: string | null;
   database: string | null;
+  instanceName: string | null;
   endpoint: string | null;
+  resourceEnvironmentVariable: string | null;
   columns: TableColumn[];
 }
 
@@ -68,13 +74,15 @@ export function appendDataWindow(
     binding.schema !== null &&
     binding.table !== null &&
     (binding.kind === "unityCatalogTable" ||
-      (binding.kind === "lakebaseAutoscaling" &&
+      ((binding.kind === "lakebaseAutoscaling" || binding.kind === "lakebaseProvisionedDatabase") &&
         binding.database !== null &&
-        binding.endpoint !== null));
+        (binding.kind === "lakebaseAutoscaling"
+          ? binding.endpoint !== null && binding.resourceEnvironmentVariable !== null
+          : binding.instanceName !== null && binding.resourceEnvironmentVariable !== null)));
   if (canQueryBinding) {
     dataLines.push(
       "try:",
-      `    ${variableName}_data = _vdab_sql_query_df(${pythonString(binding.catalog ?? "")}, ${pythonString(binding.schema ?? "")}, ${pythonString(binding.table ?? "")}, ${properties.maxRows}${lakebaseQueryOptions(binding)})`,
+      `    ${variableName}_data = ${lakebaseQueryExpression(binding, properties.maxRows)}`,
       `except RuntimeError as vdab_error_${variableName}:`,
       `    st.error(str(vdab_error_${variableName}))`,
       `    ${variableName}_data = pd.DataFrame(columns=${pythonStringList(fallbackColumns)})`,
@@ -138,16 +146,11 @@ function readDataWindowProperties(component: ProjectComponent): DataWindowProper
 
 function readTableBinding(bindings: ProjectJsonObject | null): TableBinding {
   if (bindings === null) {
-    return { kind: "none", catalog: null, schema: null, table: null, database: null, endpoint: null, columns: [] };
+    return { kind: "none", catalog: null, schema: null, table: null, database: null, instanceName: null, endpoint: null, resourceEnvironmentVariable: null, columns: [] };
   }
 
   const bindingType = Object.keys(bindings)[0];
-  if (bindingType === "lakebaseProvisionedDatabase") {
-    throw invalidDataWindow(
-      "Lakebase Provisioned is retained for imported projects. Reselect this table from Lakebase Autoscaling before previewing.",
-    );
-  }
-  if (bindingType !== "unityCatalogTable" && bindingType !== "lakebaseAutoscaling") {
+  if (bindingType !== "unityCatalogTable" && bindingType !== "lakebaseAutoscaling" && bindingType !== "lakebaseProvisionedDatabase") {
     throw invalidDataWindow("DataWindow table binding is not supported.");
   }
 
@@ -171,33 +174,52 @@ function readTableBinding(bindings: ProjectJsonObject | null): TableBinding {
       "schema",
       "table",
       "primaryKeyColumn", "columns",
-      ...(bindingType === "lakebaseAutoscaling" ? ["database", "projectId", "branchId", "endpointId"] : []),
+      ...(bindingType === "lakebaseProvisionedDatabase" ? ["database", "instanceName"] : []),
+      ...(bindingType === "lakebaseAutoscaling" ? ["database", "databaseId", "projectId", "branchId", "endpointId"] : []),
     ]) ||
     resource.type !== bindingType
   ) {
     throw invalidDataWindow("DataWindow has an invalid table binding.");
   }
 
-  if (bindingType === "lakebaseAutoscaling") {
+  if (bindingType === "lakebaseAutoscaling" || bindingType === "lakebaseProvisionedDatabase") {
     const database = readResourceName(resource.database);
+    const instanceName = bindingType === "lakebaseProvisionedDatabase"
+      ? readLakebaseIdentifier(resource.instanceName)
+      : null;
     const projectId = readLakebaseIdentifier(resource.projectId);
     const branchId = readLakebaseIdentifier(resource.branchId);
     const endpointId = readLakebaseIdentifier(resource.endpointId);
+    const databaseId = bindingType === "lakebaseAutoscaling"
+      ? readLakebaseIdentifier(resource.databaseId)
+      : null;
     const schema = readResourceName(resource.schema);
     const table = readResourceName(resource.table);
     const columns = readColumnMetadata(resource.columns);
-    const complete = database !== null && projectId !== null && branchId !== null &&
-      endpointId !== null && schema !== null && table !== null && columns.length > 0;
+    const complete = database !== null && schema !== null && table !== null && columns.length > 0 &&
+      (bindingType === "lakebaseProvisionedDatabase"
+        ? instanceName !== null
+        : projectId !== null && branchId !== null && endpointId !== null && databaseId !== null);
     if (!complete) {
-      return { kind: "none", catalog: null, schema, table, database, endpoint: null, columns };
+      return { kind: "none", catalog: null, schema, table, database, instanceName, endpoint: null, resourceEnvironmentVariable: null, columns };
     }
+    const resourceBinding = bindingType === "lakebaseAutoscaling"
+      ? createAutoscalingAppResourceBinding({
+        projectId: projectId as string,
+        branchId: branchId as string,
+        endpointId: endpointId as string,
+        databaseId: databaseId as string,
+      })
+      : createProvisionedAppResourceBinding({ instanceName: instanceName as string, databaseName: database as string });
     return {
-      kind: "lakebaseAutoscaling",
+      kind: bindingType,
       catalog: null,
       schema,
       table,
       database,
-      endpoint: `projects/${projectId}/branches/${branchId}/endpoints/${endpointId}`,
+      instanceName,
+      endpoint: endpointId === null ? null : `projects/${projectId}/branches/${branchId}/endpoints/${endpointId}`,
+      resourceEnvironmentVariable: resourceBinding.environmentVariable,
       columns,
     };
   }
@@ -208,7 +230,9 @@ function readTableBinding(bindings: ProjectJsonObject | null): TableBinding {
     schema: readResourceName(resource.schema),
     table: readResourceName(resource.table),
     database: null,
+    instanceName: null,
     endpoint: null,
+    resourceEnvironmentVariable: null,
     columns: readColumnMetadata(resource.columns),
   };
 }

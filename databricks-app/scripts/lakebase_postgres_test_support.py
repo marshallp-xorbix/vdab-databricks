@@ -10,7 +10,13 @@ from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import cast
 
-from generated_workflow_test_support import FakeDataFrame, FakeHttp, FakeStreamlit, read_mapping
+from generated_workflow_test_support import (
+    AUTOSCALING_RESOURCE_ENVIRONMENT_VARIABLE,
+    FakeDataFrame,
+    read_mapping,
+)
+from generated_workflow_http_mocks import FakeHttp
+from generated_workflow_streamlit_mock import FakeStreamlit
 
 
 def run_lakebase_postgres_scenarios(
@@ -83,7 +89,7 @@ def run_lakebase_postgres_scenarios(
                 "port": connection["port"],
                 "database": "builder",
             }
-            local_asyncpg, local_connections = _local_asyncpg_without_ssl()
+            local_asyncpg, local_connections = _local_asyncpg_without_ssl(connection["host"])
             namespace = execute_app(
                 bundle_directory,
                 http,
@@ -102,9 +108,11 @@ def run_lakebase_postgres_scenarios(
                     "sqlSourceKind": "lakebaseAutoscaling",
                     "sqlTemplate": "SELECT customer_name, score FROM public.orders",
                     "lakebaseDatabaseName": "builder",
+                    "lakebaseDatabaseId": "database-one",
                     "lakebaseProjectId": "workspace-project",
                     "lakebaseBranchId": "production",
                     "lakebaseEndpointId": "read-write",
+                    "lakebaseResourceEnvironmentVariable": AUTOSCALING_RESOURCE_ENVIRONMENT_VARIABLE,
                 },
             }, {}, "save-form"))
             with mock_http(http, lakebase_connection=lakebase_connection):
@@ -146,9 +154,11 @@ def run_lakebase_postgres_scenarios(
                             "schema": "public",
                             "table": "orders",
                             "database": "builder",
+                            "databaseId": "database-one",
                             "projectId": "workspace-project",
                             "branchId": "production",
                             "endpointId": "read-write",
+                            "resourceEnvironmentVariable": AUTOSCALING_RESOURCE_ENVIRONMENT_VARIABLE,
                         },
                         "columnMappings": [{
                             "formChildComponentKey": "customer-field",
@@ -192,6 +202,7 @@ def run_lakebase_postgres_scenarios(
                         "SELECT secret FROM public.private_orders",
                         "builder",
                         "projects/workspace-project/branches/production/endpoints/read-write",
+                        resource_environment_variable=AUTOSCALING_RESOURCE_ENVIRONMENT_VARIABLE,
                     )
             except RuntimeError as error:
                 if (
@@ -245,7 +256,7 @@ def _run_lakebase_component_reads(
             "port": connection["port"],
             "database": "builder",
         }
-        asyncpg_module, connections = _local_asyncpg_without_ssl()
+        asyncpg_module, connections = _local_asyncpg_without_ssl(connection["host"])
         execute_app(
             bundle_directory,
             http,
@@ -311,7 +322,7 @@ class LocalConnectionRecorder:
         await self.connection.close()
 
 
-def _local_asyncpg_without_ssl() -> tuple[types.ModuleType, list[LocalConnectionRecorder]]:
+def _local_asyncpg_without_ssl(local_host: str) -> tuple[types.ModuleType, list[LocalConnectionRecorder]]:
     """Adapt generated TLS-required settings to the local throwaway server."""
     import asyncpg
 
@@ -322,6 +333,7 @@ def _local_asyncpg_without_ssl() -> tuple[types.ModuleType, list[LocalConnection
 
     async def connect(**settings: object) -> LocalConnectionRecorder:
         original_settings = dict(settings)
+        settings["host"] = local_host
         settings["ssl"] = False
         connection = await asyncpg.connect(**settings)
         recorder = LocalConnectionRecorder(connection, original_settings, [])

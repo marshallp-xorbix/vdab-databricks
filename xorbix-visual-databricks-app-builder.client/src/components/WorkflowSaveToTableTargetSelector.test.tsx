@@ -8,6 +8,10 @@ vi.mock("./InstalledWorkspaceLakebaseTableSelectorFields", () => ({
   default: () => null,
 }));
 
+vi.mock("./InstalledWorkspaceLakebaseProvisionedTableSelectorFields", () => ({
+  default: () => null,
+}));
+
 vi.mock("./InstalledWorkspaceUnityCatalogTableSelectorFields", () => ({
   default: () => null,
 }));
@@ -39,6 +43,7 @@ describe("WorkflowSaveToTableTargetSelector", () => {
       projectId: "",
       branchId: "",
       endpointId: "",
+      databaseId: "",
       database: "",
       catalog: "",
       schema: "",
@@ -46,7 +51,38 @@ describe("WorkflowSaveToTableTargetSelector", () => {
     });
   });
 
-  it("requires a legacy external binding to be reselected against this workspace", async () => {
+  it("selects an existing Provisioned instance in the installed workspace", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn<(next: SaveTargetTableRef) => void>();
+
+    render(
+      <WorkflowSaveToTableTargetSelector
+        value={{
+          tableType: "unityCatalogTable",
+          workspaceConnectionId: 38,
+          catalog: "",
+          schema: "",
+          table: "",
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "Lakebase Provisioned (existing)" }));
+
+    expect(onChange).toHaveBeenCalledWith({
+      tableType: "lakebaseProvisionedDatabase",
+      workspaceConnectionId: 0,
+      instanceName: "",
+      database: "databricks_postgres",
+      catalog: "databricks_postgres",
+      schema: "",
+      table: "",
+    });
+  });
+
+  it("allows replacing a saved binding with a current workspace selection", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn<(next: SaveTargetTableRef) => void>();
 

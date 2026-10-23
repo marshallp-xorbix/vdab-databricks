@@ -42,7 +42,7 @@ export default function InstalledWorkspaceResourceSelect({
   emptyLabel = `No ${label.toLowerCase()} found`,
   onChange,
 }: Readonly<IInstalledWorkspaceResourceSelectProps>) {
-  const selectedValue = options.some((option) => option.value === value) ? value : undefined;
+  const selectedValue = options.some((option) => option.value === value) ? value : "";
   const errorMessage = error?.message;
 
   return (
@@ -53,7 +53,7 @@ export default function InstalledWorkspaceResourceSelect({
         onValueChange={onChange}
         disabled={disabled || loading || Boolean(errorMessage)}
       >
-        <SelectTrigger className="h-9 text-sm">
+        <SelectTrigger aria-label={label} className="h-9 text-sm">
           <SelectValue placeholder={loading ? `Loading ${label.toLowerCase()}…` : placeholder} />
         </SelectTrigger>
         <SelectContent className="max-h-60 overflow-y-auto">

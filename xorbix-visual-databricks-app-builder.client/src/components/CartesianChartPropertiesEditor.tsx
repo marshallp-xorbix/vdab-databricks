@@ -5,7 +5,7 @@ import DataWindowTableBindingEditor from "./DataWindowTableBindingEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
 import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
 import type { ChartAxisConfiguration } from "../types/cartesianChart";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 import { readCartesianChartAxis } from "../utils/cartesianChartConfiguration";
 
 interface ICartesianChartPropertiesEditorProps {
@@ -34,7 +34,7 @@ function CartesianChartPropertiesEditor({
   const measureKind = isRadial ? "value" : "yAxis";
   const dimensionAxis = readCartesianChartAxis(properties[dimensionProperty], dimensionKind, chartType);
   const measureAxis = readCartesianChartAxis(properties[measureProperty], measureKind, chartType);
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const chartName = chartType === "PieChart" ? "pie" : chartType === "DonutChart" ? "donut" : chartType === "LineChart" ? "line" : "bar";
   const chartLabel = chartType === "PieChart" ? "Pie" : chartType === "DonutChart" ? "Donut" : chartType === "LineChart" ? "Line" : "Bar";
   const titleId = `${chartName}-chart-title-${componentKey}`;

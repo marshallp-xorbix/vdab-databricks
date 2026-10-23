@@ -5,12 +5,15 @@ import type { SqlClient, SqlPool } from "./sql.ts";
 
 const MIGRATION_LOCK_ID = 7_221_026_016;
 const MIGRATION_DIRECTORY = resolve(import.meta.dirname, "migrations");
-const MIGRATION_FILES = [
+/** Ordered append-only schema files used by startup and packaged smoke. */
+export const LAKEBASE_MIGRATION_FILES = [
   "001_initial_schema.sql",
   "002_component_aggregate.sql",
   "003_component_nullable_properties.sql",
   "004_workflow_aggregate.sql",
   "005_project_portability.sql",
+  "006_project_deployments.sql",
+  "007_deployment_app_resources.sql",
 ] as const;
 const MIGRATION_RETRY_DELAYS_MS = [1_000, 2_000, 4_000] as const;
 
@@ -20,7 +23,7 @@ export async function runLakebaseMigrations(
   sleep: (delayMs: number) => Promise<void> = delay,
 ): Promise<void> {
   const migrations = await Promise.all(
-    MIGRATION_FILES.map(async (fileName) => ({
+    LAKEBASE_MIGRATION_FILES.map(async (fileName) => ({
       id: fileName.replace(".sql", ""),
       sql: await readFile(resolve(MIGRATION_DIRECTORY, fileName), "utf8"),
     })),
@@ -59,7 +62,9 @@ async function applyMigration(
 
     if (existingMigration.rows.length > 0) {
       if (existingMigration.rows[0]?.checksum !== checksum(sql)) {
-        throw new Error(`Applied Lakebase migration ${migrationId} was modified.`);
+        throw new Error(
+          `Applied Lakebase migration ${migrationId} was modified.`,
+        );
       }
 
       await client.query("COMMIT");

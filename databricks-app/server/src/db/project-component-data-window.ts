@@ -90,6 +90,7 @@ export function validateDataWindowBindings(
     !isOptionalResourceName(resource.projectId) ||
     !isOptionalResourceName(resource.branchId) ||
     !isOptionalResourceName(resource.endpointId) ||
+    !isOptionalLakebaseIdentifier(resource.databaseId) ||
     !isValidColumnMetadata(resource.columns)
   ) {
     throw invalidComponents();
@@ -110,7 +111,7 @@ function resourcePropertiesFor(bindingType: string): string[] {
   if (bindingType === "lakebaseProvisionedDatabase") {
     properties.push("database", "instanceName");
   } else if (bindingType === "lakebaseAutoscaling") {
-    properties.push("database", "projectId", "branchId", "endpointId");
+    properties.push("database", "databaseId", "projectId", "branchId", "endpointId");
   }
 
   return properties;
@@ -199,6 +200,11 @@ function isOptionalResourceName(value: unknown): boolean {
       value !== ".." &&
       !/[\u0000-\u001f\u007f]/.test(value))
   );
+}
+
+function isOptionalLakebaseIdentifier(value: unknown): boolean {
+  return value === undefined || value === null ||
+    (typeof value === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(value));
 }
 
 function isValidColumnMetadata(value: unknown): boolean {

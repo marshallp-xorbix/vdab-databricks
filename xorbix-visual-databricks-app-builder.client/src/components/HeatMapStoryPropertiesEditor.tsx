@@ -5,7 +5,7 @@ import HeatMapStoryFieldMappingsEditor from "./HeatMapStoryFieldMappingsEditor";
 import HeatMapStoryVisualPropertiesEditor from "./HeatMapStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
 import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface IHeatMapStoryPropertiesEditorProps {
   componentKey: string;
@@ -24,7 +24,7 @@ function HeatMapStoryPropertiesEditor({
   onPropertiesChange,
   onBindingsChange,
 }: Readonly<IHeatMapStoryPropertiesEditorProps>) {
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Heat Map Story";
   const columns: IWorkspaceTableColumn[] = table?.columns ?? [];
 

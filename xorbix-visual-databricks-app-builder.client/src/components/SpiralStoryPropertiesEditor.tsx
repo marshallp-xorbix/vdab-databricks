@@ -5,7 +5,7 @@ import SpiralStoryFieldMappingsEditor from "./SpiralStoryFieldMappingsEditor";
 import SpiralStoryVisualPropertiesEditor from "./SpiralStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
 import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface ISpiralStoryPropertiesEditorProps {
   componentKey: string;
@@ -24,7 +24,7 @@ function SpiralStoryPropertiesEditor({
   onPropertiesChange,
   onBindingsChange,
 }: Readonly<ISpiralStoryPropertiesEditorProps>) {
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Spiral Story";
   const columns: IWorkspaceTableColumn[] = table?.columns ?? [];
 

@@ -5,7 +5,7 @@ import FlowFieldStoryFieldMappingsEditor from "./FlowFieldStoryFieldMappingsEdit
 import FlowFieldStoryVisualPropertiesEditor from "./FlowFieldStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
 import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface IFlowFieldStoryPropertiesEditorProps {
   componentKey: string;
@@ -24,7 +24,7 @@ function FlowFieldStoryPropertiesEditor({
   onPropertiesChange,
   onBindingsChange,
 }: Readonly<IFlowFieldStoryPropertiesEditorProps>) {
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Flow Field Story";
   const columns: IWorkspaceTableColumn[] = table?.columns ?? [];
 

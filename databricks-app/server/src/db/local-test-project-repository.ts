@@ -12,11 +12,11 @@ import type {
   ProjectWorkflowDocument,
 } from "./project-workflow-contract.ts";
 import type { ProjectWorkflowRepository } from "./project-workflow-repository.ts";
-import type {
-  ProjectCustomModulesDocument,
-} from "./project-custom-modules-contract.ts";
+import type { ProjectCustomModulesDocument } from "./project-custom-modules-contract.ts";
 import { DEFAULT_CUSTOM_MODULES_SOURCE } from "./project-custom-modules-contract.ts";
 import type { ProjectCustomModulesRepository } from "./project-custom-modules-repository.ts";
+import { mapLocalTestProjectSummary } from "./local-test-project-mapping.ts";
+import { LocalTestProjectCollaborators } from "./local-test-project-collaborators.ts";
 import type {
   NewProject,
   ProjectActor,
@@ -44,16 +44,27 @@ export class LocalTestProjectRepository
     ProjectSummary & { workspaceId: string }
   >();
   private readonly collaborators = new Map<string, ProjectCollaborator[]>();
+  private readonly collaboratorRepository = new LocalTestProjectCollaborators(
+    this.projects,
+    this.collaborators,
+  );
   private readonly projectComponents = new Map<string, ProjectComponent[]>();
   private readonly projectWorkflows = new Map<string, ProjectWorkflow[]>();
   private readonly projectCustomModules = new Map<string, string>();
-  private readonly projectThemes = new Map<string, Record<string, unknown> | null>();
-  private readonly projectResourceReferences = new Map<string, PortableResourceReference[]>();
+  private readonly projectThemes = new Map<
+    string,
+    Record<string, unknown> | null
+  >();
+  private readonly projectResourceReferences = new Map<
+    string,
+    PortableResourceReference[]
+  >();
 
   async createProject(input: NewProject): Promise<ProjectSummary> {
     const duplicateName = [...this.projects.values()].some(
       (project) =>
-        project.workspaceId === input.workspaceId && project.name === input.name,
+        project.workspaceId === input.workspaceId &&
+        project.name === input.name,
     );
 
     if (duplicateName) {
@@ -90,7 +101,7 @@ export class LocalTestProjectRepository
             this.hasCollaborator(project.id, actor.userId) ||
             actor.isInstallationAdmin),
       )
-      .map((project) => this.withCallerRole(project, actor));
+      .map((project) => this.toProjectSummary(project, actor));
   }
 
   async getProject(
@@ -109,7 +120,7 @@ export class LocalTestProjectRepository
       return null;
     }
 
-    return this.withCallerRole(project, actor);
+    return this.toProjectSummary(project, actor);
   }
 
   async getProjectAggregate(
@@ -117,17 +128,22 @@ export class LocalTestProjectRepository
     actor: ProjectActor,
   ): Promise<ProjectAggregateSnapshot | null> {
     const project = this.projects.get(projectId);
-    if (!this.canReadProject(project, projectId, actor)) return null;
+    if (!this.collaboratorRepository.canReadProject(project, projectId, actor))
+      return null;
     return {
-      project: this.withCallerRole(project, actor),
+      project: this.toProjectSummary(project, actor),
       theme: structuredClone(this.projectThemes.get(projectId) ?? null),
       components: structuredClone(this.projectComponents.get(projectId) ?? []),
       workflow: {
         version: 1,
         workflows: structuredClone(this.projectWorkflows.get(projectId) ?? []),
       },
-      customModulesSource: this.projectCustomModules.get(projectId) ?? DEFAULT_CUSTOM_MODULES_SOURCE,
-      resourceReferences: structuredClone(this.projectResourceReferences.get(projectId) ?? []),
+      customModulesSource:
+        this.projectCustomModules.get(projectId) ??
+        DEFAULT_CUSTOM_MODULES_SOURCE,
+      resourceReferences: structuredClone(
+        this.projectResourceReferences.get(projectId) ?? [],
+      ),
       childAppDisplayName: null,
     };
   }
@@ -137,7 +153,9 @@ export class LocalTestProjectRepository
     actor: ProjectActor,
   ): Promise<ProjectSummary> {
     const duplicateName = [...this.projects.values()].some(
-      (project) => project.workspaceId === actor.workspaceId && project.name === aggregate.name,
+      (project) =>
+        project.workspaceId === actor.workspaceId &&
+        project.name === aggregate.name,
     );
     if (duplicateName) {
       throw new ApplicationError(
@@ -156,10 +174,19 @@ export class LocalTestProjectRepository
       requestId: actor.requestId,
     });
     this.projectThemes.set(project.id, structuredClone(aggregate.theme));
-    this.projectComponents.set(project.id, structuredClone(aggregate.components));
-    this.projectWorkflows.set(project.id, structuredClone(aggregate.workflow.workflows));
+    this.projectComponents.set(
+      project.id,
+      structuredClone(aggregate.components),
+    );
+    this.projectWorkflows.set(
+      project.id,
+      structuredClone(aggregate.workflow.workflows),
+    );
     this.projectCustomModules.set(project.id, aggregate.customModulesSource);
-    this.projectResourceReferences.set(project.id, structuredClone(aggregate.resourceReferences));
+    this.projectResourceReferences.set(
+      project.id,
+      structuredClone(aggregate.resourceReferences),
+    );
     return project;
   }
 
@@ -211,7 +238,31 @@ export class LocalTestProjectRepository
     project.updatedAt = new Date().toISOString();
     this.projects.set(projectId, project);
 
-    return this.withCallerRole(project, actor);
+    return this.toProjectSummary(project, actor);
+  }
+
+  async deleteProject(
+    projectId: string,
+    actor: ProjectActor,
+  ): Promise<boolean> {
+    const project = this.projects.get(projectId);
+
+    if (
+      !project ||
+      project.workspaceId !== actor.workspaceId ||
+      (project.createdBy !== actor.userId && !actor.isInstallationAdmin)
+    ) {
+      return false;
+    }
+
+    this.projects.delete(projectId);
+    this.collaboratorRepository.removeProject(projectId);
+    this.projectComponents.delete(projectId);
+    this.projectWorkflows.delete(projectId);
+    this.projectCustomModules.delete(projectId);
+    this.projectThemes.delete(projectId);
+    this.projectResourceReferences.delete(projectId);
+    return true;
   }
 
   async getComponents(
@@ -303,14 +354,21 @@ export class LocalTestProjectRepository
     actor: ProjectActor,
   ): Promise<ProjectWorkflowDocument | null> {
     const project = this.projects.get(projectId);
-    const isEditor = this.collaborators.get(projectId)?.some(
-      (collaborator) => collaborator.userId === actor.userId && collaborator.role === "editor",
-    ) ?? false;
+    const isEditor =
+      this.collaborators
+        .get(projectId)
+        ?.some(
+          (collaborator) =>
+            collaborator.userId === actor.userId &&
+            collaborator.role === "editor",
+        ) ?? false;
 
     if (
       !project ||
       project.workspaceId !== actor.workspaceId ||
-      (project.createdBy !== actor.userId && !isEditor && !actor.isInstallationAdmin)
+      (project.createdBy !== actor.userId &&
+        !isEditor &&
+        !actor.isInstallationAdmin)
     ) {
       return null;
     }
@@ -333,11 +391,14 @@ export class LocalTestProjectRepository
     actor: ProjectActor,
   ): Promise<ProjectCustomModulesDocument | null> {
     const project = this.projects.get(projectId);
-    if (!this.canReadProject(project, projectId, actor)) return null;
+    if (!this.collaboratorRepository.canReadProject(project, projectId, actor))
+      return null;
     return {
       projectId,
       version: project.version,
-      source: this.projectCustomModules.get(projectId) ?? DEFAULT_CUSTOM_MODULES_SOURCE,
+      source:
+        this.projectCustomModules.get(projectId) ??
+        DEFAULT_CUSTOM_MODULES_SOURCE,
     };
   }
 
@@ -348,13 +409,22 @@ export class LocalTestProjectRepository
     actor: ProjectActor,
   ): Promise<ProjectCustomModulesDocument | null> {
     const project = this.projects.get(projectId);
-    const isEditor = this.collaborators.get(projectId)?.some(
-      (collaborator) => collaborator.userId === actor.userId && collaborator.role === "editor",
-    ) ?? false;
+    const isEditor =
+      this.collaborators
+        .get(projectId)
+        ?.some(
+          (collaborator) =>
+            collaborator.userId === actor.userId &&
+            collaborator.role === "editor",
+        ) ?? false;
     if (
-      !project || project.workspaceId !== actor.workspaceId ||
-      (project.createdBy !== actor.userId && !isEditor && !actor.isInstallationAdmin)
-    ) return null;
+      !project ||
+      project.workspaceId !== actor.workspaceId ||
+      (project.createdBy !== actor.userId &&
+        !isEditor &&
+        !actor.isInstallationAdmin)
+    )
+      return null;
     if (project.version !== expectedVersion) throw projectVersionConflict();
 
     project.version += 1;
@@ -367,17 +437,7 @@ export class LocalTestProjectRepository
     projectId: string,
     actor: ProjectActor,
   ): Promise<ProjectCollaborator[] | null> {
-    const project = this.projects.get(projectId);
-
-    if (
-      !project ||
-      project.workspaceId !== actor.workspaceId ||
-      (project.createdBy !== actor.userId && !actor.isInstallationAdmin)
-    ) {
-      return null;
-    }
-
-    return [...(this.collaborators.get(projectId) ?? [])];
+    return this.collaboratorRepository.list(projectId, actor);
   }
 
   async grantEditor(
@@ -385,35 +445,11 @@ export class LocalTestProjectRepository
     collaboratorId: string,
     actor: ProjectActor,
   ): Promise<boolean> {
-    const project = this.projects.get(projectId);
-
-    if (
-      !project ||
-      project.workspaceId !== actor.workspaceId ||
-      (project.createdBy !== actor.userId && !actor.isInstallationAdmin)
-    ) {
-      return false;
-    }
-
-    const grants = this.collaborators.get(projectId) ?? [];
-    const newGrant: ProjectCollaborator = {
-      userId: collaboratorId,
-      role: "editor",
-      grantedBy: actor.userId,
-      createdAt: new Date().toISOString(),
-    };
-    const existingIndex = grants.findIndex(
-      (grant) => grant.userId === collaboratorId,
+    return this.collaboratorRepository.grantEditor(
+      projectId,
+      collaboratorId,
+      actor,
     );
-
-    if (existingIndex >= 0) {
-      grants[existingIndex] = newGrant;
-    } else {
-      grants.push(newGrant);
-    }
-
-    this.collaborators.set(projectId, grants);
-    return true;
   }
 
   async removeEditor(
@@ -421,59 +457,26 @@ export class LocalTestProjectRepository
     collaboratorId: string,
     actor: ProjectActor,
   ): Promise<boolean> {
-    const project = this.projects.get(projectId);
-
-    if (
-      !project ||
-      project.workspaceId !== actor.workspaceId ||
-      (project.createdBy !== actor.userId && !actor.isInstallationAdmin)
-    ) {
-      return false;
-    }
-
-    const grants = this.collaborators.get(projectId) ?? [];
-    this.collaborators.set(
+    return this.collaboratorRepository.removeEditor(
       projectId,
-      grants.filter((grant) => grant.userId !== collaboratorId),
+      collaboratorId,
+      actor,
     );
-    return true;
   }
 
   private hasCollaborator(projectId: string, userId: string): boolean {
-    return (this.collaborators.get(projectId) ?? []).some(
-      (grant) => grant.userId === userId,
-    );
+    return this.collaboratorRepository.hasCollaborator(projectId, userId);
   }
 
-  private canReadProject(
-    project: (ProjectSummary & { workspaceId: string }) | undefined,
-    projectId: string,
-    actor: ProjectActor,
-  ): project is ProjectSummary & { workspaceId: string } {
-    return Boolean(
-      project && project.workspaceId === actor.workspaceId &&
-      (project.createdBy === actor.userId || this.hasCollaborator(projectId, actor.userId) || actor.isInstallationAdmin),
-    );
-  }
-
-  private withCallerRole(
+  private toProjectSummary(
     project: ProjectSummary & { workspaceId: string },
     actor: ProjectActor,
   ): ProjectSummary {
-    let callerRole: ProjectSummary["callerRole"];
-
-    if (project.createdBy === actor.userId) {
-      callerRole = "owner";
-    } else if (actor.isInstallationAdmin) {
-      callerRole = "installationAdmin";
-    } else if (this.hasCollaborator(project.id, actor.userId)) {
-      callerRole = "editor";
-    } else {
-      callerRole = "viewer";
-    }
-
-    const { workspaceId: _workspaceId, ...summary } = project;
-    return { ...summary, callerRole };
+    return mapLocalTestProjectSummary(
+      project,
+      actor,
+      this.hasCollaborator(project.id, actor.userId),
+    );
   }
 }
 

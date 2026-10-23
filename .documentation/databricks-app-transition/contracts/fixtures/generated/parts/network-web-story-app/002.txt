@@ -1,0 +1,240 @@
+        vdab_networkwebstory1_data['target_category'] = vdab_networkwebstory1_data['target_category'].fillna('').astype(str).str.strip()
+    vdab_networkwebstory1_data = vdab_networkwebstory1_data[(vdab_networkwebstory1_data['source_entity_id'] != '') & (vdab_networkwebstory1_data['target_entity_id'] != '')]
+    vdab_networkwebstory1_data['relationship_weight'] = vdab_networkwebstory1_data['relationship_weight'].fillna(0)
+    vdab_networkwebstory1_data = vdab_networkwebstory1_data[vdab_networkwebstory1_data['relationship_weight'] >= 0]
+    vdab_networkwebstory1_edge_map = {}
+    vdab_networkwebstory1_node_meta = {}
+    for _, _vdab_row in vdab_networkwebstory1_data.iterrows():
+        _vdab_source = _vdab_row.get('source_entity_id', '')
+        _vdab_target = _vdab_row.get('target_entity_id', '')
+        _vdab_source = '' if pd.isna(_vdab_source) else str(_vdab_source).strip()
+        _vdab_target = '' if pd.isna(_vdab_target) else str(_vdab_target).strip()
+        if not _vdab_source or not _vdab_target:
+            continue
+        _vdab_type = '' if pd.isna(_vdab_row.get('relationship_type', '')) else str(_vdab_row.get('relationship_type', '')).strip()
+        _vdab_weight = _vdab_row.get('relationship_weight', 0)
+        _vdab_weight = 0.0 if pd.isna(_vdab_weight) else float(_vdab_weight)
+        _vdab_key = (_vdab_source, _vdab_target, _vdab_type)
+        if _vdab_key in vdab_networkwebstory1_edge_map:
+            vdab_networkwebstory1_edge_map[_vdab_key]['weight'] += _vdab_weight
+            for _vdab_field in ('edge_value', 'frequency'):
+                _vdab_value = _vdab_row.get(_vdab_field)
+                if _vdab_field in vdab_networkwebstory1_data.columns and not pd.isna(_vdab_value):
+                    vdab_networkwebstory1_edge_map[_vdab_key][_vdab_field] = (vdab_networkwebstory1_edge_map[_vdab_key].get(_vdab_field) or 0) + float(_vdab_value)
+            continue
+        _vdab_edge = {'source': _vdab_source, 'target': _vdab_target, 'relationship_type': _vdab_type, 'weight': _vdab_weight}
+        for _vdab_field in ('direction', 'edge_status'):
+            _vdab_value = _vdab_row.get(_vdab_field)
+            if _vdab_field in vdab_networkwebstory1_data.columns and not pd.isna(_vdab_value) and str(_vdab_value).strip():
+                _vdab_edge[_vdab_field] = str(_vdab_value).strip()
+        if 'edge_risk_score' in vdab_networkwebstory1_data.columns and not pd.isna(_vdab_row.get('edge_risk_score')):
+            _vdab_edge['edge_risk_score'] = float(_vdab_row.get('edge_risk_score'))
+        vdab_networkwebstory1_edge_map[_vdab_key] = _vdab_edge
+        for _vdab_prefix, _vdab_id_col, _vdab_label_col in (('source', 'source_entity_id', 'source_entity_label'), ('target', 'target_entity_id', 'target_entity_label')):
+            _vdab_node_id = _vdab_source if _vdab_prefix == 'source' else _vdab_target
+            if _vdab_node_id not in vdab_networkwebstory1_node_meta:
+                vdab_networkwebstory1_node_meta[_vdab_node_id] = {'id': _vdab_node_id, 'label': '', 'category': '', 'value': None, 'health_score': None, 'risk_score': None}
+            _vdab_meta = vdab_networkwebstory1_node_meta[_vdab_node_id]
+            _vdab_label = _vdab_row.get(_vdab_label_col)
+            if not _vdab_meta['label'] and not pd.isna(_vdab_label):
+                _vdab_meta['label'] = str(_vdab_label).strip()
+            _vdab_category_col = _vdab_prefix + '_category'
+            _vdab_category = _vdab_row.get(_vdab_category_col)
+            if _vdab_category_col in vdab_networkwebstory1_data.columns and not _vdab_meta['category'] and not pd.isna(_vdab_category) and str(_vdab_category).strip():
+                _vdab_meta['category'] = str(_vdab_category).strip()
+            _vdab_numeric_col = _vdab_prefix + '_value'
+            _vdab_numeric = _vdab_row.get(_vdab_numeric_col)
+            if _vdab_numeric_col in vdab_networkwebstory1_data.columns and _vdab_meta['value'] is None and not pd.isna(_vdab_numeric):
+                _vdab_meta['value'] = float(_vdab_numeric)
+            _vdab_numeric_col = _vdab_prefix + '_health_score'
+            _vdab_numeric = _vdab_row.get(_vdab_numeric_col)
+            if _vdab_numeric_col in vdab_networkwebstory1_data.columns and _vdab_meta['health_score'] is None and not pd.isna(_vdab_numeric):
+                _vdab_meta['health_score'] = float(_vdab_numeric)
+            _vdab_numeric_col = _vdab_prefix + '_risk_score'
+            _vdab_numeric = _vdab_row.get(_vdab_numeric_col)
+            if _vdab_numeric_col in vdab_networkwebstory1_data.columns and _vdab_meta['risk_score'] is None and not pd.isna(_vdab_numeric):
+                _vdab_meta['risk_score'] = float(_vdab_numeric)
+    vdab_networkwebstory1_edges = list(vdab_networkwebstory1_edge_map.values())
+    vdab_networkwebstory1_edges.sort(key=lambda _vdab_edge: _vdab_edge.get('weight', 0), reverse=True)
+    vdab_networkwebstory1_degree = {}
+    for _vdab_edge in vdab_networkwebstory1_edges:
+        vdab_networkwebstory1_degree[_vdab_edge['source']] = vdab_networkwebstory1_degree.get(_vdab_edge['source'], 0) + 1
+        vdab_networkwebstory1_degree[_vdab_edge['target']] = vdab_networkwebstory1_degree.get(_vdab_edge['target'], 0) + 1
+    _vdab_node_ids = sorted(vdab_networkwebstory1_node_meta.keys(), key=lambda _vdab_node: vdab_networkwebstory1_degree.get(_vdab_node, 0), reverse=True)
+    vdab_networkwebstory1_keep_nodes = set(_vdab_node_ids[:300])
+    vdab_networkwebstory1_edges = [_vdab_edge for _vdab_edge in vdab_networkwebstory1_edges if _vdab_edge['source'] in vdab_networkwebstory1_keep_nodes and _vdab_edge['target'] in vdab_networkwebstory1_keep_nodes][:800]
+    vdab_networkwebstory1_keep_nodes = set()
+    for _vdab_edge in vdab_networkwebstory1_edges:
+        vdab_networkwebstory1_keep_nodes.add(_vdab_edge['source'])
+        vdab_networkwebstory1_keep_nodes.add(_vdab_edge['target'])
+    vdab_networkwebstory1_nodes = []
+    for _vdab_node_id in sorted(vdab_networkwebstory1_keep_nodes):
+        _vdab_meta = vdab_networkwebstory1_node_meta[_vdab_node_id]
+        _vdab_node = {'id': _vdab_node_id, 'label': _vdab_meta['label'] or _vdab_node_id, 'category': _vdab_meta['category'] or 'Other', 'degree': int(vdab_networkwebstory1_degree.get(_vdab_node_id, 0))}
+        if _vdab_meta['value'] is not None: _vdab_node['value'] = _vdab_meta['value']
+        if _vdab_meta['health_score'] is not None: _vdab_node['health_score'] = _vdab_meta['health_score']
+        if _vdab_meta['risk_score'] is not None: _vdab_node['risk_score'] = _vdab_meta['risk_score']
+        vdab_networkwebstory1_nodes.append(_vdab_node)
+    vdab_networkwebstory1_payload = {
+        'nodes': vdab_networkwebstory1_nodes,
+        'edges': vdab_networkwebstory1_edges,
+        'visualConfig': {
+            'layout_algorithm': 'force',
+            'node_size_by': 'degree',
+            'node_color_by': 'category',
+            'edge_width_by': 'weight',
+            'edge_color_by': 'relationship_type',
+            'show_arrows': True,
+            'highlight_depth': 1,
+            'min_weight_filter': 0,
+            'max_nodes': 300,
+            'max_edges': 800,
+        },
+        'summary': {'total_nodes': len(vdab_networkwebstory1_nodes), 'total_edges': len(vdab_networkwebstory1_edges), 'warnings': []},
+    }
+    vdab_networkwebstory1_html = (
+        '<!DOCTYPE html>\n'
+        '<html><head><meta charset="utf-8"/>\n'
+        '<style>\n'
+        'html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,sans-serif;}\n'
+        '#wrap{position:relative;width:100%;height:100%;box-sizing:border-box;border:1px solid #94a3b8;border-radius:10px;overflow:hidden;background:#0b1220;box-shadow:0 1px 2px rgba(15,23,42,.08);}\n'
+        'canvas{display:block;width:100%;height:100%;touch-action:none;}\n'
+        '#tip{display:none;position:absolute;pointer-events:none;z-index:4;background:rgba(11,18,32,.96);color:#e8f4f8;border:1px solid rgba(0,200,255,.35);border-radius:8px;padding:8px 10px;font-size:12px;max-width:260px;line-height:1.35;}\n'
+        '#hint{position:absolute;right:10px;bottom:8px;z-index:3;font-size:10px;color:rgba(226,246,255,.55);pointer-events:none;user-select:none;}\n'
+        '#toolbar{position:absolute;left:10px;top:10px;z-index:4;display:flex;flex-wrap:wrap;gap:6px;align-items:center;max-width:92%;}\n'
+        '#search{background:rgba(15,23,42,.85);color:#e2e8f0;border:1px solid #475569;border-radius:6px;padding:4px 8px;font-size:12px;min-width:140px;}\n'
+        '#legend{position:absolute;left:10px;bottom:28px;z-index:3;display:flex;flex-wrap:wrap;gap:6px;max-width:80%;}\n'
+        '.leg{cursor:pointer;padding:3px 8px;border:0;border-radius:999px;font:inherit;font-size:11px;color:#0b1220;opacity:.95;user-select:none;}\n'
+        '.leg.off{opacity:.35;text-decoration:line-through;}\n'
+        'button:focus-visible,input:focus-visible,canvas:focus-visible{outline:2px solid #67e8f9;outline-offset:2px;}\n'
+        '.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}\n'
+        '</style></head><body>\n'
+        '<div id="wrap"><div id="toolbar"><input id="search" type="search" placeholder="Search nodes…" aria-label="Search nodes by label"/></div><canvas id="c" role="group" tabindex="0" aria-describedby="hint" aria-label="Interactive relationship graph. Use arrow keys to move between nodes, Enter or Space to select a node, Escape to clear selection, plus and minus to zoom, and Home to reset the view."></canvas><div id="tip"></div><div id="legend" role="group" aria-label="Filter graph categories and relationship types"></div><div id="hint">Drag to pan · scroll to zoom · double-click to reset · click node to highlight · use arrow keys to navigate</div><div id="announce" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div></div>\n'
+        '<script>\n'
+        'const payload = __NETWORK_WEB_PAYLOAD__;\n'
+        'const canvas = document.getElementById(\'c\');\n'
+        'const tip = document.getElementById(\'tip\');\n'
+        'const legendEl = document.getElementById(\'legend\');\n'
+        'const searchEl = document.getElementById(\'search\');\n'
+        'const announcer = document.getElementById(\'announce\');\n'
+        'const ctx = canvas.getContext(\'2d\');\n'
+        'const cfg = Object.assign({\n'
+        '  layout_algorithm: \'force\', node_size_by: \'degree\', node_color_by: \'category\',\n'
+        '  edge_width_by: \'weight\', edge_color_by: \'relationship_type\', show_arrows: true,\n'
+        '  highlight_depth: 1, min_weight_filter: 0,\n'
+        '  max_nodes: 300, max_edges: 800\n'
+        '}, (payload && payload.visualConfig) || {});\n'
+        'let nodes = Array.isArray(payload && payload.nodes) ? payload.nodes.map(n => Object.assign({}, n)) : [];\n'
+        'let edges = Array.isArray(payload && payload.edges) ? payload.edges.map(e => Object.assign({}, e)) : [];\n'
+        'const hiddenCats = new Set();\n'
+        'const hiddenTypes = new Set();\n'
+        'let selectedId = null;\n'
+        'let keyboardNodeId = null;\n'
+        'let hoverNodeId = null;\n'
+        'let hoverEdgeKey = null;\n'
+        'let searchQuery = \'\';\n'
+        'let panX = 0, panY = 0, zoom = 1;\n'
+        'let dragging = false, didDrag = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;\n'
+        'let settled = false;\n'
+        'const CATEGORY_COLORS = [\'#2dd4bf\',\'#38bdf8\',\'#a78bfa\',\'#f472b6\',\'#fbbf24\',\'#34d399\',\'#fb7185\',\'#60a5fa\',\'#c084fc\',\'#4ade80\'];\n'
+        'const TYPE_COLORS = [\'#67e8f9\',\'#fcd34d\',\'#f9a8d4\',\'#86efac\',\'#fdba74\',\'#a5b4fc\',\'#5eead4\',\'#fda4af\'];\n'
+        'const MIN_ZOOM = 0.4, MAX_ZOOM = 3.0;\n'
+        '\n'
+        'function hashStr(s){ let h=0; for(let i=0;i<String(s).length;i++){ h=((h<<5)-h)+String(s).charCodeAt(i); h|=0;} return Math.abs(h); }\n'
+        'function catColor(cat){ return CATEGORY_COLORS[hashStr(cat)%CATEGORY_COLORS.length]; }\n'
+        'function typeColor(t){ return TYPE_COLORS[hashStr(t)%TYPE_COLORS.length]; }\n'
+        'function healthColor(h){ const v=Math.max(0,Math.min(100,Number(h)||0)); const r=Math.round(255*(1-v/100)); const g=Math.round(180*(v/100)+40); return `rgb(${r},${g},120)`; }\n'
+        'function riskColor(r){ const v=Math.max(0,Math.min(100,Number(r)||0)); return `rgb(${Math.round(120+v*1.3)},${Math.round(200-v*1.5)},90)`; }\n'
+        'function num(v,d){ const n=Number(v); return Number.isFinite(n)?n:d; }\n'
+        'function edgeKey(e){ return e.source+\'|\'+e.target+\'|\'+(e.relationship_type||\'\'); }\n'
+        '\n'
+        'function nodeRadius(n){\n'
+        '  const mode=(cfg.node_size_by||\'degree\').toLowerCase();\n'
+        '  if(mode===\'none\') return 8;\n'
+        '  let v = mode===\'value\' ? num(n.value, num(n.degree,1)) : num(n.degree,1);\n'
+        '  const vals = nodes.map(x => mode===\'value\' ? num(x.value, num(x.degree,1)) : num(x.degree,1));\n'
+        '  const lo=Math.min(...vals), hi=Math.max(...vals);\n'
+        '  if(!(hi>lo)) return 10;\n'
+        '  const t=(v-lo)/(hi-lo);\n'
+        '  return 6 + Math.sqrt(t)*14;\n'
+        '}\n'
+        'function nodeFill(n){\n'
+        '  const mode=(cfg.node_color_by||\'category\').toLowerCase();\n'
+        '  if(mode===\'health_score\') return healthColor(n.health_score);\n'
+        '  if(mode===\'risk_score\') return riskColor(n.risk_score);\n'
+        '  return catColor(n.category||\'Other\');\n'
+        '}\n'
+        'function edgeWidth(e){\n'
+        '  const mode=(cfg.edge_width_by||\'weight\').toLowerCase();\n'
+        '  if(mode===\'none\') return 1.2;\n'
+        '  let v = mode===\'frequency\' ? num(e.frequency,1) : mode===\'value\' ? num(e.edge_value, num(e.weight,1)) : num(e.weight,1);\n'
+        '  const vals = edges.map(x => mode===\'frequency\' ? num(x.frequency,1) : mode===\'value\' ? num(x.edge_value, num(x.weight,1)) : num(x.weight,1));\n'
+        '  const lo=Math.min(...vals), hi=Math.max(...vals);\n'
+        '  if(!(hi>lo)) return 1.5;\n'
+        '  return 0.8 + ((v-lo)/(hi-lo))*4.5;\n'
+        '}\n'
+        'function edgeStroke(e){\n'
+        '  const mode=(cfg.edge_color_by||\'relationship_type\').toLowerCase();\n'
+        '  if(mode===\'none\') return \'rgba(148,163,184,.55)\';\n'
+        '  if(mode===\'risk_score\') return riskColor(e.edge_risk_score);\n'
+        '  if(mode===\'status\'){\n'
+        '    const s=String(e.edge_status||\'\').toLowerCase();\n'
+        '    if(s===\'blocked\') return \'#f87171\';\n'
+        '    if(s===\'watch\') return \'#fbbf24\';\n'
+        '    return \'#34d399\';\n'
+        '  }\n'
+        '  return typeColor(e.relationship_type||\'link\');\n'
+        '}\n'
+        '\n'
+        'function initLayout(W,H){\n'
+        '  const pad=36;\n'
+        '  const mode=(cfg.layout_algorithm||\'force\').toLowerCase();\n'
+        '  nodes.forEach((n,i)=>{\n'
+        '    if(mode===\'radial\'){\n'
+        '      const ang=(i/Math.max(nodes.length,1))*Math.PI*2;\n'
+        '      const rad=Math.min(W,H)*0.35;\n'
+        '      n.x=W/2+Math.cos(ang)*rad;\n'
+        '      n.y=H/2+Math.sin(ang)*rad;\n'
+        '    } else {\n'
+        '      const ang=hashStr(n.id)%360 * Math.PI/180;\n'
+        '      const rad=20+(hashStr(n.id+\'r\')%100);\n'
+        '      n.x=W/2+Math.cos(ang)*rad*(0.4+Math.random()*0.6);\n'
+        '      n.y=H/2+Math.sin(ang)*rad*(0.4+Math.random()*0.6);\n'
+        '    }\n'
+        '    n.vx=0; n.vy=0; n._r=nodeRadius(n);\n'
+        '  });\n'
+        '  if(mode!==\'radial\'){\n'
+        '    for(let iter=0; iter<180; iter++){\n'
+        '      for(let i=0;i<nodes.length;i++){\n'
+        '        for(let j=i+1;j<nodes.length;j++){\n'
+        '          const a=nodes[i], b=nodes[j];\n'
+        '          let dx=a.x-b.x, dy=a.y-b.y;\n'
+        '          let dist=Math.sqrt(dx*dx+dy*dy)||0.01;\n'
+        '          const force=900/(dist*dist);\n'
+        '          dx=(dx/dist)*force; dy=(dy/dist)*force;\n'
+        '          a.vx+=dx; a.vy+=dy; b.vx-=dx; b.vy-=dy;\n'
+        '        }\n'
+        '      }\n'
+        '      edges.forEach(e=>{\n'
+        '        const a=nodes.find(n=>n.id===e.source), b=nodes.find(n=>n.id===e.target);\n'
+        '        if(!a||!b) return;\n'
+        '        let dx=b.x-a.x, dy=b.y-a.y;\n'
+        '        let dist=Math.sqrt(dx*dx+dy*dy)||0.01;\n'
+        '        const ideal=70;\n'
+        '        const force=(dist-ideal)*0.02;\n'
+        '        dx=(dx/dist)*force; dy=(dy/dist)*force;\n'
+        '        a.vx+=dx; a.vy+=dy; b.vx-=dx; b.vy-=dy;\n'
+        '      });\n'
+        '      nodes.forEach(n=>{\n'
+        '        n.vx+=(W/2-n.x)*0.004; n.vy+=(H/2-n.y)*0.004;\n'
+        '        n.vx*=0.85; n.vy*=0.85;\n'
+        '        n.x+=n.vx; n.y+=n.vy;\n'
+        '        n.x=Math.max(pad+n._r, Math.min(W-pad-n._r, n.x));\n'
+        '        n.y=Math.max(pad+n._r, Math.min(H-pad-n._r, n.y));\n'
+        '      });\n'
+        '    }\n'
+        '  }\n'
+        '  settled=true;\n'
+        '}\n'
+        '\n'
+        'function visibleNodes(){\n'

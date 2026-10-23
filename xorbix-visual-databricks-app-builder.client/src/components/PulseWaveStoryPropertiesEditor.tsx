@@ -5,7 +5,7 @@ import PulseWaveStoryFieldMappingsEditor from "./PulseWaveStoryFieldMappingsEdit
 import PulseWaveStoryVisualPropertiesEditor from "./PulseWaveStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
 import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
-import { readUnityCatalogTableBinding } from "../utils/projectDataWindowBinding";
+import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface IPulseWaveStoryPropertiesEditorProps {
   componentKey: string;
@@ -24,7 +24,7 @@ function PulseWaveStoryPropertiesEditor({
   onPropertiesChange,
   onBindingsChange,
 }: Readonly<IPulseWaveStoryPropertiesEditorProps>) {
-  const table = readUnityCatalogTableBinding(bindings);
+  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Pulse Wave Story";
   const metricName = typeof properties.metricName === "string" ? properties.metricName : "Metric";
   const columns: IWorkspaceTableColumn[] = table?.columns ?? [];

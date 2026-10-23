@@ -1,0 +1,22 @@
+        '    if(keyboardNodeId!==null){\n'
+        '      ev.preventDefault();\n'
+        '      selectedId=selectedId===keyboardNodeId?null:keyboardNodeId;\n'
+        '      const node=nodes.find(candidate=>candidate.id===keyboardNodeId);\n'
+        '      announcer.textContent=node ? (selectedId===null ? \'Cleared highlight for \' : \'Highlighted \')+String(node.label||node.id)+\'.\' : \'Graph selection cleared.\';\n'
+        '      draw();\n'
+        '    }\n'
+        '    return;\n'
+        '  }\n'
+        '  if(ev.key===\'Escape\'){ selectedId=null; keyboardNodeId=null; hideTip(); announcer.textContent=\'Graph selection cleared.\'; draw(); return; }\n'
+        '  if(ev.key===\'Home\'){ panX=0; panY=0; zoom=1; selectedId=null; keyboardNodeId=null; hideTip(); announcer.textContent=\'Graph view reset.\'; draw(); return; }\n'
+        '  if(ev.key===\'+\'||ev.key===\'=\'){ ev.preventDefault(); zoom=Math.min(MAX_ZOOM,zoom*1.1); draw(); return; }\n'
+        '  if(ev.key===\'-\'){ ev.preventDefault(); zoom=Math.max(MIN_ZOOM,zoom/1.1); draw(); }\n'
+        '});\n'
+        '\n'
+        'function esc(s){ return String(s).replace(/[&<>"\']/g, c=>({ \'&\':\'&amp;\',\'<\':\'&lt;\',\'>\':\'&gt;\',\'"\':\'&quot;\',"\'":\'&#39;\' }[c])); }\n'
+        '\n'
+        'requestAnimationFrame(draw);\n'
+        '</script></body></html>\n'
+    )
+    vdab_networkwebstory1_html = vdab_networkwebstory1_html.replace('__NETWORK_WEB_PAYLOAD__', json.dumps(vdab_networkwebstory1_payload, default=str, allow_nan=False).replace('<', '\\u003c'))
+    components.html(vdab_networkwebstory1_html, height=620, scrolling=False)

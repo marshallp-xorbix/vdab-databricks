@@ -53,6 +53,7 @@ test("ProjectPortability_ExportStripsInstallBoundBindingsAndRequiresReselection"
   assert.equal(lakebaseBuild?.sqlSourceKind, "lakebaseAutoscaling");
   assert.equal(lakebaseBuild?.lakebaseAppResourceName, "unresolved_resource_5");
   assert.equal(lakebaseBuild?.lakebaseDatabaseName, "unresolved_resource_5");
+  assert.equal(lakebaseBuild?.lakebaseDatabaseId, "unresolved_resource_5");
   assert.equal(lakebaseBuild?.lakebaseProjectId, "unresolved_resource_5");
   assert.equal(lakebaseBuild?.lakebaseBranchId, "unresolved_resource_5");
   assert.equal(lakebaseBuild?.lakebaseEndpointId, "unresolved_resource_5");
@@ -61,6 +62,7 @@ test("ProjectPortability_ExportStripsInstallBoundBindingsAndRequiresReselection"
   assert.equal(lakebaseSaveTable.branchId, "unresolved_resource_6");
   assert.equal(lakebaseSaveTable.endpointId, "unresolved_resource_6");
   assert.equal(lakebaseSaveTable.database, "unresolved_resource_6");
+  assert.equal(lakebaseSaveTable.databaseId, "unresolved_resource_6");
   assert.equal(lakebaseSaveTable.schema, "");
   assert.equal(lakebaseSaveTable.table, "");
   assert.equal(bundle.project.childAppLink.requiresSelection, true);
@@ -256,6 +258,7 @@ function createSnapshot(): ProjectAggregateSnapshot {
                 placeholders: [],
                 lakebaseAppResourceName: "customer-lakebase",
                 lakebaseDatabaseName: "appdb",
+                lakebaseDatabaseId: "database-one",
                 lakebaseProjectId: "private-lakebase-project",
                 lakebaseBranchId: "production",
                 lakebaseEndpointId: "private-endpoint",
@@ -276,6 +279,7 @@ function createSnapshot(): ProjectAggregateSnapshot {
                   projectId: "private-lakebase-project",
                   branchId: "production",
                   endpointId: "private-endpoint",
+                  databaseId: "database-one",
                   database: "appdb",
                 },
                 excludedColumns: [],

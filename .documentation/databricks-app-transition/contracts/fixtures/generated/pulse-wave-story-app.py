@@ -79,11 +79,11 @@ def _vdab_sql_reject_truncated_result(response_body: dict[str, object]) -> None:
     if response_body.get('truncated') is True:
         raise RuntimeError('The Databricks SQL result was truncated by its configured row or byte limit.')
 
-def _vdab_sql_query_df(catalog: str, schema: str, table: str, max_rows: int, primary_key: str | None = None, query_statement: str | None = None, warehouse_id_override: str | None = None, source_kind: str = 'unityCatalogTable', database: str | None = None, endpoint: str | None = None) -> pd.DataFrame:
+def _vdab_sql_query_df(catalog: str, schema: str, table: str, max_rows: int, primary_key: str | None = None, query_statement: str | None = None, warehouse_id_override: str | None = None, source_kind: str = 'unityCatalogTable', database: str | None = None, endpoint: str | None = None, resource_environment_variable: str | None = None) -> pd.DataFrame:
     if source_kind == 'lakebaseAutoscaling':
         if not isinstance(database, str) or not isinstance(endpoint, str):
             raise RuntimeError('The Lakebase database and endpoint must be selected before previewing.')
-        return _vdab_lakebase_query_df(schema, table, max_rows, query_statement, database, endpoint)
+        return _vdab_lakebase_query_df(schema, table, max_rows, query_statement, database, endpoint, resource_environment_variable)
     if source_kind != 'unityCatalogTable':
         raise RuntimeError('The selected database source is not supported by this generated app.')
     warehouse_id = warehouse_id_override or os.environ.get('DATABRICKS_SQL_WAREHOUSE_ID', '')

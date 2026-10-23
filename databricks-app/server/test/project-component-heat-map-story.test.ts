@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readGeneratedPythonFixture } from "./generated-python-fixture.ts";
 import test from "node:test";
 import type { ProjectSummary } from "../src/contracts.ts";
 import { ApplicationError } from "../src/application-error.ts";
@@ -32,40 +32,52 @@ const columns = [
 ];
 
 test("HeatMapStoryPreview_MatchesGeneratedPythonFixtureAndViewerQuery", async () => {
-  const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/heat-map-story-app.py",
-    import.meta.url,
+  const expectedPython = await readGeneratedPythonFixture(
+    "heat-map-story-app.py",
   );
-  const expectedPython = await readFile(fixturePath, "utf8");
   const python = generate(createHeatMapStory());
 
   assert.equal(python, expectedPython);
-  assert.match(python, /SELECT `state_code` AS area_key, SUM\(`revenue`\) AS metric_value/);
+  assert.match(
+    python,
+    /SELECT `state_code` AS area_key, SUM\(`revenue`\) AS metric_value/,
+  );
   assert.match(python, /MAX\(`order_month`\)/);
   assert.match(python, /GROUP BY `state_code`/);
-  assert.match(python, /_vdab_sql_query_df\('main', 'sales', 'state_sales', 500, query_statement=/);
+  assert.match(
+    python,
+    /_vdab_sql_query_df\('main', 'sales', 'state_sales', 500, query_statement=/,
+  );
   assert.match(python, /statement \+= f' LIMIT \{max_rows:d\}'/);
-  assert.match(python, /st\.context\.headers\.get\('x-forwarded-access-token'\)/);
+  assert.match(
+    python,
+    /st\.context\.headers\.get\('x-forwarded-access-token'\)/,
+  );
   assert.match(python, /const USA = \{/);
   assert.match(python, /canvas\.addEventListener/);
   assert.match(python, /Unmatched area keys/);
   assert.match(python, /'color_scale': 'sequential'/);
   assert.match(python, /'show_labels': True/);
   assert.match(python, /'show_legend': True/);
-  assert.match(python, /components\.html\(vdab_heatmapstory1_html, height=580, scrolling=False\)/);
+  assert.match(
+    python,
+    /components\.html\(vdab_heatmapstory1_html, height=580, scrolling=False\)/,
+  );
   assert.match(python, /\.replace\('<', '\\\\u003c'\)/);
 });
 
 test("HeatMapStoryPreview_UsesEveryOptionalMappingAndSelectedAppearance", () => {
-  const python = generate(createHeatMapStory({
-    properties: {
-      ...defaultProperties(),
-      colorScale: "diverging",
-      showLabels: false,
-      showLegend: false,
-      aggregationMethod: "max",
-    },
-  }));
+  const python = generate(
+    createHeatMapStory({
+      properties: {
+        ...defaultProperties(),
+        colorScale: "diverging",
+        showLabels: false,
+        showLegend: false,
+        aggregationMethod: "max",
+      },
+    }),
+  );
 
   assert.match(python, /SUM\(`units`\) AS secondary_value/);
   assert.match(python, /AVG\(`growth_pct`\) AS change_pct/);
@@ -81,59 +93,104 @@ test("HeatMapStoryPreview_UsesEveryOptionalMappingAndSelectedAppearance", () => 
 });
 
 test("HeatMapStoryPreview_PreservesIncompleteAndLakebaseBindings", () => {
-  const incompletePython = generate(createHeatMapStory({
-    properties: { ...defaultProperties(), geographicArea: axis("", "categorical", "none") },
-  }));
-  const lakebasePython = generate(createHeatMapStory({ bindings: createLakebaseBinding() }));
+  const incompletePython = generate(
+    createHeatMapStory({
+      properties: {
+        ...defaultProperties(),
+        geographicArea: axis("", "categorical", "none"),
+      },
+    }),
+  );
+  const lakebasePython = generate(
+    createHeatMapStory({ bindings: createLakebaseBinding() }),
+  );
 
   assert.match(incompletePython, /Map the required HeatMapStory fields/);
   assert.doesNotMatch(incompletePython, /query_statement=/);
   assert.match(lakebasePython, /_vdab_sql_query_df\(/);
-  assert.match(lakebasePython, /source_kind='lakebaseAutoscaling', database='appdb'/);
+  assert.match(
+    lakebasePython,
+    /source_kind='lakebaseAutoscaling', database='appdb'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/,
+  );
 });
 
 test("HeatMapStoryInput_RejectsInvalidPropertiesBindingsAndComponentShape", () => {
   const invalidComponents = [
-    createHeatMapStory({ properties: { ...defaultProperties(), colorScale: "rainbow" } }),
-    createHeatMapStory({ properties: { ...defaultProperties(), aggregationMethod: "count" } }),
-    createHeatMapStory({ properties: { ...defaultProperties(), metricValue: axis("revenue", "categorical", "sum") } }),
-    createHeatMapStory({ properties: { ...defaultProperties(), unexpected: true } }),
-    createHeatMapStory({ properties: { ...defaultProperties(), metricValue: axis("missing", "continuous", "sum") } }),
+    createHeatMapStory({
+      properties: { ...defaultProperties(), colorScale: "rainbow" },
+    }),
+    createHeatMapStory({
+      properties: { ...defaultProperties(), aggregationMethod: "count" },
+    }),
+    createHeatMapStory({
+      properties: {
+        ...defaultProperties(),
+        metricValue: axis("revenue", "categorical", "sum"),
+      },
+    }),
+    createHeatMapStory({
+      properties: { ...defaultProperties(), unexpected: true },
+    }),
+    createHeatMapStory({
+      properties: {
+        ...defaultProperties(),
+        metricValue: axis("missing", "continuous", "sum"),
+      },
+    }),
     createHeatMapStory({ children: ["nested-child"] }),
     createHeatMapStory({ layout: { columns: 2 } }),
-    createHeatMapStory({ bindings: { ...createUnityCatalogBinding(), workspaceHost: "https://outside.invalid" } }),
+    createHeatMapStory({
+      bindings: {
+        ...createUnityCatalogBinding(),
+        workspaceHost: "https://outside.invalid",
+      },
+    }),
   ];
 
   for (const component of invalidComponents) {
     assert.throws(
       () => readComponentsInput({ version: 1, components: [component] }),
-      (error: unknown) => error instanceof ApplicationError && error.status === 400,
+      (error: unknown) =>
+        error instanceof ApplicationError && error.status === 400,
     );
   }
 });
 
 test("HeatMapStoryPreview_RejectsMalformedPersistedPropertiesAndShape", () => {
   assert.throws(
-    () => generate(createHeatMapStory({ properties: { ...defaultProperties(), unexpected: true } })),
-    (error: unknown) => error instanceof ApplicationError && error.status === 422 &&
+    () =>
+      generate(
+        createHeatMapStory({
+          properties: { ...defaultProperties(), unexpected: true },
+        }),
+      ),
+    (error: unknown) =>
+      error instanceof ApplicationError &&
+      error.status === 422 &&
       error.code === "invalid_heat_map_story_properties",
   );
   assert.throws(
     () => generate(createHeatMapStory({ children: ["nested-child"] })),
-    (error: unknown) => error instanceof ApplicationError && error.status === 422 &&
+    (error: unknown) =>
+      error instanceof ApplicationError &&
+      error.status === 422 &&
       error.code === "invalid_heat_map_story_properties",
   );
 });
 
 function generate(component: ProjectComponent): string {
-  return new ProjectPreviewGenerator().generate(project, {
-    projectId: project.id,
-    version: 1,
-    components: [component],
-  }).files[0]?.content ?? "";
+  return (
+    new ProjectPreviewGenerator().generate(project, {
+      projectId: project.id,
+      version: 1,
+      components: [component],
+    }).files[0]?.content ?? ""
+  );
 }
 
-function createHeatMapStory(overrides: Partial<ProjectComponent> = {}): ProjectComponent {
+function createHeatMapStory(
+  overrides: Partial<ProjectComponent> = {},
+): ProjectComponent {
   return {
     key: "heat-map-story-main",
     type: "HeatMapStory",
@@ -171,7 +228,11 @@ function defaultProperties(): ProjectComponent["properties"] {
   };
 }
 
-function axis(field: string, scaleType: "categorical" | "continuous", transform: string) {
+function axis(
+  field: string,
+  scaleType: "categorical" | "continuous",
+  transform: string,
+) {
   return { field, displayName: "", scaleType, transform };
 }
 
@@ -206,6 +267,7 @@ function createLakebaseBinding(): ProjectComponent["bindings"] {
         resource: {
           type: "lakebaseAutoscaling",
           database: "appdb",
+          databaseId: "database-id",
           projectId: "db-project",
           branchId: "production",
           endpointId: "read-write",

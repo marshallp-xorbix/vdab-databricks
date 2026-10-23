@@ -1,0 +1,240 @@
+        _vdab_volume_value = _vdab_row.get('volume_value')
+        if 'volume_value' in vdab_productionterrain_data.columns and not pd.isna(_vdab_volume_value):
+            _vdab_record['volume_value'] = float(_vdab_volume_value)
+        _vdab_status = _vdab_row.get('status')
+        if 'status' in vdab_productionterrain_data.columns and not pd.isna(_vdab_status):
+            _vdab_record['status'] = str(_vdab_status).strip()
+        if 'baseline_value' in _vdab_record:
+            _vdab_record['variance'] = _vdab_record['height'] - _vdab_record['baseline_value']
+        elif 'target_value' in _vdab_record:
+            _vdab_record['variance'] = _vdab_record['height'] - _vdab_record['target_value']
+        vdab_productionterrain_records.append(_vdab_record)
+        _vdab_event_name = _vdab_row.get('event_name')
+        _vdab_callout_text = _vdab_row.get('callout_text')
+        if ('event_name' in vdab_productionterrain_data.columns and not pd.isna(_vdab_event_name) and str(_vdab_event_name).strip()) or ('callout_text' in vdab_productionterrain_data.columns and not pd.isna(_vdab_callout_text) and str(_vdab_callout_text).strip()):
+            _vdab_callout = {'x': _vdab_record['x'], 'y': _vdab_record['y'], 'label': str(_vdab_event_name).strip() if not pd.isna(_vdab_event_name) and str(_vdab_event_name).strip() else 'Callout', 'metric_value': _vdab_record['height']}
+            _vdab_event_date = _vdab_row.get('event_date')
+            if 'event_date' in vdab_productionterrain_data.columns and not pd.isna(_vdab_event_date):
+                _vdab_callout['event_date'] = str(_vdab_event_date)
+            if not pd.isna(_vdab_callout_text) and str(_vdab_callout_text).strip():
+                _vdab_callout['description'] = str(_vdab_callout_text).strip()
+            if 'status' in _vdab_record:
+                _vdab_callout['severity'] = _vdab_record['status']
+            vdab_productionterrain_callouts.append(_vdab_callout)
+    vdab_productionterrain_sorted = sorted(vdab_productionterrain_records, key=lambda _vdab_record: (-_vdab_record['height'], _vdab_record['x'], _vdab_record['y']))
+    vdab_productionterrain_peaks = [{'x': _vdab_record['x'], 'y': _vdab_record['y'], 'height': _vdab_record['height']} for _vdab_record in vdab_productionterrain_sorted[:3]]
+    vdab_productionterrain_valleys = [{'x': _vdab_record['x'], 'y': _vdab_record['y'], 'height': _vdab_record['height']} for _vdab_record in sorted(vdab_productionterrain_records, key=lambda _vdab_record: (_vdab_record['height'], _vdab_record['x'], _vdab_record['y']))[:3]]
+    vdab_productionterrain_payload = {
+        'records': vdab_productionterrain_records,
+        'callouts': vdab_productionterrain_callouts,
+        'visualConfig': {
+            'terrain_mode': 'surface',
+            'height_scale': 1,
+            'interpolation': 'bilinear',
+            'grid_resolution': 60,
+            'color_by': 'height_metric',
+            'show_peak_labels': True,
+            'show_valley_labels': True,
+            'camera_preset': 'angled',
+            'aggregation_method': 'sum',
+        },
+        'summary': {
+            'grid_size': len(vdab_productionterrain_records),
+            'excluded_rows': vdab_productionterrain_data_source_count - len(vdab_productionterrain_data),
+            'top_peaks': vdab_productionterrain_peaks,
+            'bottom_valleys': vdab_productionterrain_valleys,
+            'warnings': [],
+        },
+    }
+    vdab_productionterrain_html = (
+        '<!DOCTYPE html>\n'
+        '<html><head><meta charset="utf-8"/>\n'
+        '<style>\n'
+        'html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:system-ui,sans-serif;}\n'
+        '#wrap{position:relative;width:100%;height:100%;box-sizing:border-box;border:1px solid #94a3b8;border-radius:10px;overflow:hidden;background:#0a1628;box-shadow:0 1px 2px rgba(15,23,42,.08);}\n'
+        'canvas{display:block;width:100%;height:100%;touch-action:none;outline:none;}\n'
+        'canvas:focus-visible{outline:2px solid #38bdf8;outline-offset:-2px;}\n'
+        '#tip{display:none;position:absolute;pointer-events:none;z-index:4;background:rgba(10,22,40,.96);color:#e8f4f8;border:1px solid rgba(0,200,255,.35);border-radius:8px;padding:8px 10px;font-size:12px;max-width:280px;line-height:1.35;}\n'
+        '#hint{position:absolute;right:10px;bottom:8px;z-index:3;font-size:10px;color:rgba(226,246,255,.55);pointer-events:none;user-select:none;}\n'
+        '#toolbar{position:absolute;left:10px;top:10px;z-index:4;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}\n'
+        '.tbtn{cursor:pointer;padding:3px 8px;border-radius:6px;font-size:11px;background:rgba(15,23,42,.85);color:#e2e8f0;border:1px solid #475569;user-select:none;}\n'
+        '.tbtn.off{opacity:.55;text-decoration:line-through;}\n'
+        '.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}\n'
+        '</style></head><body>\n'
+        '<div id="wrap" role="group" aria-label="Terrain visualization">\n'
+        '<div id="toolbar" aria-label="Terrain overlays"><button type="button" class="tbtn" id="togPeaks" aria-pressed="true">Peaks</button><button type="button" class="tbtn" id="togValleys" aria-pressed="true">Valleys</button><button type="button" class="tbtn" id="togEvents" aria-pressed="true">Events</button></div>\n'
+        '<canvas id="c" tabindex="0" role="img" aria-label="Terrain grid. Use arrow keys to inspect cells, Home or End to move, and Escape to clear selection."></canvas>\n'
+        '<div id="tip"></div><div id="announce" class="sr-only" aria-live="polite"></div>\n'
+        '<div id="hint">Arrow keys inspect cells · drag to pan · scroll to zoom · double-click to reset</div>\n'
+        '<script>\n'
+        'const payload = __TERRAIN_PAYLOAD__;\r\n'
+        'const canvas = document.getElementById(\'c\');\r\n'
+        'const tip = document.getElementById(\'tip\');\n'
+        'const announce = document.getElementById(\'announce\');\r\n'
+        'const ctx = canvas.getContext(\'2d\');\r\n'
+        'const cfg = Object.assign({\r\n'
+        '  terrain_mode: \'surface\', height_scale: 1, interpolation: \'bilinear\', grid_resolution: 60,\r\n'
+        '  color_by: \'height_metric\', show_peak_labels: true, show_valley_labels: true,\r\n'
+        '  camera_preset: \'angled\', aggregation_method: \'sum\'\r\n'
+        '}, (payload && payload.visualConfig) || {});\r\n'
+        'let records = Array.isArray(payload && payload.records) ? payload.records.slice() : [];\r\n'
+        'let callouts = Array.isArray(payload && payload.callouts) ? payload.callouts.slice() : [];\r\n'
+        'const summary = (payload && payload.summary) || {};\r\n'
+        'let peaks = Array.isArray(summary.top_peaks) ? summary.top_peaks : [];\r\n'
+        'let valleys = Array.isArray(summary.bottom_valleys) ? summary.bottom_valleys : [];\r\n'
+        'let showPeaks = cfg.show_peak_labels !== false;\r\n'
+        'let showValleys = cfg.show_valley_labels !== false;\r\n'
+        'let showEvents = true;\r\n'
+        'let selectedKey = null;\r\n'
+        'let hoverKey = null;\r\n'
+        'let panX = 0, panY = 0, zoom = 1;\r\n'
+        'let dragging = false, didDrag = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;\r\n'
+        'const MIN_ZOOM = 0.55, MAX_ZOOM = 2.75;\r\n'
+        'const MAX_DENSE = 80;\r\n'
+        '\r\n'
+        'function num(v,d){ const n=Number(v); return Number.isFinite(n)?n:d; }\r\n'
+        'function cellKey(x,y){ return String(x)+\'|\'+String(y); }\r\n'
+        'function heightColor(t){\r\n'
+        '  const stops=[[0,\'#0c4a6e\'],[0.25,\'#0e7490\'],[0.5,\'#14b8a6\'],[0.75,\'#fbbf24\'],[1,\'#f97316\']];\r\n'
+        '  t=Math.max(0,Math.min(1,t));\r\n'
+        '  for(let i=0;i<stops.length-1;i++){\r\n'
+        '    if(t<=stops[i+1][0]){\r\n'
+        '      const a=stops[i], b=stops[i+1];\r\n'
+        '      const u=(t-a[0])/((b[0]-a[0])||1);\r\n'
+        '      return lerpHex(a[1],b[1],u);\r\n'
+        '    }\r\n'
+        '  }\r\n'
+        '  return stops[stops.length-1][1];\r\n'
+        '}\r\n'
+        'function riskColor(r){ const v=Math.max(0,Math.min(100,num(r,0))); return `rgb(${Math.round(80+v*1.7)},${Math.round(200-v*1.4)},70)`; }\r\n'
+        'function lerpHex(a,b,t){\r\n'
+        '  const pa=parseInt(a.slice(1),16), pb=parseInt(b.slice(1),16);\r\n'
+        '  const ar=(pa>>16)&255, ag=(pa>>8)&255, ab=pa&255;\r\n'
+        '  const br=(pb>>16)&255, bg=(pb>>8)&255, bb=pb&255;\r\n'
+        '  const r=Math.round(ar+(br-ar)*t), g=Math.round(ag+(bg-ag)*t), bl=Math.round(ab+(bb-ab)*t);\r\n'
+        '  return `rgb(${r},${g},${bl})`;\r\n'
+        '}\r\n'
+        'function darkenRgb(css, factor){\r\n'
+        '  const m=String(css).match(/rgb\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)/);\r\n'
+        '  if(!m) return css;\r\n'
+        '  const f=Math.max(0,Math.min(1,factor));\r\n'
+        '  return `rgb(${Math.round(+m[1]*f)},${Math.round(+m[2]*f)},${Math.round(+m[3]*f)})`;\r\n'
+        '}\r\n'
+        'function categoryColor(c){\r\n'
+        '  const cols=[\'#2dd4bf\',\'#38bdf8\',\'#a78bfa\',\'#f472b6\',\'#fbbf24\',\'#34d399\'];\r\n'
+        '  let h=0; for(let i=0;i<String(c).length;i++){ h=((h<<5)-h)+String(c).charCodeAt(i); h|=0; }\r\n'
+        '  return cols[Math.abs(h)%cols.length];\r\n'
+        '}\r\n'
+        '\r\n'
+        'function buildGrid(){\r\n'
+        '  const xs=[...new Set(records.map(r=>String(r.x)))].sort();\r\n'
+        '  const ys=[...new Set(records.map(r=>String(r.y)))].sort();\r\n'
+        '  const map=new Map();\r\n'
+        '  records.forEach(r=>map.set(cellKey(r.x,r.y), r));\r\n'
+        '  const heights=records.map(r=>num(r.height,0));\r\n'
+        '  const minH=heights.length?Math.min(...heights):0;\r\n'
+        '  const maxH=heights.length?Math.max(...heights):1;\r\n'
+        '  return {xs, ys, map, minH, maxH};\r\n'
+        '}\r\n'
+        '\r\n'
+        'function cellFill(rec, minH, maxH){\r\n'
+        '  const mode=(cfg.color_by||\'height_metric\').toLowerCase();\r\n'
+        '  if(mode===\'risk_score\') return riskColor(rec.risk_score);\r\n'
+        '  if(mode===\'variance\'){\r\n'
+        '    const v=num(rec.variance,0);\r\n'
+        '    const t=0.5+Math.max(-0.5,Math.min(0.5,v/((maxH-minH)||1)));\r\n'
+        '    return heightColor(t);\r\n'
+        '  }\r\n'
+        '  if(mode===\'category\') return categoryColor(rec.category||\'Other\');\r\n'
+        '  const t=((num(rec.height,0)-minH)/((maxH-minH)||1));\r\n'
+        '  return heightColor(Math.pow(Math.max(0,t), 1/Math.max(cfg.height_scale||1,0.1)));\r\n'
+        '}\r\n'
+        '\r\n'
+        'function heightNormColor(h, minH, maxH){\r\n'
+        '  const t=((h-minH)/((maxH-minH)||1));\r\n'
+        '  return heightColor(Math.pow(Math.max(0,Math.min(1,t)), 1/Math.max(cfg.height_scale||1,0.1)));\r\n'
+        '}\r\n'
+        '\r\n'
+        'function sparseHeights(grid){\r\n'
+        '  const rows=grid.ys.length, cols=grid.xs.length;\r\n'
+        '  const H=Array.from({length:rows},()=>Array(cols).fill(null));\r\n'
+        '  for(let yi=0;yi<rows;yi++){\r\n'
+        '    for(let xi=0;xi<cols;xi++){\r\n'
+        '      const rec=grid.map.get(cellKey(grid.xs[xi],grid.ys[yi]));\r\n'
+        '      if(rec) H[yi][xi]=num(rec.height,0);\r\n'
+        '    }\r\n'
+        '  }\r\n'
+        '  return H;\r\n'
+        '}\r\n'
+        '\r\n'
+        'function sampleSparse(H, fx, fy){\r\n'
+        '  const rows=H.length, cols=H[0]?H[0].length:0;\r\n'
+        '  if(rows===0||cols===0) return null;\r\n'
+        '  const x0=Math.floor(fx), y0=Math.floor(fy);\r\n'
+        '  const x1=Math.min(x0+1, cols-1), y1=Math.min(y0+1, rows-1);\r\n'
+        '  const tx=fx-x0, ty=fy-y0;\r\n'
+        '  const v00=H[y0][x0], v10=H[y0][x1], v01=H[y1][x0], v11=H[y1][x1];\r\n'
+        '  const known=[v00,v10,v01,v11].filter(v=>v!=null);\r\n'
+        '  if(!known.length) return null;\r\n'
+        '  const a=v00!=null?v00:(v10!=null?v10:(v01!=null?v01:v11));\r\n'
+        '  const b=v10!=null?v10:(v00!=null?v00:(v11!=null?v11:v01));\r\n'
+        '  const c=v01!=null?v01:(v00!=null?v00:(v11!=null?v11:v10));\r\n'
+        '  const d=v11!=null?v11:(v10!=null?v10:(v01!=null?v01:v00));\r\n'
+        '  const top=a+(b-a)*tx, bot=c+(d-c)*tx;\r\n'
+        '  return top+(bot-top)*ty;\r\n'
+        '}\r\n'
+        '\r\n'
+        'function buildDense(grid){\r\n'
+        '  const sparse=sparseHeights(grid);\r\n'
+        '  const rows=grid.ys.length, cols=grid.xs.length;\r\n'
+        '  const useBilinear=(cfg.interpolation||\'bilinear\').toLowerCase()===\'bilinear\';\r\n'
+        '  const want=Math.min(MAX_DENSE, Math.max(10, num(cfg.grid_resolution,60)|0));\r\n'
+        '  let denseCols=cols, denseRows=rows;\r\n'
+        '  if(useBilinear && Math.max(cols,rows)>1){\r\n'
+        '    if(cols>=rows){ denseCols=Math.max(cols, want); denseRows=Math.max(rows, Math.round(want*(rows/Math.max(cols,1)))); }\r\n'
+        '    else { denseRows=Math.max(rows, want); denseCols=Math.max(cols, Math.round(want*(cols/Math.max(rows,1)))); }\r\n'
+        '    denseCols=Math.min(MAX_DENSE, denseCols);\r\n'
+        '    denseRows=Math.min(MAX_DENSE, denseRows);\r\n'
+        '  }\r\n'
+        '  const dense=Array.from({length:denseRows},()=>Array(denseCols).fill(null));\r\n'
+        '  for(let yi=0;yi<denseRows;yi++){\r\n'
+        '    for(let xi=0;xi<denseCols;xi++){\r\n'
+        '      const fx=cols<=1?0:(xi/(denseCols-1))*(cols-1);\r\n'
+        '      const fy=rows<=1?0:(yi/(denseRows-1))*(rows-1);\r\n'
+        '      if(useBilinear) dense[yi][xi]=sampleSparse(sparse, fx, fy);\r\n'
+        '      else {\r\n'
+        '        const sx=Math.round(fx), sy=Math.round(fy);\r\n'
+        '        dense[yi][xi]=sparse[sy]?sparse[sy][sx]:null;\r\n'
+        '      }\r\n'
+        '    }\r\n'
+        '  }\r\n'
+        '  return {dense, denseCols, denseRows, sparseCols:cols, sparseRows:rows};\r\n'
+        '}\r\n'
+        '\r\n'
+        'function cameraFactors(){\r\n'
+        '  const cam=(cfg.camera_preset||\'angled\').toLowerCase();\r\n'
+        '  if(cam===\'front\') return {xSkew:0.15, yDepth:0.55, elevMul:1.15};\r\n'
+        '  if(cam===\'top\') return {xSkew:0.55, yDepth:0.35, elevMul:0.45};\r\n'
+        '  return {xSkew:0.55, yDepth:0.42, elevMul:1}; // angled / free\r\n'
+        '}\r\n'
+        '\r\n'
+        'function layoutHeat(W,H,grid){\r\n'
+        '  const padL=90, padR=16, padT=40, padB=50;\r\n'
+        '  const cw=Math.max(20,(W-padL-padR)/Math.max(grid.xs.length,1));\r\n'
+        '  const ch=Math.max(16,(H-padT-padB)/Math.max(grid.ys.length,1));\r\n'
+        '  return {padL,padR,padT,padB,cw,ch};\r\n'
+        '}\r\n'
+        '\r\n'
+        'function drawHeat(W,H){\r\n'
+        '  const grid=buildGrid();\r\n'
+        '  if(!grid.xs.length||!grid.ys.length) return null;\r\n'
+        '  const L=layoutHeat(W,H,grid);\r\n'
+        '  ctx.save();\r\n'
+        '  ctx.translate(panX,panY); ctx.scale(zoom,zoom);\r\n'
+        '\r\n'
+        '  grid.ys.forEach((y,yi)=>{\r\n'
+        '    grid.xs.forEach((x,xi)=>{\r\n'
+        '      const rec=grid.map.get(cellKey(x,y));\r\n'
+        '      const px=L.padL+xi*L.cw, py=L.padT+yi*L.ch;\r\n'
+        '      ctx.fillStyle=rec?cellFill(rec,grid.minH,grid.maxH):\'rgba(30,41,59,.4)\';\r\n'
+        '      ctx.globalAlpha = (selectedKey && selectedKey!==cellKey(x,y)) ? 0.35 : 1;\r\n'

@@ -49,6 +49,7 @@ export interface LakebaseAutoscalingTableRef {
   projectId: string;
   branchId: string;
   endpointId: string;
+  databaseId: string;
   database: string;
   catalog: string;
   schema: string;

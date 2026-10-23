@@ -20,6 +20,11 @@ export interface IWorkspaceLakebaseDatabase {
   databaseName: string;
 }
 
+export interface IWorkspaceLakebaseProvisionedInstance {
+  instanceName: string;
+  state: string | null;
+}
+
 export interface IWorkspaceLakebaseTable {
   name: string;
   tableType: "BASE TABLE" | "VIEW";
@@ -41,6 +46,11 @@ export type LakebaseMetadataSelection = Readonly<{
   projectId: string;
   branchId: string;
   endpointId: string;
+  databaseName: string;
+}>;
+
+export type LakebaseProvisionedMetadataSelection = Readonly<{
+  instanceName: string;
   databaseName: string;
 }>;
 

@@ -133,7 +133,7 @@ test("SpiralStoryPreview_RejectsMalformedPersistedPropertiesAndMissingMappings",
 test("SpiralStoryInput_PreservesLakebaseBindingWithExplicitLimitation", () => {
   const python = generate(createSpiralStory({ bindings: createLakebaseBinding() }));
   assert.match(python, /_vdab_sql_query_df\(/);
-  assert.match(python, /source_kind='lakebaseAutoscaling', database='builder'/);
+  assert.match(python, /source_kind='lakebaseAutoscaling', database='builder'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/);
 });
 
 test("SpiralStoryCanvas_KeyboardNavigationAnnouncesEscapedMilestoneDetails", () => {
@@ -282,6 +282,7 @@ function createLakebaseBinding(): ProjectComponent["bindings"] {
           schema: "analytics",
           table: "journey_milestones",
           database: "builder",
+          databaseId: "database-id",
           projectId: "project-1",
           branchId: "branch-1",
           endpointId: "endpoint-1",

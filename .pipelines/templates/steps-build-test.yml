@@ -65,9 +65,12 @@ steps:
     displayName: Install frontend dependencies
     workingDirectory: "${{ parameters.uiDirectory }}"
 
-  # The SPA is environment-agnostic: it resolves the API base (same-origin), the OAuth redirect (window
-  # origin), and Application Insights (GET /api/config) at RUNTIME — nothing environment-specific is baked
-  # in here, which is what lets this one artifact be promoted to dev, staging, and prod unchanged.
+  - script: npm audit --audit-level=high
+    displayName: Audit frontend dependencies
+    workingDirectory: "${{ parameters.uiDirectory }}"
+
+  # Retained SaaS-reference frontend build. It is kept for legacy parity while the transition gates remain;
+  # it is not the standalone Databricks client artifact. The latter is built and packaged below.
   - script: npm run build
     displayName: Build frontend
     workingDirectory: "${{ parameters.uiDirectory }}"
@@ -90,6 +93,10 @@ steps:
   # This is a local-process smoke test only; a live workspace deploy requires the approved disposable target.
   - script: npm ci --include=dev
     displayName: Install Node App dependencies
+    workingDirectory: databricks-app
+
+  - script: npm audit --audit-level=high
+    displayName: Audit Node App dependencies
     workingDirectory: databricks-app
 
   - script: npm run typecheck
@@ -117,8 +124,7 @@ steps:
     inputs:
       targetType: inline
       script: |
-        # Single-host model: the SPA's static assets are embedded into the API wwwroot and ship as one
-        # App Service package. React Router v7 (SPA mode) outputs to build/client.
+        # Temporary legacy .NET parity package only. Standalone assets are packaged separately in .build/.
         $wwwroot = "${{ parameters.apiDirectory }}\wwwroot"
         if (Test-Path $wwwroot) { Remove-Item -Recurse -Force $wwwroot }
         New-Item -ItemType Directory -Force -Path $wwwroot | Out-Null

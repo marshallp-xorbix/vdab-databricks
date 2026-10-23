@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createProject, exportProject, importProject, listProjects, updateProject } from "./projectsApi";
+import {
+  createProject,
+  deleteProject,
+  exportProject,
+  importProject,
+  listProjects,
+  updateProject,
+} from "./projectsApi";
 
 const project = {
   id: "project-1",
@@ -18,9 +25,9 @@ afterEach(() => {
 
 describe("projectsApi", () => {
   it("lists and validates the project response", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      Response.json({ items: [project] }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json({ items: [project] }));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await listProjects();
@@ -48,9 +55,9 @@ describe("projectsApi", () => {
   });
 
   it("saves metadata with the optimistic version", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      Response.json({ ...project, version: 2 }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json({ ...project, version: 2 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await updateProject({
@@ -73,10 +80,31 @@ describe("projectsApi", () => {
     );
   });
 
+  it("deletes a project without sending workspace authority", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await deleteProject("project/one");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/projects/project%2Fone",
+      expect.objectContaining({
+        method: "DELETE",
+        credentials: "same-origin",
+      }),
+    );
+  });
+
   it("rejects malformed project payloads", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(Response.json({ items: [{ id: "missing-fields" }] })),
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ items: [{ id: "missing-fields" }] }),
+        ),
     );
 
     await expect(listProjects()).rejects.toThrow("invalid project");
@@ -103,10 +131,14 @@ describe("projectsApi", () => {
     const result = {
       project,
       requiresChildAppSelection: true,
-      unresolvedResources: [{ key: "resource_1", kind: "databricksJob", label: "Refresh" }],
+      unresolvedResources: [
+        { key: "resource_1", kind: "databricksJob", label: "Refresh" },
+      ],
     };
     const bundle = { format: "vdab-project", schemaVersion: 1, project: {} };
-    const fetchMock = vi.fn().mockResolvedValue(Response.json(result, { status: 201 }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json(result, { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(importProject(bundle)).resolves.toMatchObject(result);

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createLakebasePasswordProvider,
+  MAX_LAKEBASE_CREDENTIAL_RESPONSE_BYTES,
   type LakebaseCredentialEnvironment,
 } from "../src/db/lakebase-credentials.ts";
 
@@ -42,8 +43,14 @@ test("LakebaseCredentials_ExchangesWorkspaceAndDatabaseTokens_AndCachesBoth", as
   assert.equal(firstPassword, DATABASE_TOKEN);
   assert.equal(secondPassword, DATABASE_TOKEN);
   assert.equal(calls.length, 2);
-  assert.equal(oauthCall?.url, "https://dbc-example.cloud.databricks.com/oidc/v1/token");
-  assert.equal(databaseCall?.url, "https://dbc-example.cloud.databricks.com/api/2.0/postgres/credentials");
+  assert.equal(
+    oauthCall?.url,
+    "https://dbc-example.cloud.databricks.com/oidc/v1/token",
+  );
+  assert.equal(
+    databaseCall?.url,
+    "https://dbc-example.cloud.databricks.com/api/2.0/postgres/credentials",
+  );
   assert.equal(
     new Headers(oauthCall?.init.headers).get("authorization"),
     `Basic ${Buffer.from(`client-id:${CLIENT_SECRET}`).toString("base64")}`,
@@ -52,6 +59,8 @@ test("LakebaseCredentials_ExchangesWorkspaceAndDatabaseTokens_AndCachesBoth", as
     new Headers(databaseCall?.init.headers).get("authorization"),
     `Bearer ${OAUTH_TOKEN}`,
   );
+  assert.equal(oauthCall?.init.redirect, "error");
+  assert.equal(databaseCall?.init.redirect, "error");
   assert.deepEqual(JSON.parse(String(databaseCall?.init.body)), {
     endpoint: "projects/project-id/branches/branch-id/endpoints/endpoint-id",
   });
@@ -149,12 +158,56 @@ test("LakebaseCredentials_RejectsFailedExchange_WithoutExposingResponseBody", as
   );
 });
 
+test("LakebaseCredentials_RejectsOversizedWorkspaceCredentialResponse", async () => {
+  const passwordProvider = createLakebasePasswordProvider(
+    testEnvironment(),
+    async () =>
+      new Response("credential-response-must-not-leak", {
+        status: 200,
+        headers: {
+          "content-length": String(MAX_LAKEBASE_CREDENTIAL_RESPONSE_BYTES + 1),
+        },
+      }),
+  );
+
+  await assert.rejects(
+    () => passwordProvider(),
+    /invalid workspace credential/,
+  );
+});
+
+test("LakebaseCredentials_RejectsOversizedDatabaseCredentialResponse", async () => {
+  let callCount = 0;
+  const passwordProvider = createLakebasePasswordProvider(
+    testEnvironment(),
+    async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        return new Response(
+          JSON.stringify({ access_token: OAUTH_TOKEN, expires_in: 3600 }),
+          { status: 200 },
+        );
+      }
+
+      return new Response("database-credential-must-not-leak", {
+        status: 200,
+        headers: {
+          "content-length": String(MAX_LAKEBASE_CREDENTIAL_RESPONSE_BYTES + 1),
+        },
+      });
+    },
+  );
+
+  await assert.rejects(() => passwordProvider(), /invalid Lakebase credential/);
+});
+
 test("LakebaseCredentials_RejectsUnpinnedWorkspaceAndMalformedBoundEndpoint", () => {
   assert.throws(
     () =>
       createLakebasePasswordProvider({
         ...testEnvironment(),
-        workspaceHost: "https://dbc-example.cloud.databricks.com/other-workspace",
+        workspaceHost:
+          "https://dbc-example.cloud.databricks.com/other-workspace",
       }),
     /HTTPS workspace origin/,
   );

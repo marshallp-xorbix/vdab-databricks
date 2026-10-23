@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Last Updated:** 2026-10-16
+**Last Updated:** 2026-10-22
 **Generated from AGENTS template version:** 2026-06-17
 
 Guidance for AI coding agents working in this repository. Human-facing contribution policy (branch protection, PR process, QA expectations) lives in the team's contributing docs and is not duplicated here.
@@ -11,20 +11,20 @@ This file is the **primary** source of rules for agents. Read it in full before 
 
 The **secondary references** below contain concrete code patterns and task workflows. Read them only when the trigger applies:
 
-| Reference | Read it when |
-| --- | --- |
-| [Node Databricks App architecture](.documentation/standards/node-databricks-app-architecture.md) | Implementing the active Node backend, Lakebase repositories, Databricks integrations, or generated-app behavior. |
-| [Legacy .NET backend patterns](.documentation/standards/backend-patterns.md) | Inspecting or temporarily maintaining an existing .NET controller, service, repository, EF configuration, typed error, mapping, current-user lookup, or transaction during retirement. |
-| [Frontend patterns](.documentation/standards/frontend-patterns.md) | Implementing or modifying a React component, custom hook, model class, API module, or context. |
-| [Pull request workflows](.documentation/standards/pull-requests.md) | The user asks you to review a pull request / branch, or to draft a PR description to paste into Azure DevOps. |
+| Reference                                                                                        | Read it when                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Node Databricks App architecture](.documentation/standards/node-databricks-app-architecture.md) | Implementing the active Node backend, Lakebase repositories, Databricks integrations, or generated-app behavior.                                                                       |
+| [Legacy .NET backend patterns](.documentation/standards/backend-patterns.md)                     | Inspecting or temporarily maintaining an existing .NET controller, service, repository, EF configuration, typed error, mapping, current-user lookup, or transaction during retirement. |
+| [Frontend patterns](.documentation/standards/frontend-patterns.md)                               | Implementing or modifying a React component, custom hook, model class, API module, or context.                                                                                         |
+| [Pull request workflows](.documentation/standards/pull-requests.md)                              | The user asks you to review a pull request / branch, or to draft a PR description to paste into Azure DevOps.                                                                          |
 
 Two **canonical standards documents** ship with this repo as the human-readable source with reasoning and citations. Read them only when:
 
-| Standards document | Read it when |
-| --- | --- |
-| [Xorbix Development Standards](.documentation/standards/xorbix-dev-standards.md) | A reviewer challenges a rule, you need the reasoning behind a principle for a discussion or ADR, or you're proposing a change to a rule itself. |
-| [Node Databricks App architecture](.documentation/standards/node-databricks-app-architecture.md) | You need the active VDAB backend boundaries, identity, Lakebase, security, or delivery guidance. |
-| [Legacy .NET API + React architecture](.documentation/standards/dotnet-react-architecture.md) | You need a worked example for existing .NET source or are reviewing its historical design. |
+| Standards document                                                                               | Read it when                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Xorbix Development Standards](.documentation/standards/xorbix-dev-standards.md)                 | A reviewer challenges a rule, you need the reasoning behind a principle for a discussion or ADR, or you're proposing a change to a rule itself. |
+| [Node Databricks App architecture](.documentation/standards/node-databricks-app-architecture.md) | You need the active VDAB backend boundaries, identity, Lakebase, security, or delivery guidance.                                                |
+| [Legacy .NET API + React architecture](.documentation/standards/dotnet-react-architecture.md)    | You need a worked example for existing .NET source or are reviewing its historical design.                                                      |
 
 If this file conflicts with the standards docs on a rule, **this file wins**. If you believe a rule should not apply, do not silently ignore it. State the rule, your reasoning, and propose either a deviation entry or a standards-doc update before proceeding.
 
@@ -40,6 +40,7 @@ If a secondary reference or canonical standards document is missing when you rea
 **Xorbix Visual Databricks App Builder (VDAB)** is a standalone Databricks App for building and deploying Python/Streamlit applications inside the workspace where VDAB is installed. Users visually arrange UI components, story visualizations, workflows, and custom modules, bind them to current-workspace resources, use customer-configured Databricks AI endpoints, preview output, and deploy child apps. Each installation starts fresh and does not connect to the former SaaS product or import SaaS users/projects.
 
 **Stack:**
+
 - Builder backend: TypeScript/Node.js, packaged and run as a Databricks App
 - Frontend: React 19 + React Router v7 (Framework Mode) + shadcn/ui + Tailwind CSS
 - Durable builder state: customer-owned Lakebase Autoscaling PostgreSQL bound to each VDAB installation
@@ -67,14 +68,14 @@ Xorbix-Visual-Databricks-App-Builder.*                 # Legacy .NET source, tem
 
 These mappings describe the legacy .NET source only. They are not the active architecture for new VDAB code.
 
-| Canonical | VDAB | Role |
-| --- | --- | --- |
-| `Company.Project.Api` / `.Server` | `.Server` | Controllers, middleware, DI composition root |
-| `Company.Project.Services` | `.Services` | Business logic |
-| `Company.Project.Infrastructure` / `.Data` | `.DataAccess` | EF Core, repositories, migrations |
-| `Company.Project.Contracts` | `.Models` | DTOs, requests, responses, enums, constants, **entities**, config POCOs, typed errors |
-| `Company.Project.ServiceDefaults` | `.ServiceDefaults` | Shared telemetry / health-check helpers |
-| `Company.Project.AppHost` | `.AppHost` | Aspire orchestration |
+| Canonical                                  | VDAB               | Role                                                                                  |
+| ------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------- |
+| `Company.Project.Api` / `.Server`          | `.Server`          | Controllers, middleware, DI composition root                                          |
+| `Company.Project.Services`                 | `.Services`        | Business logic                                                                        |
+| `Company.Project.Infrastructure` / `.Data` | `.DataAccess`      | EF Core, repositories, migrations                                                     |
+| `Company.Project.Contracts`                | `.Models`          | DTOs, requests, responses, enums, constants, **entities**, config POCOs, typed errors |
+| `Company.Project.ServiceDefaults`          | `.ServiceDefaults` | Shared telemetry / health-check helpers                                               |
+| `Company.Project.AppHost`                  | `.AppHost`         | Aspire orchestration                                                                  |
 
 During transition, entities remain in legacy `.Models` for source tracing. The Node backend's shared request/response contracts live in TypeScript and are not referenced by the retired C# layers.
 
@@ -84,7 +85,7 @@ During transition, entities remain in legacy `.Models` for source tracing. The N
 
 These are the load-bearing rules. Apply them constantly.
 
-- **Simplicity is the default.** Favor clear, straightforward code. If a solution needs a comment to explain *why it works*, look for a simpler one first.
+- **Simplicity is the default.** Favor clear, straightforward code. If a solution needs a comment to explain _why it works_, look for a simpler one first.
 - **DRY, but not premature.** Eliminate true duplication; do not abstract away coincidental similarity.
 - **YAGNI.** Build what is needed today. No speculative features, abstractions, or infrastructure.
 - **One responsibility per unit.** HTTP handlers handle HTTP. Services hold business logic. Repositories handle data access. UI components render and respond. Splitting these is not a suggestion.
@@ -97,7 +98,7 @@ These are the load-bearing rules. Apply them constantly.
 - **Design for extension without modification.** New behavior should be addable without rewriting tested code.
 - **Consistency within a codebase wins over absolute style adherence.** Match nearby code.
 - **Behave predictably.** Method names describe what they do. Side effects are obvious. No surprises.
-- **Comments explain *why*, not *what*.** Do not remove existing comments without reason. Never remove `TODO` comments.
+- **Comments explain _why_, not _what_.** Do not remove existing comments without reason. Never remove `TODO` comments.
 - **No magic strings or numbers.** Extract to named constants, enums, or configuration. Keep shared API/domain constants in the server's contracts module.
 - **Keep units small.** Targets in [Size & Complexity Targets](#size--complexity-targets). When a unit crosses a threshold, evaluate whether it is doing too much.
 - **Names communicate intent.** Describe what something represents, not how it's implemented. Use standard opposite pairs (`min`/`max`, `start`/`end`, `open`/`close`, `first`/`last`). Put computation qualifiers at the end (`totalAmount`, `averageScore`, `minimumValue`, `customerIndex`). Avoid vague words (`flag`, `data`, `item`, `object`, `manager`) unless context makes the meaning unmistakable. Avoid abbreviations and acronyms. One statement per line.
@@ -109,20 +110,21 @@ These are the load-bearing rules. Apply them constantly.
 
 Signals, not hard rules. When a unit approaches a threshold, surface a refactor in the same change. Do not extend refactors beyond the scope of the existing task.
 
-| Unit | Target |
-| --- | --- |
-| Backend method | ≤ 50 LOC |
-| Backend class / file | ≤ 500 LOC |
-| HTTP handler | ≤ 500 LOC |
-| Service method | ≤ 40 LOC |
-| React component | ≤ 300 LOC |
-| Cognitive complexity (any method) | ≤ 15 |
+| Unit                              | Target    |
+| --------------------------------- | --------- |
+| Backend method                    | ≤ 50 LOC  |
+| Backend class / file              | ≤ 500 LOC |
+| HTTP handler                      | ≤ 500 LOC |
+| Service method                    | ≤ 40 LOC  |
+| React component                   | ≤ 300 LOC |
+| Cognitive complexity (any method) | ≤ 15      |
 
 ## Dependency Approval
 
 Do not add new third-party packages (NuGet, npm, PyPI, etc.) without explicit approval. If the task cannot reasonably be completed without a new dependency, stop before writing code, present the Dependency Approval evaluation, and wait for approval.
 
 Dependency approval evaluation:
+
 - **Security:** known CVEs from `dotnet list package --vulnerable`, `npm audit`, `pip-audit`. Unpatched CVEs disqualify.
 - **License:** MIT / Apache 2.0 / BSD preferred. Copyleft requires legal review.
 - **Maintenance health:** recent releases, multiple maintainers, responsive issues.
@@ -211,7 +213,7 @@ These rules apply only to existing .NET code that must be inspected or temporari
 - **Avoid `any`.** Use `unknown` and narrow with type guards when the type is genuinely unknown.
 - **Naming:** `camelCase` for variables/functions/properties. `PascalCase` for classes, interfaces, type aliases, enums, components. `UPPER_SNAKE_CASE` for true constants. `I` prefix on interfaces only for model contracts mirroring a backend interface; unprefixed for props and internal types.
 - **Prettier** formats on save.
-- **Models vs. types:** Models are for data (live in `src/models` as interface + class). Types are for code (live in `src/types`, or inline in the component when single-use). See full table under [Frontend conventions](#frontend-conventions).
+- **Models vs. types:** Models are for data (live in `src/models` as interface + class). Types are for code (live in `src/types`, or inline in the component when single-use). See full table under [Frontend conventions](#project-specific-frontend-conventions).
 
 Backend types and API contracts use the active Node rules above and the versioned transition contracts. Do not use C# `I`-prefixed interface conventions for TypeScript types unless the interface mirrors a backend interface contract.
 
@@ -230,20 +232,20 @@ Backend types and API contracts use the active Node rules above and the versione
 - **One component per file.** Trivial presentational helpers (≤ ~20 LOC, single-use) may stay; otherwise extract.
 - **One hook per file** in `src/hooks/` (or feature-local `hooks/`), named after the hook.
 - **Utilities grouped by purpose** (`dateFormatting.ts`, `csvExport.ts`). No `helpers.ts` / `utils.ts` / `misc.ts`.
-- **Do not mix concerns:** a `.tsx` file does not define a component *and* a hook *and* utilities. Extract.
+- **Do not mix concerns:** a `.tsx` file does not define a component _and_ a hook _and_ utilities. Extract.
 - **When extending a file that already violates these rules,** split the violations out as part of the same change.
 - **UX baseline:** responsive layouts, accessibility (WCAG 2.2 AA), loading/error states, navigation guards, confirmation on destructive actions are part of initial implementation — not "we'll fix it later."
 - **API layer:** all API calls live in `src/api/` as named functions per resource (pure HTTP — the raw `queryFn`s); the TanStack Query hooks in `src/hooks/` wrap them. Errors surface to the user via toast/snackbar — never swallowed silently.
 
 ### Models vs. Types
 
-| Scenario | Location | Pattern |
-| --- | --- | --- |
-| API request/response | `src/models` | interface + class (allows defaults via `new LoginRequest()` and validation) |
-| Database / business entity | `src/models` | interface + class (allows computed properties, date parsing in constructor) |
-| Component props | in the `.tsx` file | `interface I<Component>Props` — reference `src/models` types, do not redefine |
-| Shared UI config | `src/types` | `interface` / `type` — inline if used by a single component |
-| Enums / constants | `src/types` | `enum` for shared fixed lists |
+| Scenario                   | Location           | Pattern                                                                       |
+| -------------------------- | ------------------ | ----------------------------------------------------------------------------- |
+| API request/response       | `src/models`       | interface + class (allows defaults via `new LoginRequest()` and validation)   |
+| Database / business entity | `src/models`       | interface + class (allows computed properties, date parsing in constructor)   |
+| Component props            | in the `.tsx` file | `interface I<Component>Props` — reference `src/models` types, do not redefine |
+| Shared UI config           | `src/types`        | `interface` / `type` — inline if used by a single component                   |
+| Enums / constants          | `src/types`        | `enum` for shared fixed lists                                                 |
 
 UI and API models representing the same entity share a name and stay as close in shape as possible.
 
@@ -393,27 +395,37 @@ The previous Azure development URL belongs to the legacy SaaS deployment. A Data
 The Node package builds a self-contained deployment artifact and never deploys the repository root while legacy code remains.
 
 ```bash
-# Node Databricks App (Node.js 22.16+)
+# Active standalone Databricks App (Node.js 22.16+)
 cd databricks-app
 npm run install:all
 npm run build
 npm run smoke
 npm test
-npm start
-# Deploy the generated .build directory, not the repository root.
+```
 
-# Backend + frontend together via Aspire
+```powershell
+# Local-only packaged app; local-test mode must never be deployed.
+Set-Location databricks-app
+$env:NODE_ENV = "development"
+$env:VDAB_AUTH_MODE = "local-test"
+$env:VDAB_LOCAL_USER_ID = "local-editor"
+npm run start:packaged
+```
+
+Deploy the generated `.build` directory only, following `databricks-app/DEPLOYMENT.md`.
+
+Legacy runtime commands below are for temporary parity-reference maintenance only. They do not start or package the standalone Databricks App.
+
+```bash
+# Legacy .NET/Aspire parity reference
 dotnet build Xorbix-Visual-Databricks-App-Builder.AppHost/Xorbix-Visual-Databricks-App-Builder.AppHost.csproj
 
-# Frontend only
+# Legacy client-only development; not the supported standalone build.
 cd xorbix-visual-databricks-app-builder.client
 npm install
 npm run dev
 
-# Local Postgres: managed by the Aspire AppHost. Set Database:UseExistingDatabase = false in
-# Xorbix-Visual-Databricks-App-Builder.AppHost/appsettings.Local.json (see appsettings.Local.example.json)
-# to let Aspire run the Postgres container and apply migrations + seed data via the MigrationService.
-# The default (true) expects an already-running database at ConnectionStrings:PostgreSql.
+# Legacy local PostgreSQL is managed by the Aspire AppHost; these settings do not configure Lakebase.
 ```
 
 ## Known Deviations

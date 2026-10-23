@@ -93,7 +93,7 @@ test("PulseWaveStoryInput_PreservesIncompleteAndLakebaseBindings", () => {
   assert.match(incompletePython, /Map the required PulseWaveStory fields/);
   assert.doesNotMatch(incompletePython, /query_statement=/);
   assert.match(lakebasePython, /_vdab_sql_query_df\(/);
-  assert.match(lakebasePython, /source_kind='lakebaseAutoscaling', database='appdb'/);
+  assert.match(lakebasePython, /source_kind='lakebaseAutoscaling', database='appdb'.*resource_environment_variable='VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}'/);
 });
 
 test("PulseWaveStoryInput_RejectsMalformedPropertiesBindingsAndShape", () => {
@@ -275,6 +275,7 @@ function createLakebaseBinding(): ProjectComponent["bindings"] {
         resource: {
           type: "lakebaseAutoscaling",
           database: "appdb",
+          databaseId: "database-id",
           projectId: "db-project",
           branchId: "production",
           endpointId: "read-write",

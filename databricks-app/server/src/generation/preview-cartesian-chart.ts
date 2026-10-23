@@ -9,7 +9,7 @@ import {
   chartMeasureExpression,
   classifyChartColumnType,
   MAX_CHART_ROWS,
-  lakebaseQueryOptions,
+  lakebaseQueryExpression,
   quoteChartIdentifier,
   quoteChartTable,
   readChartBinding,
@@ -62,7 +62,7 @@ export function appendCartesianChart(
     return;
   }
 
-  const query = binding.kind === "unityCatalogTable" || binding.kind === "lakebaseAutoscaling"
+  const query = binding.kind === "unityCatalogTable" || binding.kind === "lakebaseAutoscaling" || binding.kind === "lakebaseProvisionedDatabase"
     ? buildChartQuery(binding, properties, chartType)
     : null;
   if (query === null && !supportsWorkflowBinding) {
@@ -92,7 +92,7 @@ export function appendCartesianChart(
     ]
     : [
       "try:",
-      `    ${variableName}_data = _vdab_sql_query_df(${pythonString(binding.catalog ?? "")}, ${pythonString(binding.schema ?? "")}, ${pythonString(binding.table ?? "")}, ${MAX_CHART_ROWS}, query_statement=${pythonString(query)}${lakebaseQueryOptions(binding)})`,
+      `    ${variableName}_data = ${lakebaseQueryExpression(binding, MAX_CHART_ROWS, query)}`,
       `except RuntimeError as vdab_error_${variableName}:`,
       `    st.error(str(vdab_error_${variableName}))`,
       `    ${variableName}_data = pd.DataFrame(columns=${emptyColumns})`,

@@ -28,6 +28,7 @@ describe("validateBuildSqlReferences Lakebase", () => {
     description: "",
     database: {
       database_name: "appdb",
+      instance_name: "instance-a",
       permission: "CAN_CONNECT_AND_CREATE",
     },
   };
@@ -67,6 +68,7 @@ describe("validateBuildSqlReferences Lakebase", () => {
     const node = buildSqlNode({
       lakebaseAppResourceName: "db1",
       lakebaseDatabaseName: "appdb",
+      lakebaseInstanceName: "instance-a",
     });
     const errors = validateBuildSqlReferences(node, components, [
       provisionedResource,

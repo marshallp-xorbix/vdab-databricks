@@ -1,5 +1,12 @@
+import {
+  discardHttpResponseBody,
+  readBoundedJsonResponse,
+} from "../bounded-json-response.ts";
+
 const CREDENTIAL_REFRESH_SKEW_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 10_000;
+/** Maximum payload accepted from either Lakebase credential exchange. */
+export const MAX_LAKEBASE_CREDENTIAL_RESPONSE_BYTES = 16_384;
 
 /** Runtime values injected by a Databricks App and its Lakebase binding. */
 export interface LakebaseCredentialEnvironment {
@@ -38,8 +45,12 @@ export function createLakebasePasswordProvider(
   );
   const endpoint = requireValue(environment.endpoint, "LAKEBASE_ENDPOINT");
 
-  if (!/^projects\/[\w-]+\/branches\/[\w-]+\/endpoints\/[\w-]+$/.test(endpoint)) {
-    throw new Error("LAKEBASE_ENDPOINT must be a bound Lakebase endpoint path.");
+  if (
+    !/^projects\/[\w-]+\/branches\/[\w-]+\/endpoints\/[\w-]+$/.test(endpoint)
+  ) {
+    throw new Error(
+      "LAKEBASE_ENDPOINT must be a bound Lakebase endpoint path.",
+    );
   }
 
   let workspaceCredential: CachedCredential | null = null;
@@ -75,11 +86,13 @@ export function createLakebasePasswordProvider(
           "content-type": "application/json",
         },
         body: JSON.stringify({ endpoint }),
+        redirect: "error",
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       },
     );
 
     if (!databaseTokenResponse.ok) {
+      await discardHttpResponseBody(databaseTokenResponse);
       throw new Error("Databricks did not issue a Lakebase credential.");
     }
 
@@ -91,7 +104,9 @@ export function createLakebasePasswordProvider(
 
     if (!Number.isFinite(databaseCredential.expiresAt)) {
       databaseCredential = null;
-      throw new Error("Databricks returned an invalid Lakebase credential expiry.");
+      throw new Error(
+        "Databricks returned an invalid Lakebase credential expiry.",
+      );
     }
 
     return databaseCredential.value;
@@ -102,9 +117,9 @@ export function createLakebasePasswordProvider(
       return workspaceCredential.value;
     }
 
-    const basicCredentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
-      "base64",
-    );
+    const basicCredentials = Buffer.from(
+      `${clientId}:${clientSecret}`,
+    ).toString("base64");
     const oauthResponse = await fetcher(`${workspaceHost}/oidc/v1/token`, {
       method: "POST",
       headers: {
@@ -112,10 +127,12 @@ export function createLakebasePasswordProvider(
         "content-type": "application/x-www-form-urlencoded",
       },
       body: "grant_type=client_credentials&scope=all-apis",
+      redirect: "error",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!oauthResponse.ok) {
+      await discardHttpResponseBody(oauthResponse);
       throw new Error("Databricks did not issue an app workspace credential.");
     }
 
@@ -140,7 +157,15 @@ function isFresh(
 }
 
 async function readOAuthToken(response: Response): Promise<OAuthTokenResponse> {
-  const value: unknown = await response.json();
+  let value: unknown;
+  try {
+    value = await readBoundedJsonResponse(
+      response,
+      MAX_LAKEBASE_CREDENTIAL_RESPONSE_BYTES,
+    );
+  } catch {
+    throw new Error("Databricks returned an invalid workspace credential.");
+  }
 
   if (!isRecord(value)) {
     throw new Error("Databricks returned an invalid workspace credential.");
@@ -165,7 +190,15 @@ async function readOAuthToken(response: Response): Promise<OAuthTokenResponse> {
 async function readLakebaseToken(
   response: Response,
 ): Promise<LakebaseTokenResponse> {
-  const value: unknown = await response.json();
+  let value: unknown;
+  try {
+    value = await readBoundedJsonResponse(
+      response,
+      MAX_LAKEBASE_CREDENTIAL_RESPONSE_BYTES,
+    );
+  } catch {
+    throw new Error("Databricks returned an invalid Lakebase credential.");
+  }
 
   if (!isRecord(value)) {
     throw new Error("Databricks returned an invalid Lakebase credential.");

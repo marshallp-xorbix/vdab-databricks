@@ -1,5 +1,7 @@
 # VDAB Deployment Guide
 
+> **Legacy .NET/Azure deployment reference:** These instructions describe the former SaaS App Service deployment retained while transition gates remain open. They do not install or deploy the standalone Databricks App. Use [the standalone runbook](../../databricks-app/DEPLOYMENT.md) and [manual workspace checklist](../databricks-app-transition/manual-workspace-testing.md) for the new product.
+
 Everything needed to deploy **Xorbix Visual Databricks App Builder (VDAB)** to Azure across its
 three environments — **dev**, **stg**, and **prd** — using the Bicep templates in
 [`.infrastructure/`](../../.infrastructure/) and the Azure DevOps pipeline in
