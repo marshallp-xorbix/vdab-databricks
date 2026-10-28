@@ -202,7 +202,11 @@ function readColumns(value: unknown): EditableTableBinding["columns"] {
     throw invalidDataWindow("EditableDataWindow table column metadata is invalid.");
   }
   const columns = value.map((column) => {
-    if (!isRecord(column) || hasUnexpectedProperties(column, ["name", "type", "dataType"])) {
+    if (
+      !isRecord(column) ||
+      hasUnexpectedProperties(column, ["name", "type", "dataType", "nullable"]) ||
+      (column.nullable !== undefined && typeof column.nullable !== "boolean")
+    ) {
       throw invalidDataWindow("EditableDataWindow table column metadata is invalid.");
     }
     const name = readColumnName(column.name);

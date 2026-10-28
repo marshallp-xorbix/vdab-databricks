@@ -22,14 +22,14 @@ describe("ProjectEditorPage", () => {
       files: [{ path: "app.py", content: "html.escape(str(label))" }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add label" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Label" }));
     const textInput = await screen.findByLabelText("Text");
     await user.clear(textInput);
     await user.type(textInput, "Revenue <summary>");
     await user.selectOptions(screen.getByLabelText("Font size"), "large");
     await user.click(screen.getByRole("switch", { name: "Bold" }));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -42,8 +42,8 @@ describe("ProjectEditorPage", () => {
         bold: true,
       },
     });
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("html.escape");
 
     firstEditor.unmount();
@@ -53,7 +53,8 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Select Label: label1" }));
 
     expect(await screen.findByLabelText("Text")).toHaveValue("Revenue <summary>");
     expect(screen.getByLabelText("Font size")).toHaveValue("large");
@@ -81,15 +82,15 @@ describe("ProjectEditorPage", () => {
       }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add expander" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Expander" }));
     await user.clear(await screen.findByLabelText("Section title"));
     await user.type(screen.getByLabelText("Section title"), "Details");
     await user.click(screen.getByRole("switch", { name: "Expanded by default" }));
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Nested name");
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -106,8 +107,8 @@ describe("ProjectEditorPage", () => {
       properties: { label: "Nested name" },
     });
 
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("with st.expander");
 
     firstEditor.unmount();
@@ -117,12 +118,13 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Select Expander: expander1" }));
 
     expect(await screen.findByLabelText("Section title")).toHaveValue("Details");
     expect(screen.getByRole("switch", { name: "Expanded by default" }))
       .toHaveAttribute("data-state", "checked");
-    await user.click(screen.getByRole("button", { name: "1.1. TextInput: Nested name" }));
+    await user.click(screen.getByRole("button", { name: "Select Text Input: textInput1" }));
     expect(await screen.findByLabelText("Label")).toHaveValue("Nested name");
   }, 20_000);
 });

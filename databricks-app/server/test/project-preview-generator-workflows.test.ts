@@ -137,7 +137,10 @@ test("ProjectPreviewGenerator_EmitsWorkflowRuntimeCallbacksActionsAndModuleFiles
 
   assert.deepEqual(preview.files.map((file) => file.path), [
     "app.py",
+    "app.yaml",
     "custom_modules.py",
+    "requirements.txt",
+    ".streamlit/config.toml",
     "prebuilt_modules_library.py",
   ]);
   assert.match(source, /on_click=_vdab_run_component_workflows/);

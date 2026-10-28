@@ -21,8 +21,8 @@ describe("ProjectEditorPage component autosave", () => {
       components: input.components,
     }));
 
-    renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add button" }));
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Button" }));
 
     expect(
       await screen.findByText(/save automatically after you pause editing/i),
@@ -41,7 +41,7 @@ describe("ProjectEditorPage component autosave", () => {
     });
     expect(await screen.findByText("Components saved.")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Save components" }),
+      screen.getByRole("button", { name: "Save" }),
     ).toBeDisabled();
   });
 
@@ -55,8 +55,8 @@ describe("ProjectEditorPage component autosave", () => {
         components: input.components,
       }));
 
-    renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add button" }));
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Button" }));
 
     await waitFor(
       () => {
@@ -78,10 +78,10 @@ describe("ProjectEditorPage component autosave", () => {
     });
     expect(replaceProjectComponentsMock).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByRole("button", { name: "Save components" }),
+      screen.getByRole("button", { name: "Save" }),
     ).toBeEnabled();
 
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       expect(replaceProjectComponentsMock).toHaveBeenCalledTimes(2);

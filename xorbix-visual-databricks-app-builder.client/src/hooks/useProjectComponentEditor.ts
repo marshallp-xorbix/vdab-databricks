@@ -41,9 +41,7 @@ export function useProjectComponentEditor({
   onComponentsChange,
   onWorkflowChange,
 }: Readonly<IUseProjectComponentEditorOptions>) {
-  const [selectedKey, setSelectedKey] = useState<string | null>(
-    components[0]?.key ?? null,
-  );
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [activeTabByKey, setActiveTabByKey] = useState<Record<string, number>>(
     {},
   );
@@ -57,10 +55,10 @@ export function useProjectComponentEditor({
 
   useEffect(() => {
     if (
-      !selectedKey ||
+      selectedKey &&
       !components.some((component) => component.key === selectedKey)
     ) {
-      setSelectedKey(components[0]?.key ?? null);
+      setSelectedKey(null);
     }
   }, [components, selectedKey]);
 

@@ -8,21 +8,7 @@ import {
 export const MAX_WORKSPACE_RESOURCE_RESPONSE_BYTES = 4_000_000;
 const WORKSPACE_RESOURCE_REQUEST_TIMEOUT_MS = 15_000;
 
-/** Validates a workspace origin before it is used to construct API requests. */
-export function normalizeWorkspaceHost(workspaceHost: string): string {
-  const parsedHost = new URL(workspaceHost);
-  if (
-    parsedHost.protocol !== "https:" ||
-    parsedHost.username ||
-    parsedHost.password ||
-    parsedHost.pathname !== "/" ||
-    parsedHost.search ||
-    parsedHost.hash
-  ) {
-    throw new Error("DATABRICKS_HOST must be an HTTPS workspace origin.");
-  }
-  return parsedHost.origin;
-}
+export { normalizeWorkspaceHost } from "./workspace-host.ts";
 
 /** Fetches one resource page with the caller token and sanitized error mapping. */
 export async function fetchWorkspaceResource(

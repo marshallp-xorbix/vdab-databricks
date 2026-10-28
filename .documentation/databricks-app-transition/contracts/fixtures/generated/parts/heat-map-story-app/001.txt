@@ -13,6 +13,10 @@ import urllib.request
 st.set_page_config(page_title='Heat Map by State', layout='wide')
 st.title('Heat Map by State')
 
+st.markdown("""<style>
+  .block-container { max-width: 730px; }
+</style>""", unsafe_allow_html=True)
+
 ui_overrides = {'labels': {}}
 
 _VDAB_HTTP_TIMEOUT_SECONDS = 30

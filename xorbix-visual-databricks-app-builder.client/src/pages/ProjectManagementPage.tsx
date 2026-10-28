@@ -1,14 +1,27 @@
-import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MoreVertical, Search } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Textarea } from "../components/ui/textarea";
+import CreateAppWizardDialog from "../components/CreateAppWizardDialog";
 import { useCreateProject } from "../hooks/useCreateProject";
 import { useProjects } from "../hooks/useProjects";
 import { useExportProject } from "../hooks/useExportProject";
 import ProjectManagementProjectCard from "../components/ProjectManagementProjectCard";
 import ProjectImportPanel from "../components/ProjectImportPanel";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 
 interface IProjectManagementPageProps {
   title?: string;
@@ -16,28 +29,30 @@ interface IProjectManagementPageProps {
 
 /** Lists install-local projects and creates new builder projects. */
 function ProjectManagementPage({
-  title = "Your VDAB projects",
+  title = "Apps",
 }: Readonly<IProjectManagementPageProps>) {
   const projectsQuery = useProjects();
   const createProjectMutation = useCreateProject();
   const exportProjectMutation = useExportProject();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isImportDialogOpen, setImportDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try {
-      const createdProject = await createProjectMutation.mutateAsync({
-        name,
-        description: description.trim() || null,
-      });
-      await navigate(`/apps/${createdProject.id}`);
-    } catch {
-      // The mutation state renders the safe API error below.
-    }
+  async function handleCreate(name: string, description: string | null) {
+    const createdProject = await createProjectMutation.mutateAsync({
+      name,
+      description,
+    });
+    await navigate(`/apps/${createdProject.id}`);
   }
+
+  const filteredProjects = (projectsQuery.data?.items ?? []).filter((project) =>
+    `${project.name} ${project.description ?? ""}`
+      .toLocaleLowerCase()
+      .includes(searchQuery.trim().toLocaleLowerCase()),
+  );
 
   async function handleExport(projectId: string, projectName: string) {
     setExportError(null);
@@ -69,73 +84,56 @@ function ProjectManagementPage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-8 px-6 py-8">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {title}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Projects are stored in the Lakebase database bound to this VDAB
-            installation.
-          </p>
-        </div>
-        <Button variant="outline" asChild>
-          <Link to="/workspace/apps">Browse workspace apps</Link>
-        </Button>
-      </header>
-
-      <section
-        aria-labelledby="create-project-heading"
-        className="rounded-xl border border-border bg-card p-6"
-      >
-        <h2 id="create-project-heading" className="text-lg font-semibold">
-          Create a project
-        </h2>
-        <form
-          className="mt-4 grid gap-4"
-          onSubmit={(event) => void handleCreate(event)}
-        >
-          <div className="grid gap-2">
-            <Label htmlFor="project-name">Name</Label>
+    <main className="mx-auto w-full max-w-7xl space-y-6 overscroll-none px-8 py-6">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="shrink-0 text-2xl font-semibold tracking-tight text-foreground">
+          {title}
+        </h1>
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <label className="relative block w-full sm:w-64">
+            <Search
+              aria-hidden="true"
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            />
             <Input
-              id="project-name"
-              name="name"
-              autoComplete="off"
-              maxLength={100}
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
+              type="search"
+              aria-label="Search projects"
+              placeholder="Search apps…"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="pl-9"
             />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="project-description">Description</Label>
-            <Textarea
-              id="project-description"
-              name="description"
-              maxLength={2000}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </div>
-          {createProjectMutation.isError && (
-            <p role="alert">
-              {createProjectMutation.error instanceof Error
-                ? createProjectMutation.error.message
-                : "The project could not be created."}
-            </p>
-          )}
-          <div>
-            <Button type="submit" disabled={createProjectMutation.isPending}>
-              {createProjectMutation.isPending
-                ? "Creating project…"
-                : "Create project"}
-            </Button>
-          </div>
-        </form>
-      </section>
-
-      <ProjectImportPanel />
+          </label>
+          <Button
+            onClick={() => setCreateDialogOpen(true)}
+            className="shrink-0 rounded-lg shadow-md hover:opacity-90"
+          >
+            Create New App
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                aria-label="Project import and export actions"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setImportDialogOpen(true);
+                }}
+              >
+                Import a standalone project…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
 
       {exportError && (
         <p role="alert" className="text-sm text-destructive">
@@ -143,10 +141,7 @@ function ProjectManagementPage({
         </p>
       )}
 
-      <section aria-labelledby="projects-heading" className="space-y-4">
-        <h2 id="projects-heading" className="text-lg font-semibold">
-          Projects you can access
-        </h2>
+      <section aria-label="Apps" className="space-y-4">
         {projectsQuery.isPending ? (
           <p role="status" aria-live="polite">
             Loading projects…
@@ -157,16 +152,28 @@ function ProjectManagementPage({
               ? projectsQuery.error.message
               : "Could not load projects."}
           </p>
-        ) : projectsQuery.data.items.length === 0 ? (
+        ) : filteredProjects.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-8 text-center">
-            <h3 className="font-semibold">No projects yet</h3>
+            <h3 className="font-semibold">
+              {searchQuery ? "No apps match your search" : "No apps yet"}
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Create a project to start building a Databricks app.
+              {searchQuery
+                ? "Try another app name or description."
+                : "Create your first app to start building in this workspace."}
             </p>
+            {!searchQuery && (
+              <Button
+                className="mt-5"
+                onClick={() => setCreateDialogOpen(true)}
+              >
+                Create Your First App
+              </Button>
+            )}
           </div>
         ) : (
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {projectsQuery.data.items.map((project) => (
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
+            {filteredProjects.map((project) => (
               <ProjectManagementProjectCard
                 key={project.id}
                 project={project}
@@ -177,6 +184,25 @@ function ProjectManagementPage({
           </ul>
         )}
       </section>
+
+      <CreateAppWizardDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={() => undefined}
+        standaloneProjectMode
+        onProjectCreated={handleCreate}
+      />
+      <Dialog open={isImportDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import a standalone project</DialogTitle>
+            <DialogDescription>
+              Import a VDAB project into this workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <ProjectImportPanel className="border-0 bg-transparent p-0 shadow-none" />
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

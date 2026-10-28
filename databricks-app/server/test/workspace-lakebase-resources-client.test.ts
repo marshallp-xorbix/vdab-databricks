@@ -35,6 +35,24 @@ test("WorkspaceLakebaseClient_PaginatesProjectsWithCallerTokenAndSafeLabels", as
   assert.doesNotMatch(JSON.stringify(projects), /forwarded-user-token/);
 });
 
+test("WorkspaceLakebaseClient_AcceptsOmittedCollectionOnEmptyTrailingPage", async () => {
+  let requestCount = 0;
+  const client = createWorkspaceLakebaseResourcesClient(WORKSPACE_HOST, async () => {
+    requestCount += 1;
+    return requestCount === 1
+      ? Response.json({
+          projects: [{ project_id: "lakebase-a", status: { display_name: "Lakebase A" } }],
+          next_page_token: "terminal-page",
+        })
+      : Response.json({});
+  });
+
+  assert.deepEqual(await client.listProjects(createCaller()), [
+    { projectId: "lakebase-a", displayName: "Lakebase A" },
+  ]);
+  assert.equal(requestCount, 2);
+});
+
 test("WorkspaceLakebaseClient_RequiresCallerTokenBeforeRequestingResources", async () => {
   let callCount = 0;
   const client = createWorkspaceLakebaseResourcesClient(WORKSPACE_HOST, async () => {

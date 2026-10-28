@@ -52,6 +52,21 @@ test("HttpApp_StaticRequest_ReturnsFileAndFallsBackToSpaEntry", async () => {
   }
 });
 
+test("HttpApp_JavaScriptAsset_ReturnsExecutableModuleContentType", async () => {
+  const appHarness = await createAppHarness();
+
+  try {
+    const response = await fetch(`${appHarness.baseUrl}/assets/test.js`);
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /^text\/javascript/);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(await response.text(), "export {};\n");
+  } finally {
+    await appHarness.dispose();
+  }
+});
+
 
 test("HttpApp_LargeRequestBody_ReturnsPayloadTooLarge", async () => {
   const appHarness = await createAppHarness({ maxRequestBytes: 8 });

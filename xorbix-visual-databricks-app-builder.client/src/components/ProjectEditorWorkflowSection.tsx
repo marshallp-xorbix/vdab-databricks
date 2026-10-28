@@ -24,16 +24,21 @@ interface IProjectEditorWorkflowSectionProps {
     | "isWorkflowDirty"
     | "handleComponentsChange"
     | "setWorkflow"
-    | "handleSaveWorkflow"
     | "handleReloadWorkflow"
     | "setCustomModulesDirty"
   >;
+  customModulesSource: string;
+  hasLoadedCustomModulesSource: boolean;
+  onCustomModulesSourceChange: (source: string) => void;
 }
 
 function ProjectEditorWorkflowSection({
   isActive,
   projectId,
   editor,
+  customModulesSource,
+  hasLoadedCustomModulesSource,
+  onCustomModulesSourceChange,
 }: Readonly<IProjectEditorWorkflowSectionProps>) {
   const {
     hasOpenedWorkflows,
@@ -51,7 +56,6 @@ function ProjectEditorWorkflowSection({
     isWorkflowDirty,
     handleComponentsChange,
     setWorkflow,
-    handleSaveWorkflow,
     handleReloadWorkflow,
     setCustomModulesDirty,
   } = editor;
@@ -61,7 +65,7 @@ function ProjectEditorWorkflowSection({
   }
 
   return (
-    <section hidden={!isActive}>
+    <section hidden={!isActive} className="h-full min-h-0">
       {workflowQuery.isPending && (
         <p role="status" aria-live="polite">
           Loading workflows…
@@ -92,9 +96,9 @@ function ProjectEditorWorkflowSection({
           components={components}
           definitions={registryQuery.data.components}
           workflow={workflow}
-          onComponentsChange={handleComponentsChange}
           isDirty={isWorkflowDirty}
           isSaving={replaceWorkflowMutation.isPending}
+          onComponentsChange={handleComponentsChange}
           isDisabled={
             !canEdit ||
             isMetadataDirty ||
@@ -110,9 +114,11 @@ function ProjectEditorWorkflowSection({
               : null
           }
           onWorkflowChange={setWorkflow}
-          onSave={() => void handleSaveWorkflow()}
           onReload={() => void handleReloadWorkflow()}
           onCustomModulesDirtyChange={setCustomModulesDirty}
+          customModulesSource={customModulesSource}
+          hasLoadedCustomModulesSource={hasLoadedCustomModulesSource}
+          onCustomModulesSourceChange={onCustomModulesSourceChange}
         />
       )}
       {registryQuery.isError && (

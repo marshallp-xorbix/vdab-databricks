@@ -9,12 +9,19 @@ import { workspaceSecretEnvironmentVariable } from "./workspace-app-secret-resou
 
 const STREAMLIT_COMMAND = "command: ['streamlit', 'run', 'app.py']";
 
+/** App manifest shown in Code before deployment resource bindings are resolved. */
+export const PREVIEW_APP_MANIFEST_CONTENT = `${STREAMLIT_COMMAND}\n`;
+
 /** Adds the generated Streamlit command and Databricks-managed resource references. */
 export function addGeneratedAppManifest(
   files: ProjectDeploymentSourceFile[],
   resources: WorkspaceAppResource[],
 ): ProjectDeploymentSourceFile[] {
-  if (files.some((file) => file.path === "app.yaml")) {
+  const manifestIndex = files.findIndex((file) => file.path === "app.yaml");
+  if (
+    manifestIndex >= 0 &&
+    files[manifestIndex]?.content !== PREVIEW_APP_MANIFEST_CONTENT
+  ) {
     throw new ApplicationError(
       422,
       "generated_manifest_conflict",
@@ -35,7 +42,9 @@ export function addGeneratedAppManifest(
       );
     }
   }
-  return [{ path: "app.yaml", content: `${lines.join("\n")}\n` }, ...files];
+  const manifest = { path: "app.yaml", content: `${lines.join("\n")}\n` };
+  if (manifestIndex < 0) return [manifest, ...files];
+  return files.map((file, index) => (index === manifestIndex ? manifest : file));
 }
 
 function appResourceEnvironmentVariable(

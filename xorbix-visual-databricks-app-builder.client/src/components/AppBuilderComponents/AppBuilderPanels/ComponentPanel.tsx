@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { useComponentRegistry } from "../../../context/ComponentRegistryContext";
 import {
@@ -22,6 +22,7 @@ interface ControlItemProps {
   label: string;
   componentType: string;
   category: string;
+  onAddComponent?: (componentType: string, category: string) => void;
 }
 
 const ControlItem: FC<ControlItemProps> = ({
@@ -29,6 +30,7 @@ const ControlItem: FC<ControlItemProps> = ({
   label,
   componentType,
   category,
+  onAddComponent,
 }) => {
   const dragData: ComponentDragData = {
     dragType: "new",
@@ -45,7 +47,7 @@ const ControlItem: FC<ControlItemProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col items-center justify-center rounded-lg border border-[var(--builder-chrome-border)] bg-muted h-16 px-1 py-1.5 transition-colors touch-none ${
+      className={`relative flex flex-col items-center justify-center rounded-lg border border-[var(--builder-chrome-border)] bg-muted h-16 px-1 py-1.5 transition-colors touch-none ${
         isDragging
           ? "cursor-grabbing border-primary bg-card"
           : "cursor-grab hover:bg-muted/60 hover:border-primary"
@@ -59,6 +61,21 @@ const ControlItem: FC<ControlItemProps> = ({
       <span className="text-xs font-medium text-foreground text-center">
         {label}
       </span>
+      {onAddComponent && (
+        <button
+          type="button"
+          aria-label={`Add ${label}`}
+          title={`Add ${label} to canvas`}
+          className="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded border border-[var(--builder-chrome-border)] bg-background text-foreground hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAddComponent(componentType, category);
+          }}
+        >
+          <Plus aria-hidden="true" className="size-3" />
+        </button>
+      )}
     </div>
   );
 };
@@ -72,6 +89,7 @@ interface Control {
 
 interface ComponentPanelProps {
   disableScroll?: boolean;
+  onAddComponent?: (componentType: string, category: string) => void;
 }
 
 function ComponentPanelChrome({
@@ -123,9 +141,55 @@ function ComponentPanelChrome({
 
 const ComponentPanel: FC<ComponentPanelProps> = ({
   disableScroll = false,
+  onAddComponent,
 }) => {
   const { registry, loading, error } = useComponentRegistry();
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Keep this hook ahead of the loading/error returns so registry state changes
+  // cannot alter ComponentPanel's hook order.
+  const registryComponents = (registry?.components || []).filter(
+    (comp) => comp.type !== ComponentType.Modal,
+  );
+  const componentsByCategory = registryComponents.reduce(
+    (acc, comp) => {
+      const category = comp.category;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push({
+        icon: getPaletteIconByName(comp.icon),
+        label: humanizeComponentType(comp.type),
+        componentType: comp.type,
+        category,
+      });
+      return acc;
+    },
+    {} as Record<string, Control[]>,
+  );
+  const filteredByCategory = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return componentsByCategory;
+    }
+    const next: Record<string, Control[]> = {};
+    for (const [category, controls] of Object.entries(componentsByCategory)) {
+      const labelCat = category.charAt(0).toUpperCase() + category.slice(1);
+      const filtered = controls.filter(
+        (c) =>
+          c.label.toLowerCase().includes(q) ||
+          c.componentType.toLowerCase().includes(q) ||
+          c.category.toLowerCase().includes(q) ||
+          labelCat.toLowerCase().includes(q),
+      );
+      if (filtered.length > 0) {
+        next[category] = filtered;
+      }
+    }
+    return next;
+  }, [componentsByCategory, searchQuery]);
+  const hasAny = Object.keys(componentsByCategory).length > 0;
+  const hasFiltered = Object.keys(filteredByCategory).length > 0;
 
   if (loading) {
     return (
@@ -158,54 +222,6 @@ const ComponentPanel: FC<ComponentPanelProps> = ({
     );
   }
 
-  // Get components from backend registry (exclude Modal - it's only created via Main Flow)
-  const registryComponents = (registry?.components || []).filter(
-    (comp) => comp.type !== ComponentType.Modal,
-  );
-
-  // Group components by category
-  const componentsByCategory = registryComponents.reduce(
-    (acc, comp) => {
-      const category = comp.category;
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push({
-        icon: getPaletteIconByName(comp.icon),
-        label: humanizeComponentType(comp.type),
-        componentType: comp.type,
-        category: category,
-      });
-      return acc;
-    },
-    {} as Record<string, Control[]>,
-  );
-
-  const filteredByCategory = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) {
-      return componentsByCategory;
-    }
-    const next: Record<string, Control[]> = {};
-    for (const [category, controls] of Object.entries(componentsByCategory)) {
-      const labelCat = category.charAt(0).toUpperCase() + category.slice(1);
-      const filtered = controls.filter(
-        (c) =>
-          c.label.toLowerCase().includes(q) ||
-          c.componentType.toLowerCase().includes(q) ||
-          c.category.toLowerCase().includes(q) ||
-          labelCat.toLowerCase().includes(q),
-      );
-      if (filtered.length > 0) {
-        next[category] = filtered;
-      }
-    }
-    return next;
-  }, [componentsByCategory, searchQuery]);
-
-  const hasAny = Object.keys(componentsByCategory).length > 0;
-  const hasFiltered = Object.keys(filteredByCategory).length > 0;
-
   return (
     <ComponentPanelChrome
       title="Components"
@@ -237,6 +253,7 @@ const ComponentPanel: FC<ComponentPanelProps> = ({
                           label={control.label}
                           componentType={control.componentType}
                           category={control.category}
+                          onAddComponent={onAddComponent}
                         />
                       ))}
                     </div>

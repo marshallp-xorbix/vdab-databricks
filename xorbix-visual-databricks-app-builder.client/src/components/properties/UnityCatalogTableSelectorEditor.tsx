@@ -21,6 +21,7 @@ import {
 } from "../ui/select";
 import type { UnityCatalogColumn } from "../../types/components/bindings";
 import { useLogger } from "../../logger/useLogger";
+import { listWorkspaceTables } from "../../api/workspaceResourcesApi";
 
 interface UnityCatalogTableConfig {
   type?: string;
@@ -97,8 +98,7 @@ export const UnityCatalogTableSelectorEditor: FC<
     }
 
     if (
-      !workspaceConnectionId ||
-      workspaceConnectionId <= 0 ||
+      (import.meta.env.VITE_VDAB_RUNTIME !== "databricks" && (!workspaceConnectionId || workspaceConnectionId <= 0)) ||
       !next.catalog ||
       !next.schema
     ) {
@@ -121,13 +121,27 @@ export const UnityCatalogTableSelectorEditor: FC<
 
     let tableDetails: UnityCatalogTableDetails | null = null;
     try {
-      tableDetails =
-        await databricksDataConnectorApi.getUnityCatalogTableDetails(
-          workspaceConnectionId,
-          next.catalog,
-          next.schema,
-          next.table,
+      if (import.meta.env.VITE_VDAB_RUNTIME === "databricks") {
+        const page = await listWorkspaceTables(next.catalog, next.schema);
+        const selectedTable = page.items.find((table) => table.name === next.table);
+        tableDetails = selectedTable
+          ? {
+              catalogName: next.catalog,
+              schemaName: next.schema,
+              name: selectedTable.name,
+              fullName: `${next.catalog}.${next.schema}.${selectedTable.name}`,
+              columns: selectedTable.columns.map((column) => ({
+                name: column.name,
+                type: column.dataType ?? column.type ?? undefined,
+                nullable: undefined,
+              })),
+            }
+          : null;
+      } else {
+        tableDetails = await databricksDataConnectorApi.getUnityCatalogTableDetails(
+          workspaceConnectionId!, next.catalog, next.schema, next.table,
         );
+      }
     } catch (err) {
       logger.UI.error(
         "[UnityCatalogTableSelectorEditor] Error fetching table details:",

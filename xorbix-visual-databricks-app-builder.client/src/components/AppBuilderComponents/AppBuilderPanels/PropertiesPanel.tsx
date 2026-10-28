@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { useState, useEffect } from "react";
 import { PropertyEditorFactory } from "../../properties";
 import { BindingsPanel } from "../../properties/BindingsPanel";
@@ -35,6 +35,9 @@ import PagePropertiesPanel from "./PagePropertiesPanel";
 import { StoryVisualizationHelpLink } from "../../properties/StoryVisualizationHelpLink";
 import type { NormalizedAppResource } from "../../../models/DatabricksAppModels";
 import { CanvasContextType } from "../../../types/editor";
+import ProjectComponentPropertiesEditor, {
+  type IProjectComponentPropertiesEditorProps,
+} from "../../ProjectComponentPropertiesEditor";
 
 const STORY_FIELD_MAPPING_PANELS: Partial<
   Record<
@@ -85,6 +88,8 @@ interface PropertiesPanelProps {
   canvasContextType?: CanvasContextType;
   pageWidth?: number;
   onPageWidthChange?: (pageWidth: number) => void;
+  projectComponentEditor?: IProjectComponentPropertiesEditorProps;
+  projectComponentTreeActions?: ReactNode;
 }
 
 const PropertiesPanel: FC<PropertiesPanelProps> = ({
@@ -106,6 +111,8 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
   canvasContextType = CanvasContextType.Page,
   pageWidth,
   onPageWidthChange,
+  projectComponentEditor,
+  projectComponentTreeActions,
 }) => {
   const [properties, setProperties] = useState<ComponentPropertyMap>({});
   const [propertyErrors, setPropertyErrors] = useState<
@@ -191,6 +198,10 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
   const renderPropertyEditor = () => {
     if (!selectedComponent) return null;
 
+    if (projectComponentEditor) {
+      return <ProjectComponentPropertiesEditor {...projectComponentEditor} />;
+    }
+
     return (
       <PropertyEditorFactory
         component={selectedComponent}
@@ -268,6 +279,11 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
       >
         {selectedComponent ? (
           <div className="mx-2 mb-2 space-y-2">
+            {projectComponentTreeActions && (
+              <div className="rounded-lg border border-[var(--builder-chrome-border)] bg-[var(--builder-panel-bg)] p-2 shadow-sm">
+                {projectComponentTreeActions}
+              </div>
+            )}
             <div className="rounded-lg border border-[var(--builder-chrome-border)] bg-[var(--builder-panel-bg)] px-1 py-2 shadow-sm">
               {/* GENERAL section */}
               <div className="flex items-center gap-2 px-3 pt-2 pb-1">

@@ -22,8 +22,8 @@ describe("ProjectEditorPage", () => {
       files: [{ path: "app.py", content: "st.multiselect(\\n" }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add dropdown" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Dropdown" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Department");
     fireEvent.change(screen.getByLabelText("Options (one per line)"), {
@@ -36,7 +36,7 @@ describe("ProjectEditorPage", () => {
     await user.type(screen.getByLabelText("Help text"), "Select one or more.");
     await user.click(screen.getByRole("switch", { name: "Allow multiple selections" }));
     await user.click(screen.getByRole("switch", { name: "Disabled" }));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -53,8 +53,8 @@ describe("ProjectEditorPage", () => {
         disabled: true,
       },
     });
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("st.multiselect(");
 
     firstEditor.unmount();
@@ -64,8 +64,9 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
 
+    await user.click(await screen.findByRole("button", { name: "Select Dropdown: dropdown1" }));
     expect(await screen.findByLabelText("Label")).toHaveValue("Department");
     expect(screen.getByLabelText("Options (one per line)")).toHaveValue("Sales\nFinance");
     expect(screen.getByRole("combobox", { name: "Default option" }))
@@ -91,8 +92,8 @@ describe("ProjectEditorPage", () => {
       files: [{ path: "app.py", content: "st.date_input(\\nst.time_input(\\n" }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add date picker" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Date Picker" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Launch date");
     await user.clear(screen.getByLabelText("Default date"));
@@ -107,7 +108,7 @@ describe("ProjectEditorPage", () => {
     await user.type(screen.getByLabelText("Help text"), "Choose a launch date.");
     await user.click(screen.getByRole("switch", { name: "Disabled" }));
 
-    await user.click(screen.getByRole("button", { name: "Add time picker" }));
+    await user.click(screen.getByRole("button", { name: "Add Time Picker" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Run time");
     await user.clear(screen.getByLabelText("Default time"));
@@ -115,7 +116,7 @@ describe("ProjectEditorPage", () => {
     await user.clear(screen.getByLabelText("Step in seconds"));
     await user.type(screen.getByLabelText("Step in seconds"), "1800");
     await user.type(screen.getByLabelText("Help text"), "Choose a run time.");
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -145,8 +146,8 @@ describe("ProjectEditorPage", () => {
         },
       },
     ]);
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    const preview = await screen.findByLabelText("Generated Python preview");
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    const preview = await screen.findByLabelText("Generated app code");
     expect(preview).toHaveTextContent("st.date_input(");
     expect(preview).toHaveTextContent("st.time_input(");
 
@@ -157,8 +158,9 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
 
+    await user.click(await screen.findByRole("button", { name: "Select Date Picker: datePicker1" }));
     expect(await screen.findByLabelText("Label")).toHaveValue("Launch date");
     expect(screen.getByLabelText("Default date")).toHaveValue("2026-11-12");
     expect(screen.getByLabelText("Date format")).toHaveValue("DD/MM/YYYY");
@@ -166,7 +168,7 @@ describe("ProjectEditorPage", () => {
       "data-state",
       "checked",
     );
-    await user.click(screen.getByRole("button", { name: "2. TimePicker: Run time" }));
+    await user.click(screen.getByRole("button", { name: "Select Time Picker: timePicker1" }));
     expect(screen.getByLabelText("Default time")).toHaveValue("14:15:00");
     expect(screen.getByLabelText("Step in seconds")).toHaveValue(1800);
     expect(screen.getByLabelText("Help text")).toHaveValue("Choose a run time.");
@@ -187,8 +189,8 @@ describe("ProjectEditorPage", () => {
       files: [{ path: "app.py", content: "st.slider(\\n" }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add slider" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Slider" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Invoice amount");
     fireEvent.change(screen.getByLabelText("Minimum value"), {
@@ -210,7 +212,7 @@ describe("ProjectEditorPage", () => {
       target: { value: "80" },
     });
     await user.click(screen.getByRole("switch", { name: "Disabled" }));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -230,8 +232,8 @@ describe("ProjectEditorPage", () => {
         ranged: true,
       },
     });
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("st.slider(");
 
     firstEditor.unmount();
@@ -241,8 +243,9 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
 
+    await user.click(await screen.findByRole("button", { name: "Select Slider: slider1" }));
     expect(await screen.findByLabelText("Label")).toHaveValue("Invoice amount");
     expect(screen.getByLabelText("Lower value")).toHaveValue(25);
     expect(screen.getByLabelText("Upper value")).toHaveValue(80);

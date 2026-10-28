@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ApplicationError } from "../src/application-error.ts";
-import { addGeneratedAppManifest } from "../src/generated-app-manifest.ts";
+import {
+  addGeneratedAppManifest,
+  PREVIEW_APP_MANIFEST_CONTENT,
+} from "../src/generated-app-manifest.ts";
 import {
   createAutoscalingAppResourceBinding,
   createProvisionedAppResourceBinding,
@@ -103,4 +106,20 @@ test("GeneratedAppManifest_RejectsProjectSuppliedManifest", () => {
       error instanceof ApplicationError &&
       error.code === "generated_manifest_conflict",
   );
+});
+
+test("GeneratedAppManifest_ReplacesTheCodePreviewManifestWithResolvedResources", () => {
+  const resource = createAutoscalingAppResourceBinding(autoscalingTarget);
+  const files = addGeneratedAppManifest(
+    [
+      { path: "app.py", content: "import streamlit as st\n" },
+      { path: "app.yaml", content: PREVIEW_APP_MANIFEST_CONTENT },
+    ],
+    [resource.resource],
+  );
+
+  assert.equal(files[0]?.path, "app.py");
+  assert.equal(files[1]?.path, "app.yaml");
+  assert.match(files[1]?.content ?? "", new RegExp(resource.resource.name));
+  assert.doesNotMatch(files[1]?.content ?? "", /deployment resources are added/);
 });

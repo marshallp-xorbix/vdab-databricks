@@ -229,4 +229,28 @@ describe("CreateAppWizardDialog", () => {
     expect(payload.databricksAppMode).toBe(DatabricksAppCreationMode.CreateNew);
     expect(payload.databricksAppName).toBe("brand-new-dbx");
   });
+
+  it("standalone mode skips workspace selection and creates a local project", async () => {
+    const onProjectCreated = vi.fn().mockResolvedValue(undefined);
+    const { onOpenChange } = renderDialog({
+      standaloneProjectMode: true,
+      onProjectCreated,
+    });
+
+    expect(await screen.findByLabelText("App name")).toBeInTheDocument();
+    expect(mockGetWorkspacesByTenant).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("App name"), {
+      target: { value: "Revenue dashboard" },
+    });
+    fireEvent.change(screen.getByLabelText("Description", { selector: "textarea" }), {
+      target: { value: "Finance team" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create app" }));
+
+    await waitFor(() => {
+      expect(onProjectCreated).toHaveBeenCalledWith("Revenue dashboard", "Finance team");
+    });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
 });

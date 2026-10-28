@@ -25,7 +25,6 @@ export function buildVdabComponentFromRegistryEntry(
     category,
     type,
     props: defaultProps,
-    bindings: {},
     supportedBindings: registryEntry?.supportedBindings || undefined,
     supportedEvents: registryEntry?.supportedEvents || undefined,
     schemaVersion: 1,

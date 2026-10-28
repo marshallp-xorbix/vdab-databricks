@@ -1,17 +1,86 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
+
+vi.mock("@monaco-editor/react", () => ({
+  default: ({
+    value,
+    onChange,
+    options,
+  }: {
+    value: string;
+    onChange: (value: string | undefined) => void;
+    options: { ariaLabel?: string };
+  }) => (
+    <textarea
+      aria-label={options.ariaLabel ?? "Editor content"}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  ),
+}));
+vi.mock("../components/AppBuilderComponents/AppCanvas/MainFlowView", () => ({
+  default: ({
+    onNodeClick,
+    onSelectComponent,
+    formComponents,
+  }: {
+    onNodeClick: (nodeId: string, nodeType: "page" | "modal") => void;
+    onSelectComponent?: (id: string | null) => void;
+    formComponents: Array<{
+      id: string;
+      type: string;
+      codeName: string;
+      props: Record<string, unknown>;
+    }>;
+  }) => (
+    <div>
+      <button
+        type="button"
+        onDoubleClick={() => onNodeClick("main-page", "page")}
+      >
+        Main Page graph node
+      </button>
+      <button
+        type="button"
+        onDoubleClick={() => onNodeClick("review-modal", "modal")}
+      >
+        Review modal graph node
+      </button>
+      {formComponents.filter((component) => component.type === "Modal").map((component, index) => {
+        const title = typeof component.props.title === "string"
+          ? component.props.title
+          : component.codeName;
+        const label = `${index + 1}. Modal: ${title}`;
+        return (
+          <button
+            key={component.id}
+            type="button"
+            onClick={() => onSelectComponent?.(component.id)}
+            onDoubleClick={() => onNodeClick(component.id, "modal")}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  ),
+}));
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import type { IProject } from "../models/Project";
 import type { IProjectWorkflowDocument } from "../models/ProjectWorkflow";
 import type { IProjectCustomModulesDocument } from "../models/ProjectCustomModules";
-import type { IComponentRegistry } from "../models/ComponentRegistry";
+import { componentRegistryFixture } from "../test/componentRegistryFixture";
 import { ThemeProvider } from "../context/ThemeContext";
+import { SettingsProvider } from "../context/SettingsContext";
+import StandaloneAppLayout from "../layouts/StandaloneAppLayout";
 import { getProject, updateProject } from "../api/projectsApi";
 import { listProjectCollaborators } from "../api/projectCollaboratorsApi";
 import { getProjectWorkflow, replaceProjectWorkflow } from "../api/projectWorkflowApi";
 import { getProjectCustomModules, replaceProjectCustomModules } from "../api/projectCustomModulesApi";
 import { getComponentRegistry } from "../api/componentRegistryApi";
+import { canvasApi } from "../providers/CanvasApi";
+import { toLegacyComponentRegistry } from "../utils/projectComponentRegistryAdapter";
 import { listWorkspaceServingEndpoints } from "../api/workspaceResourcesApi";
 import type { IWorkspaceServingEndpointsPage } from "../models/WorkspaceServingEndpoint";
 import {
@@ -20,6 +89,10 @@ import {
   replaceProjectComponents,
 } from "../api/projectComponentsApi";
 import ProjectEditorPage from "./ProjectEditorPage";
+
+vi.mock("../layouts/StandaloneMobileNavigation", () => ({
+  default: () => null,
+}));
 
 vi.mock("../api/projectsApi", () => ({
   getProject: vi.fn(),
@@ -83,23 +156,7 @@ export const customModulesDocument: IProjectCustomModulesDocument = {
   version: 1,
   source: "# custom modules\n",
 };
-export const componentRegistry: IComponentRegistry = {
-  version: 1,
-  components: [{
-    id: "template-button",
-    codeName: "templateButton",
-    type: "Button",
-    category: "Controls",
-    icon: "MousePointerClick",
-    layout: null,
-    schemaVersion: 1,
-    bindings: null,
-    supportedBindings: null,
-    supportedEvents: ["onClick"],
-    children: null,
-    props: {},
-  }],
-};
+export const componentRegistry = componentRegistryFixture;
 
 
 export function resetProjectEditorTestState(): void {
@@ -113,6 +170,9 @@ export function initializeProjectEditorTestState(): void {
   getProjectWorkflowMock.mockResolvedValue(workflowDocument);
   getProjectCustomModulesMock.mockResolvedValue(customModulesDocument);
   getComponentRegistryMock.mockResolvedValue(componentRegistry);
+  vi.spyOn(canvasApi, "getRegistry").mockResolvedValue(
+    toLegacyComponentRegistry(componentRegistry),
+  );
   listWorkspaceServingEndpointsMock.mockResolvedValue({
     items: [],
     authenticationMode: "local-test",
@@ -121,14 +181,22 @@ export function initializeProjectEditorTestState(): void {
   vi.stubGlobal("fetch", createEditorFetch());
 }
 
-export function renderProjectEditorPage() {
+export async function renderProjectEditorPage(
+  options: { openMainPage?: boolean } = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(
     [
-      { path: "/apps/:appId", element: <ProjectEditorPage /> },
-      { path: "/apps", element: <h1>Project list route</h1> },
+      {
+        path: "/apps",
+        element: <StandaloneAppLayout />,
+        children: [
+          { path: ":appId", element: <ProjectEditorPage /> },
+          { index: true, element: <h1>Project list route</h1> },
+        ],
+      },
     ],
     { initialEntries: ["/apps/project-1"] },
   );
@@ -136,10 +204,18 @@ export function renderProjectEditorPage() {
   const rendered = render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <RouterProvider router={router} />
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
       </ThemeProvider>
     </QueryClientProvider>,
   );
+
+  if (options.openMainPage !== false) {
+    fireEvent.doubleClick(
+      await screen.findByRole("button", { name: "Main Page graph node" }),
+    );
+  }
 
   return { router, unmount: rendered.unmount };
 }
@@ -153,6 +229,19 @@ export function createEditorFetch(aiBuilderStream?: string): typeof fetch {
       : input.url;
     const requestPath = new URL(requestUrl, "http://localhost").pathname;
 
+    if (requestPath.endsWith("/api/v1/component-definitions")) {
+      return jsonResponse(componentRegistryFixture);
+    }
+    if (requestPath.endsWith("/api/v1/session")) {
+      return jsonResponse({
+        userId: "test-user",
+        preferredUsername: "VDAB test user",
+        email: "vdab-test@example.invalid",
+        workspace: { id: "test-workspace", host: "https://workspace.example.invalid" },
+        authenticationMode: "databricks",
+        installationAdmin: true,
+      });
+    }
     if (requestPath.endsWith("/ai-builder")) {
       if (aiBuilderStream === undefined) return jsonResponse({ detail: "Unexpected AI Builder request." }, 500);
       return new Response(aiBuilderStream, {

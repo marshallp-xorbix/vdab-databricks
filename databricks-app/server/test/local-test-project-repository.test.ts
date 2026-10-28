@@ -41,3 +41,35 @@ test("LocalTestProjectRepository_DeleteProjectRemovesItFromActiveAccess", async 
   assert.deepEqual(await repository.listProjects(actor), []);
   assert.equal(await repository.deleteProject(project.id, actor), false);
 });
+
+test("LocalTestProjectRepository_UpdateProjectPersistsTheme", async () => {
+  const repository = new LocalTestProjectRepository();
+  const actor = {
+    workspaceId: "workspace-a",
+    userId: "creator-1",
+    isInstallationAdmin: false,
+    requestId: "request-theme",
+  };
+  const project = await repository.createProject({
+    workspaceId: actor.workspaceId,
+    actorId: actor.userId,
+    name: "Themed app",
+    description: null,
+    requestId: actor.requestId,
+  });
+
+  await repository.updateProject(
+    project.id,
+    {
+      name: project.name,
+      description: project.description,
+      theme: { primaryColor: "#123456" },
+      expectedVersion: project.version,
+    },
+    actor,
+  );
+
+  assert.deepEqual((await repository.getProject(project.id, actor))?.theme, {
+    primaryColor: "#123456",
+  });
+});

@@ -58,6 +58,65 @@ test("WorkspaceAppsClient_ListsCallerVisibleApps_UsingPinnedWorkspaceAndUserToke
   assert.doesNotMatch(JSON.stringify(result), /caller-token/);
 });
 
+test("WorkspaceAppsClient_ControlsOneAppWithCallerTokenAndPinnedWorkspace", async () => {
+  const requests: Array<{ url: string; method: string; authorization: string | null }> = [];
+  const workspaceAppsClient = createWorkspaceAppsClient(
+    WORKSPACE_HOST,
+    async (input, init) => {
+      requests.push({
+        url: input.toString(),
+        method: init?.method ?? "GET",
+        authorization: new Headers(init?.headers).get("authorization"),
+      });
+      return new Response(
+        JSON.stringify({
+          name: "orders-dashboard",
+          app_status: { state: "RUNNING" },
+          compute_status: { state: "ACTIVE" },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    },
+  );
+
+  const result = await workspaceAppsClient.startApp(
+    createTestCaller(),
+    "orders-dashboard",
+  );
+
+  assert.deepEqual(requests, [
+    {
+      url: "https://dbc-example.cloud.databricks.com/api/2.0/apps/orders-dashboard/start",
+      method: "POST",
+      authorization: "Bearer caller-token-never-return-this",
+    },
+  ]);
+  assert.deepEqual(result, {
+    name: "orders-dashboard",
+    description: null,
+    appState: "RUNNING",
+    computeState: "ACTIVE",
+  });
+  assert.doesNotMatch(JSON.stringify(result), /caller-token/);
+});
+
+test("WorkspaceAppsClient_RejectsInvalidAppNameBeforeRemoteCall", async () => {
+  let callCount = 0;
+  const workspaceAppsClient = createWorkspaceAppsClient(
+    WORKSPACE_HOST,
+    async () => {
+      callCount += 1;
+      return new Response("{}", { status: 200 });
+    },
+  );
+
+  await assert.rejects(
+    () => workspaceAppsClient.stopApp(createTestCaller(), "../other-app"),
+    { code: "invalid_app_name", status: 400 },
+  );
+  assert.equal(callCount, 0);
+});
+
 test("WorkspaceAppsClient_RejectsOversizedResponseWithSanitizedError", async () => {
   const workspaceAppsClient = createWorkspaceAppsClient(
     WORKSPACE_HOST,

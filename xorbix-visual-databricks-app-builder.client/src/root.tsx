@@ -9,14 +9,13 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { IdentityProvider } from "./context/IdentityContext";
 import { SettingsProvider } from "./context/SettingsContext";
 import {
   DEFAULT_THEME,
   THEME_STORAGE_KEY,
   ThemeProvider,
 } from "./context/ThemeContext";
-import { TenantProvider } from "./context/TenantContext";
+import SaaSRuntimeProviders from "./context/SaaSRuntimeProviders";
 import { Toaster } from "./components/ui/toaster";
 import appStylesHref from "./App.css?url";
 
@@ -61,15 +60,13 @@ export function Layout({ children }: Readonly<{ children: React.ReactNode }>) {
       <body className="bg-background text-foreground font-sans">
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            {isStandaloneDatabricksRuntime ? (
-              children
-            ) : (
-              <SettingsProvider>
-                <IdentityProvider>
-                  <TenantProvider>{children}</TenantProvider>
-                </IdentityProvider>
-              </SettingsProvider>
-            )}
+            <SettingsProvider>
+              {isStandaloneDatabricksRuntime ? (
+                children
+              ) : (
+                <SaaSRuntimeProviders>{children}</SaaSRuntimeProviders>
+              )}
+            </SettingsProvider>
           </ThemeProvider>
         </QueryClientProvider>
         <Toaster />

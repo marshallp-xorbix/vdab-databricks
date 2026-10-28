@@ -24,10 +24,12 @@ const TabBar: FC<TabBarProps> = ({
       {tabs.map((tab) => {
         const isActive = activeTabId === tab.id;
         return (
-          <div
-            key={tab.id}
-            className={`
-            group flex h-9 min-w-[120px] max-w-[200px] flex-none cursor-pointer items-center gap-2 rounded-t-md border border-[var(--builder-tab-border)] px-2 text-sm transition-colors sm:px-3
+          <div key={tab.id} className="group relative flex h-9 min-w-[120px] max-w-[200px] flex-none items-center">
+            <button
+              type="button"
+              aria-pressed={isActive}
+              className={`
+            flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-t-md border border-[var(--builder-tab-border)] px-2 text-sm transition-colors sm:px-3
             ${
               isActive
                 ? "relative z-[1] -mb-px border-b-0 border-[var(--builder-tab-border-active)] bg-card font-semibold text-foreground shadow-[0_-1px_6px_rgba(0,0,0,0.08)]"
@@ -37,13 +39,14 @@ const TabBar: FC<TabBarProps> = ({
             onClick={() => onTabClick(tab.id)}
           >
             <span className="flex-1 truncate">{tab.label}</span>
+            </button>
             {tab.canClose && (
               <button
+                type="button"
                 onClick={(e) => {
-                  e.stopPropagation();
                   onTabClose(tab.id);
                 }}
-                className="opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                className="absolute right-2 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                 aria-label={`Close ${tab.label}`}
               >
                 <X className="h-3 w-3" />

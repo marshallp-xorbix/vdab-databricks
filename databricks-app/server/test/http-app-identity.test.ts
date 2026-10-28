@@ -7,6 +7,7 @@ import test from "node:test";
 import type { Server } from "node:http";
 import { createHttpApp } from "../src/http-app.ts";
 import { createIdentityResolver } from "../src/identity.ts";
+import { normalizeWorkspaceHost } from "../src/workspace-host.ts";
 import type { CallerIdentity, WorkspaceAppsPage } from "../src/contracts.ts";
 import type { WorkspaceAppsClient } from "../src/workspace-apps-client.ts";
 import { WorkspaceAppsService } from "../src/workspace-apps-service.ts";
@@ -37,6 +38,24 @@ import type { AiBuilderService } from "../src/ai-builder-service.ts";
 import type { ProjectDeploymentService } from "../src/project-deployment-service.ts";
 
 import { createAppHarness, WORKSPACE_HOST, FORWARDED_TOKEN, readProjectId, readProjectVersion, readWorkflowDefinition, readCustomModulesSource, isRecord } from "./http-app-test-support.ts";
+
+test("WorkspaceHost_NormalizeSchemeLessDatabricksHost_AddsHttpsOrigin", () => {
+  assert.equal(
+    normalizeWorkspaceHost("dbc-example.cloud.databricks.com"),
+    "https://dbc-example.cloud.databricks.com",
+  );
+});
+
+test("WorkspaceHost_NormalizeHost_RejectsUnsafeComponents", () => {
+  assert.throws(
+    () => normalizeWorkspaceHost("dbc-example.cloud.databricks.com/other"),
+    /HTTPS workspace origin/,
+  );
+  assert.throws(
+    () => normalizeWorkspaceHost("http://dbc-example.cloud.databricks.com"),
+    /HTTPS workspace origin/,
+  );
+});
 
 test("HttpApp_AiBuilderStreamsProgressAndResultEvents", async () => {
   const aiBuilderService = {
@@ -149,6 +168,9 @@ test("HttpApp_WorkspaceAppsList_ReturnsExplicitOfflineMock_WithoutDatabricksCall
         authenticationMode: "local-test",
       };
     },
+    getApp: async (_caller, name) => ({ name, description: null, appState: "UNAVAILABLE", computeState: "STOPPED" }),
+    startApp: async (_caller, name) => ({ name, description: null, appState: "RUNNING", computeState: "ACTIVE" }),
+    stopApp: async (_caller, name) => ({ name, description: null, appState: "UNAVAILABLE", computeState: "STOPPED" }),
   };
   const appHarness = await createAppHarness({
     identityResolver: localIdentityResolver,

@@ -85,7 +85,7 @@ test("ProjectPreviewGenerator_DataWindowMatchesAcceptedPythonFixture", async () 
     createDocument([createDataWindow()]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   assert.doesNotMatch(
     preview.files[0]?.content ?? "",
     /def _vdab_sql_execute|def _vdab_sql_merge_rows/,
@@ -196,7 +196,7 @@ test("ProjectPreviewGenerator_EditableDataWindowMatchesAcceptedPythonFixture", a
     createDocument([createEditableDataWindow()]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
 });
 
 

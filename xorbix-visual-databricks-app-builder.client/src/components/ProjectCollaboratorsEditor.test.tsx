@@ -34,7 +34,10 @@ function renderEditor() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ProjectCollaboratorsEditor projectId="project-1" />
+      <ProjectCollaboratorsEditor
+        projectId="project-1"
+        canManageCollaborators={true}
+      />
     </QueryClientProvider>,
   );
 }

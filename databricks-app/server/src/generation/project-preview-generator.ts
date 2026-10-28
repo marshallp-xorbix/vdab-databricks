@@ -10,6 +10,19 @@ import {
 } from "./asyncpg-package-notice.ts";
 import { resolveWorkflowModuleFiles } from "./preview-workflow-modules.ts";
 import { projectUsesLakebase } from "./preview-lakebase-helpers.ts";
+import { DEFAULT_CUSTOM_MODULES_SOURCE } from "./custom-modules-template.ts";
+import { PREVIEW_APP_MANIFEST_CONTENT } from "../generated-app-manifest.ts";
+
+const DEFAULT_PAGE_WIDTH = 730;
+const MINIMUM_PAGE_WIDTH = 730;
+const MAXIMUM_PAGE_WIDTH = 1800;
+const REQUIREMENTS_FILE_PATH = "requirements.txt";
+const DEFAULT_THEME = {
+  primaryColor: "#0078D4",
+  backgroundColor: "#252526",
+  secondaryBackgroundColor: "#2D2D30",
+  textColor: "#CCCCCC",
+} as const;
 
 const SUPPORTED_COMPONENT_TYPES = new Set([
   "DashboardEmbed",
@@ -88,26 +101,30 @@ export class ProjectPreviewGenerator {
       workflow,
       customModulesSource,
     );
+    const pageWidth = readPageWidth(project.theme);
     const content = generateProjectSource(
       project.name,
       document.components,
       workflow,
+      pageWidth,
     );
-    const files: PreviewFile[] = [{ path: "app.py", content }];
+    const files: PreviewFile[] = [
+      { path: "app.py", content },
+      { path: "app.yaml", content: PREVIEW_APP_MANIFEST_CONTENT },
+      { path: "custom_modules.py", content: moduleFiles.customModulesSource ?? DEFAULT_CUSTOM_MODULES_SOURCE },
+      { path: REQUIREMENTS_FILE_PATH, content: "" },
+      { path: ".streamlit/config.toml", content: getThemeConfig(project.theme) },
+    ];
     if (projectUsesLakebase(document.components, workflow)) {
-      files.push({
-        path: "requirements.txt",
-        content: ASYNC_PG_REQUIREMENTS_CONTENT,
-      });
+      const requirementsFile = files.find(
+        (file) => file.path === REQUIREMENTS_FILE_PATH,
+      );
+      if (requirementsFile) {
+        requirementsFile.content = ASYNC_PG_REQUIREMENTS_CONTENT;
+      }
       files.push({
         path: ASYNC_PG_LICENSE_FILE_PATH,
         content: ASYNC_PG_LICENSE_TEXT,
-      });
-    }
-    if (moduleFiles.customModulesSource !== null) {
-      files.push({
-        path: "custom_modules.py",
-        content: moduleFiles.customModulesSource,
       });
     }
     if (moduleFiles.prebuiltModulesLibrarySource !== null) {
@@ -124,4 +141,24 @@ export class ProjectPreviewGenerator {
       files,
     };
   }
+}
+
+function getThemeConfig(theme: Record<string, unknown> | null | undefined): string {
+  const keys = ["primaryColor", "backgroundColor", "secondaryBackgroundColor", "textColor"] as const;
+  const entries = keys.map((key) => {
+    const value = theme?.[key];
+    const fallback = DEFAULT_THEME[key];
+    const color = typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)
+      ? value
+      : fallback;
+    return `${key} = "${color}"`;
+  });
+  return `[theme]\n${entries.join("\n")}\n`;
+}
+
+function readPageWidth(theme: Record<string, unknown> | null | undefined): number {
+  const value = theme?.pageWidth;
+  const parsedValue = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsedValue)) return DEFAULT_PAGE_WIDTH;
+  return Math.min(MAXIMUM_PAGE_WIDTH, Math.max(MINIMUM_PAGE_WIDTH, Math.round(parsedValue)));
 }

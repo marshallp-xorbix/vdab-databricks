@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +16,9 @@ import {
 } from "../api/workspaceResourcesApi";
 import type { IProject } from "../models/Project";
 import type { IProjectComponent } from "../models/ProjectComponents";
+import { SettingsProvider } from "../context/SettingsContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import StandaloneAppLayout from "../layouts/StandaloneAppLayout";
 import ProjectEditorPage from "./ProjectEditorPage";
 
 vi.mock("../api/projectsApi", () => ({ getProject: vi.fn(), updateProject: vi.fn() }));
@@ -90,9 +93,9 @@ beforeEach(() => {
 describe("PulseWaveStory standalone project flow", () => {
   it("adds, maps, configures, saves, previews, and reopens the story", async () => {
     const user = userEvent.setup();
-    const firstEditor = renderProjectEditorPage();
+    const firstEditor = await renderProjectEditorPage();
 
-    await user.click(await screen.findByRole("button", { name: "Add pulse wave story" }));
+    await user.click(await screen.findByRole("button", { name: "Add Pulse Wave Story" }));
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "Weekly revenue pulse");
     await user.clear(screen.getByLabelText("Metric name"));
@@ -122,7 +125,7 @@ describe("PulseWaveStory standalone project flow", () => {
     await user.click(screen.getByLabelText("Show events"));
     await user.click(screen.getByLabelText("Show anomaly markers"));
     await user.click(screen.getByLabelText("Fill under wave"));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     expect(savedComponents).toHaveLength(1);
@@ -151,11 +154,11 @@ describe("PulseWaveStory standalone project flow", () => {
       },
     });
 
-    await user.click(screen.getByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview")).toHaveTextContent("__PULSE_WAVE_PAYLOAD__");
+    await user.click(screen.getAllByRole("link", { name: "Code" })[0]!);
+    expect(await screen.findByLabelText("Generated app code")).toHaveTextContent("__PULSE_WAVE_PAYLOAD__");
 
     firstEditor.unmount();
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ selectFirstComponent: true });
     expect(await screen.findByLabelText("Title")).toHaveValue("Weekly revenue pulse");
     expect(screen.getByLabelText("Metric name")).toHaveValue("Net revenue");
     expect(screen.getByLabelText("Time period column")).toHaveValue("period");
@@ -168,17 +171,25 @@ describe("PulseWaveStory standalone project flow", () => {
   }, 30_000);
 });
 
-function renderProjectEditorPage() {
+async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(
-    [{ path: "/apps/:appId", element: <ProjectEditorPage /> }],
+    [{ path: "/apps", element: <StandaloneAppLayout />, children: [{ path: ":appId", element: <ProjectEditorPage /> }, { index: true, element: <h1>Project list route</h1> }] }],
     { initialEntries: ["/apps/project-pulse-wave-story"] },
   );
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+      <ThemeProvider>
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,  );
+  fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+  if (options.selectFirstComponent) {
+    (await screen.findByRole("button", { name: /^Select / })).click();
+  }
+  return rendered;
 }

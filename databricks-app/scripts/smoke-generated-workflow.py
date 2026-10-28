@@ -78,6 +78,8 @@ def _read_source_bundle(value: object) -> dict[str, str]:
     sources: dict[str, str] = {}
     allowed_paths = {
         "app.py",
+        "app.yaml",
+        ".streamlit/config.toml",
         "custom_modules.py",
         "prebuilt_modules_library.py",
         "requirements.txt",
@@ -100,7 +102,7 @@ def _read_source_bundle(value: object) -> dict[str, str]:
         if path in seen_paths:
             raise ValueError(f"Bundle contains duplicate file path: {path}")
         seen_paths.add(path)
-        if path in allowed_paths:
+        if path in allowed_paths and path not in {"app.yaml", ".streamlit/config.toml"}:
             sources[path] = content
     if "app.py" not in sources:
         raise ValueError("Bundle is missing app.py.")

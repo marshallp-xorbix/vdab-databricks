@@ -8,6 +8,28 @@ import {
 
 const WORKSPACE_APPS_PATH = "/api/v1/workspace/apps";
 
+/** Reads the current lifecycle state of a workspace App. */
+export async function getWorkspaceApp(
+  appName: string,
+  signal?: AbortSignal,
+): Promise<IWorkspaceAppSummary> {
+  return requestWorkspaceApp(appName, "GET", signal);
+}
+
+/** Starts the saved deployment of a workspace App. */
+export async function startWorkspaceApp(
+  appName: string,
+): Promise<IWorkspaceAppSummary> {
+  return requestWorkspaceApp(appName, "POST", undefined, "start");
+}
+
+/** Stops the active deployment of a workspace App. */
+export async function stopWorkspaceApp(
+  appName: string,
+): Promise<IWorkspaceAppSummary> {
+  return requestWorkspaceApp(appName, "POST", undefined, "stop");
+}
+
 /** Loads one page of apps visible to the current Databricks workspace user. */
 export async function listWorkspaceApps(
   pageToken: string | null,
@@ -32,6 +54,41 @@ export async function listWorkspaceApps(
 
   const responseBody: unknown = await response.json();
   return parseWorkspaceAppsPage(responseBody);
+}
+
+async function requestWorkspaceApp(
+  appName: string,
+  method: "GET" | "POST",
+  signal?: AbortSignal,
+  action?: "start" | "stop",
+): Promise<IWorkspaceAppSummary> {
+  const suffix = action ? `/${action}` : "";
+  const response = await fetch(
+    `${WORKSPACE_APPS_PATH}/${encodeURIComponent(appName)}${suffix}`,
+    {
+      method,
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(await readErrorMessage(response));
+  const value: unknown = await response.json();
+  if (
+    !isRecord(value) ||
+    typeof value.name !== "string" ||
+    !isNullableString(value.description) ||
+    !isNullableString(value.appState) ||
+    !isNullableString(value.computeState)
+  ) {
+    throw new Error("The workspace returned an invalid App response.");
+  }
+  return new WorkspaceAppSummary({
+    name: value.name,
+    description: value.description,
+    appState: value.appState,
+    computeState: value.computeState,
+  });
 }
 
 function parseWorkspaceAppsPage(value: unknown): IWorkspaceAppsPage {

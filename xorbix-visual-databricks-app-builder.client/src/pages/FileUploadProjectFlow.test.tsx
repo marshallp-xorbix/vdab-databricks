@@ -16,6 +16,9 @@ import {
 } from "../api/workspaceResourcesApi";
 import type { IProject } from "../models/Project";
 import type { IProjectComponent } from "../models/ProjectComponents";
+import { SettingsProvider } from "../context/SettingsContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import StandaloneAppLayout from "../layouts/StandaloneAppLayout";
 import ProjectEditorPage from "./ProjectEditorPage";
 
 vi.mock("../api/projectsApi", () => ({
@@ -95,9 +98,9 @@ beforeEach(() => {
 describe("FileUpload standalone project flow", () => {
   it("adds, binds, saves, previews, and reopens a Volume-backed uploader", async () => {
     const user = userEvent.setup();
-    const firstEditor = renderProjectEditorPage();
+    const firstEditor = await renderProjectEditorPage();
 
-    await user.click(await screen.findByRole("button", { name: "Add file upload" }));
+    await user.click(await screen.findByRole("button", { name: "Add File Upload" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Upload invoices");
     fireEvent.change(await screen.findByLabelText("Current-workspace catalog"), {
@@ -112,7 +115,7 @@ describe("FileUpload standalone project flow", () => {
       target: { value: "incoming" },
     });
     await user.type(screen.getByLabelText("Destination folder"), "imports/2026");
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -139,12 +142,12 @@ describe("FileUpload standalone project flow", () => {
       },
     });
 
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getAllByRole("link", { name: "Code" })[0]!);
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("st.file_uploader");
 
     firstEditor.unmount();
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ selectFirstComponent: true });
 
     expect(await screen.findByLabelText("Label")).toHaveValue("Upload invoices");
     expect(screen.getByLabelText("Current-workspace catalog")).toHaveValue("main");
@@ -154,18 +157,26 @@ describe("FileUpload standalone project flow", () => {
   }, 20_000);
 });
 
-function renderProjectEditorPage() {
+async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(
-    [{ path: "/apps/:appId", element: <ProjectEditorPage /> }],
+    [{ path: "/apps", element: <StandaloneAppLayout />, children: [{ path: ":appId", element: <ProjectEditorPage /> }, { index: true, element: <h1>Project list route</h1> }] }],
     { initialEntries: ["/apps/project-1"] },
   );
 
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+      <ThemeProvider>
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,  );
+  fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+  if (options.selectFirstComponent) {
+    (await screen.findByRole("button", { name: /^Select / })).click();
+  }
+  return rendered;
 }

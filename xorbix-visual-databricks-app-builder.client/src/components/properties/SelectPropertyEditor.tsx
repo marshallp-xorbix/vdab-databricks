@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { useId, type FC } from "react";
 import { cn } from "../../lib/utils";
 import {
   PROPERTY_CONTROL_CLASS,
@@ -30,10 +30,13 @@ export const SelectPropertyEditor: FC<SelectPropertyEditorProps> = ({
   error,
   onChange,
 }) => {
+  const selectId = useId();
+
   return (
     <div>
-      <label className={PROPERTY_FIELD_LABEL_CLASS}>{label}</label>
+      <label htmlFor={selectId} className={PROPERTY_FIELD_LABEL_CLASS}>{label}</label>
       <select
+        id={selectId}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         className={cn(

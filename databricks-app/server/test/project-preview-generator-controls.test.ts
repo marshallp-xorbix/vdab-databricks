@@ -28,7 +28,7 @@ test("ProjectPreviewGenerator_CheckboxMatchesAcceptedPythonFixture", async () =>
   const expectedPython = await readFile(fixturePath, "utf8");
   const preview = generator.generate(project, createDocument([createCheckbox()]));
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
 });
 
 
@@ -41,7 +41,7 @@ test("ProjectPreviewGenerator_ToggleMatchesAcceptedPythonFixture", async () => {
   const expectedPython = await readFile(fixturePath, "utf8");
   const preview = generator.generate(project, createDocument([createToggle()]));
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
 });
 
 
@@ -70,7 +70,7 @@ test("ProjectPreviewGenerator_DropdownsMatchAcceptedPythonFixture", async () => 
     createDocument([createDropdown(), multiSelect]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
 });
 
 
@@ -83,7 +83,7 @@ test("ProjectPreviewGenerator_DatePickerMatchesAcceptedPythonFixture", async () 
   const expectedPython = await readFile(fixturePath, "utf8");
   const preview = generator.generate(project, createDocument([createDatePicker()]));
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
 });
 
 
@@ -96,7 +96,7 @@ test("ProjectPreviewGenerator_TimePickerMatchesAcceptedPythonFixture", async () 
   const expectedPython = await readFile(fixturePath, "utf8");
   const preview = generator.generate(project, createDocument([createTimePicker()]));
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
 });
 
 
@@ -200,7 +200,7 @@ test("ProjectPreviewGenerator_SlidersMatchAcceptedScalarAndRangePythonFixture", 
     createDocument([createSlider(), rangedSlider]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
 });
 
 
@@ -279,7 +279,7 @@ test("ProjectPreviewGenerator_LabelMatchesEscapedPythonFixture", async () => {
   });
   const preview = generator.generate(project, createDocument([label]));
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
 });
 
 

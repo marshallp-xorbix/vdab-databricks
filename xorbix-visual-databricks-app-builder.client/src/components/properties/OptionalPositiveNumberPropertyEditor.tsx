@@ -1,4 +1,4 @@
-import { useEffect, useState, type FC } from "react";
+import { useEffect, useId, useState, type FC } from "react";
 import { cn } from "../../lib/utils";
 import {
   PROPERTY_CONTROL_CLASS,
@@ -16,6 +16,7 @@ interface OptionalPositiveNumberPropertyEditorProps {
 export const OptionalPositiveNumberPropertyEditor: FC<
   OptionalPositiveNumberPropertyEditorProps
 > = ({ label, value, onChange }) => {
+  const inputId = useId();
   const [inputValue, setInputValue] = useState<string>(
     value && value > 0 ? String(value) : "",
   );
@@ -52,8 +53,9 @@ export const OptionalPositiveNumberPropertyEditor: FC<
 
   return (
     <div>
-      <label className={PROPERTY_FIELD_LABEL_CLASS}>{label}</label>
+      <label htmlFor={inputId} className={PROPERTY_FIELD_LABEL_CLASS}>{label}</label>
       <input
+        id={inputId}
         type="text"
         inputMode="numeric"
         value={inputValue}

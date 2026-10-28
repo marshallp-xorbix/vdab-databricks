@@ -204,7 +204,11 @@ function readColumns(
   errorFactory: ChartErrorFactory,
 ): Array<{ name: string; type: string | null }> {
   const columns = value.map((column) => {
-    if (!isRecord(column) || hasUnexpectedProperties(column, ["name", "type", "dataType"])) {
+    if (
+      !isRecord(column) ||
+      hasUnexpectedProperties(column, ["name", "type", "dataType", "nullable"]) ||
+      (column.nullable !== undefined && typeof column.nullable !== "boolean")
+    ) {
       throw errorFactory();
     }
     const name = readText(column.name, "", 255, errorFactory);

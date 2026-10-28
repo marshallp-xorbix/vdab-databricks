@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { WORKSPACE_CONNECTION_MISSING_MESSAGE } from "../../constants/databricksAppResourcesUi";
 import { databricksDataConnectorApi } from "../../providers/DatabricksDataConnectorApi";
 import { formatApiErrorMessage } from "../../utils/apiErrorMessage";
+import { listWorkspaceCatalogs, listWorkspaceSchemas } from "../../api/workspaceResourcesApi";
+
+const IS_DATABRICKS_RUNTIME = import.meta.env.VITE_VDAB_RUNTIME === "databricks";
 
 interface UseUnityCatalogHierarchyOptions {
   workspaceConnectionId?: number;
@@ -32,7 +35,7 @@ export function useUnityCatalogHierarchy({
     let active = true;
 
     const fetchCatalogs = async () => {
-      if (!workspaceConnectionId || workspaceConnectionId <= 0) {
+      if (!IS_DATABRICKS_RUNTIME && (!workspaceConnectionId || workspaceConnectionId <= 0)) {
         setCatalogs([]);
         setSchemas([]);
         setCatalogError(WORKSPACE_CONNECTION_MISSING_MESSAGE);
@@ -42,10 +45,10 @@ export function useUnityCatalogHierarchy({
       setLoadingCatalogs(true);
       setCatalogError(null);
       try {
-        const data = await databricksDataConnectorApi.getUnityCatalogCatalogs(
-          workspaceConnectionId,
-        );
-        if (active) setCatalogs(data || []);
+        const data = IS_DATABRICKS_RUNTIME
+          ? await listWorkspaceCatalogs()
+          : await databricksDataConnectorApi.getUnityCatalogCatalogs(workspaceConnectionId!);
+        if (active) setCatalogs(data.items.map((item) => item.name));
       } catch (err) {
         if (active) {
           setCatalogs([]);
@@ -67,7 +70,7 @@ export function useUnityCatalogHierarchy({
     let active = true;
 
     const fetchSchemas = async () => {
-      if (!workspaceConnectionId || workspaceConnectionId <= 0) {
+      if (!IS_DATABRICKS_RUNTIME && (!workspaceConnectionId || workspaceConnectionId <= 0)) {
         setSchemas([]);
         return;
       }
@@ -80,11 +83,10 @@ export function useUnityCatalogHierarchy({
       setLoadingSchemas(true);
       setSchemaError(null);
       try {
-        const data = await databricksDataConnectorApi.getUnityCatalogSchemas(
-          workspaceConnectionId,
-          selectedCatalog,
-        );
-        if (active) setSchemas(data || []);
+        const data = IS_DATABRICKS_RUNTIME
+          ? await listWorkspaceSchemas(selectedCatalog)
+          : await databricksDataConnectorApi.getUnityCatalogSchemas(workspaceConnectionId!, selectedCatalog);
+        if (active) setSchemas(data.items.map((item) => item.name));
       } catch (err) {
         if (active) {
           setSchemas([]);

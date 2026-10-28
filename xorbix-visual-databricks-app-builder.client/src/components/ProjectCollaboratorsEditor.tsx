@@ -5,11 +5,13 @@ import { useRevokeProjectCollaborator } from "../hooks/useRevokeProjectCollabora
 
 interface IProjectCollaboratorsEditorProps {
   projectId: string;
+  canManageCollaborators: boolean;
 }
 
 /** Lets a project owner review and revoke VDAB-only editor grants. */
 function ProjectCollaboratorsEditor({
   projectId,
+  canManageCollaborators,
 }: Readonly<IProjectCollaboratorsEditorProps>) {
   const collaboratorsQuery = useProjectCollaborators(projectId);
   const revokeMutation = useRevokeProjectCollaborator();
@@ -25,16 +27,13 @@ function ProjectCollaboratorsEditor({
   }
 
   return (
-    <section
-      aria-labelledby="project-collaborators-heading"
-      className="space-y-4 rounded-xl border border-border bg-card p-6"
-    >
+    <section aria-labelledby="project-collaborators-heading" className="space-y-4">
       <div>
         <h2 id="project-collaborators-heading" className="text-lg font-semibold">
-          Project access
+          Who can edit
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          These grants allow editing in VDAB only. Databricks resource permissions are checked separately.
+          Project access applies inside VDAB. Databricks resource permissions are checked separately.
         </p>
       </div>
 
@@ -60,7 +59,7 @@ function ProjectCollaboratorsEditor({
         </div>
       )}
       {collaboratorsQuery.data?.length === 0 && (
-        <p>No collaborators have editor access to this project.</p>
+        <p className="text-sm">No collaborators have editor access to this project.</p>
       )}
       {collaboratorsQuery.data && collaboratorsQuery.data.length > 0 && (
         <ul className="divide-y divide-border">
@@ -117,9 +116,11 @@ function ProjectCollaboratorsEditor({
             : "Project access could not be removed."}
         </p>
       )}
-      <p className="text-sm text-muted-foreground">
-        Adding collaborators requires selecting a person from the workspace directory. That picker remains unavailable until Databricks documents a supported directory-search scope for Apps.
-      </p>
+      {canManageCollaborators && (
+        <p className="text-sm text-muted-foreground">
+          The workspace directory picker is unavailable because Databricks Apps does not support the SCIM scope required to search users.
+        </p>
+      )}
     </section>
   );
 }

@@ -112,6 +112,7 @@ function ProjectDeploymentPanel({
 
   return (
     <section
+      id="project-deployment"
       aria-labelledby="project-deployment-heading"
       className="space-y-5 rounded-xl border border-border bg-card p-6"
     >

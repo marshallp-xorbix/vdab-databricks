@@ -77,6 +77,7 @@ export async function updateProject(input: {
   name: string;
   description: string | null;
   version: number;
+  theme?: Record<string, unknown> | null;
 }): Promise<IProject> {
   const response = await fetch(projectPath(input.id), {
     method: "PUT",
@@ -89,6 +90,7 @@ export async function updateProject(input: {
       name: input.name,
       description: input.description,
       version: input.version,
+      ...(input.theme === undefined ? {} : { theme: input.theme }),
     }),
   });
 
@@ -172,12 +174,17 @@ function parseProject(value: unknown): IProject {
     id: value.id,
     name: value.name,
     description: value.description,
+    ...(isTheme(value.theme) ? { theme: value.theme } : {}),
     version: value.version as number,
     createdBy: value.createdBy,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     callerRole: value.callerRole,
   });
+}
+
+function isTheme(value: unknown): value is Record<string, unknown> | null {
+  return value === null || (isRecord(value) && !Array.isArray(value));
 }
 
 function parseProjectExport(value: unknown): IStandaloneProjectExport {

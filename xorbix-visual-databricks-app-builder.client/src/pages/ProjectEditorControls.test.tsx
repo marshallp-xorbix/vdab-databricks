@@ -21,8 +21,8 @@ describe("ProjectEditorPage", () => {
       files: [{ path: "app.py", content: "import streamlit as st\\n" }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add Text input" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Text Input" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Customer name");
     await user.type(screen.getByLabelText("Placeholder"), "Type a name");
@@ -36,8 +36,8 @@ describe("ProjectEditorPage", () => {
     await user.click(await screen.findByRole("option", { name: "Password" }));
     await user.click(screen.getByRole("switch", { name: "Multiline" }));
     await user.type(screen.getByLabelText("Height"), "240");
-    expect(screen.getByRole("button", { name: "Generate preview" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    expect(screen.getByRole("link", { name: "Code" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -56,8 +56,8 @@ describe("ProjectEditorPage", () => {
         height: "240",
       },
     });
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("import streamlit as st");
 
     firstEditor.unmount();
@@ -67,7 +67,8 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Select Text Input: textInput1" }));
 
     expect(await screen.findByLabelText("Label")).toHaveValue("Customer name");
     expect(screen.getByLabelText("Placeholder")).toHaveValue("Type a name");
@@ -95,15 +96,15 @@ describe("ProjectEditorPage", () => {
       files: [{ path: "app.py", content: "vdab_button1 = st.button(\\n" }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add button" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Button" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Save changes");
     await user.click(screen.getByRole("combobox", { name: "Button variant" }));
     await user.click(await screen.findByRole("option", { name: "Secondary" }));
     await user.type(screen.getByLabelText("Help text"), "Save the current draft.");
     await user.click(screen.getByRole("switch", { name: "Disabled" }));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -118,8 +119,8 @@ describe("ProjectEditorPage", () => {
         help: "Save the current draft.",
       },
     });
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("st.button(");
 
     firstEditor.unmount();
@@ -129,7 +130,8 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Select Button: button1" }));
 
     expect(await screen.findByLabelText("Label")).toHaveValue("Save changes");
     expect(screen.getByLabelText("Help text")).toHaveValue("Save the current draft.");
@@ -155,20 +157,20 @@ describe("ProjectEditorPage", () => {
       files: [{ path: "app.py", content: "st.checkbox(\\nst.toggle(\\n" }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add checkbox" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Checkbox" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Approved");
     await user.type(screen.getByLabelText("Help text"), "Review this value.");
     await user.click(screen.getByRole("switch", { name: "Checked by default" }));
 
-    await user.click(screen.getByRole("button", { name: "Add toggle" }));
+    await user.click(screen.getByRole("button", { name: "Add Toggle" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Notifications");
     await user.type(screen.getByLabelText("Help text"), "Send update notifications.");
     await user.click(screen.getByRole("switch", { name: "On by default" }));
     await user.click(screen.getByRole("switch", { name: "Disabled" }));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -194,10 +196,10 @@ describe("ProjectEditorPage", () => {
         },
       },
     ]);
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("st.checkbox(");
-    expect(screen.getByLabelText("Generated Python preview"))
+    expect(screen.getByLabelText("Generated app code"))
       .toHaveTextContent("st.toggle(");
 
     firstEditor.unmount();
@@ -207,14 +209,15 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Select Checkbox: checkbox1" }));
 
     expect(await screen.findByLabelText("Label")).toHaveValue("Approved");
     expect(screen.getByRole("switch", { name: "Checked by default" })).toHaveAttribute(
       "data-state",
       "checked",
     );
-    await user.click(screen.getByRole("button", { name: "2. Toggle: Notifications" }));
+    await user.click(screen.getByRole("button", { name: "Select Toggle: toggle1" }));
     expect(screen.getByLabelText("Help text")).toHaveValue("Send update notifications.");
     expect(screen.getByRole("switch", { name: "On by default" })).toHaveAttribute(
       "data-state",

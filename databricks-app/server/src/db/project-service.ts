@@ -10,6 +10,15 @@ import type { ProjectMetadata } from "./project-repository.ts";
 
 const MAX_PROJECT_NAME_LENGTH = 100;
 const MAX_PROJECT_DESCRIPTION_LENGTH = 2000;
+const PROJECT_THEME_COLOR_KEYS = [
+  "primaryColor",
+  "backgroundColor",
+  "secondaryBackgroundColor",
+  "textColor",
+] as const;
+const PROJECT_THEME_PAGE_WIDTH_KEY = "pageWidth";
+const MIN_PROJECT_PAGE_WIDTH = 730;
+const MAX_PROJECT_PAGE_WIDTH = 1800;
 const MIN_USER_ID_LENGTH = 3;
 const MAX_USER_ID_LENGTH = 255;
 
@@ -220,7 +229,7 @@ function readProjectInput(value: unknown): {
 function readProjectMetadata(value: unknown): ProjectMetadata {
   if (
     !isRecord(value) ||
-    hasUnexpectedProperties(value, ["name", "description", "version"]) ||
+    hasUnexpectedProperties(value, ["name", "description", "version", "theme"]) ||
     !Number.isSafeInteger(value.version) ||
     (value.version as number) < 1
   ) {
@@ -235,7 +244,38 @@ function readProjectMetadata(value: unknown): ProjectMetadata {
   return {
     ...projectInput,
     expectedVersion: value.version as number,
+    ...(Object.hasOwn(value, "theme") ? { theme: readProjectTheme(value.theme) } : {}),
   };
+}
+
+function readProjectTheme(value: unknown): Record<string, unknown> | null {
+  if (value === null) return null;
+  if (!isRecord(value)) throw invalidProjectInput();
+  const allowedKeys = new Set<string>([
+    ...PROJECT_THEME_COLOR_KEYS,
+    PROJECT_THEME_PAGE_WIDTH_KEY,
+  ]);
+  if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
+    throw invalidProjectInput();
+  }
+  for (const key of PROJECT_THEME_COLOR_KEYS) {
+    const color = value[key];
+    if (color !== undefined && (typeof color !== "string" || !/^#[0-9a-fA-F]{6}$/.test(color))) {
+      throw invalidProjectInput();
+    }
+  }
+  const pageWidth = value[PROJECT_THEME_PAGE_WIDTH_KEY];
+  if (pageWidth !== undefined) {
+    const parsedWidth = typeof pageWidth === "number" ? pageWidth : Number(pageWidth);
+    if (
+      !Number.isInteger(parsedWidth) ||
+      parsedWidth < MIN_PROJECT_PAGE_WIDTH ||
+      parsedWidth > MAX_PROJECT_PAGE_WIDTH
+    ) {
+      throw invalidProjectInput();
+    }
+  }
+  return value;
 }
 
 function readCollaboratorId(value: unknown): string {

@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   getProjectComponentsMock,
@@ -12,6 +12,21 @@ import {
   workflowDocument,
 } from "./ProjectEditorPage.test-support";
 import { PROJECT_COMPONENTS_AUTOSAVE_DELAY_MS } from "../hooks/useProjectComponentsAutosave";
+
+vi.mock("../components/AppBuilderComponents/AppCanvas/MainFlowView", () => ({
+  default: ({
+    onNodeClick,
+  }: {
+    onNodeClick: (nodeId: string, nodeType: "page" | "modal") => void;
+  }) => (
+    <button
+      type="button"
+      onDoubleClick={() => onNodeClick("main-page", "page")}
+    >
+      Main Page graph node
+    </button>
+  ),
+}));
 
 afterEach(resetProjectEditorTestState);
 beforeEach(initializeProjectEditorTestState);
@@ -70,15 +85,18 @@ describe("ProjectEditorPage component autosave coordination", () => {
       };
     });
 
-    renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Workflows" }));
+    await renderProjectEditorPage({ openMainPage: false });
+    await user.click(await screen.findByRole("link", { name: "Workflow" }));
     await user.click(
       (await screen.findAllByRole("button", { name: /Add Workflow/ }))[0]!,
     );
-    await user.click(
-      await screen.findByRole("button", { name: "App components" }),
+    await user.click(await screen.findByRole("link", { name: "Canvas" }));
+    fireEvent.doubleClick(
+      await screen.findByRole("button", { name: "Main Page graph node" }),
     );
-    await user.click(await screen.findByRole("button", { name: "Add button" }));
+    await user.click(await screen.findByRole("button", { name: "Main Page" }));
+    expect(screen.getByRole("button", { name: "Main Page" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(await screen.findByRole("button", { name: "Add Button" }));
 
     expect(
       await screen.findByText(
@@ -86,16 +104,16 @@ describe("ProjectEditorPage component autosave coordination", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Save components" }),
+      screen.getByRole("button", { name: "Save" }),
     ).toBeDisabled();
     await new Promise((resolve) => {
       window.setTimeout(resolve, PROJECT_COMPONENTS_AUTOSAVE_DELAY_MS + 100);
     });
     expect(replaceProjectComponentsMock).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Workflows" }));
+    await user.click(await screen.findByRole("link", { name: "Workflow" }));
     await user.click(
-      await screen.findByRole("button", { name: "Save workflows" }),
+      await screen.findByRole("button", { name: "Save" }),
     );
     await waitFor(() => {
       expect(replaceProjectWorkflowMock).toHaveBeenCalledTimes(1);
@@ -175,7 +193,12 @@ describe("ProjectEditorPage component autosave coordination", () => {
       };
     });
 
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ openMainPage: false });
+    fireEvent.doubleClick(
+      await screen.findByRole("button", { name: "Main Page graph node" }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Main Page" }));
+    await user.click(await screen.findByRole("button", { name: "Select Button: saveButton" }));
     const removeButton = await screen.findByRole("button", {
       name: "Remove selected component",
     });
@@ -187,18 +210,20 @@ describe("ProjectEditorPage component autosave coordination", () => {
     expect(screen.getByText(/nested children/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Remove component" }));
 
-    expect(await screen.findByText(/No components yet/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Select Button: saveButton" }),
+    ).not.toBeInTheDocument();
     expect(
       await screen.findByText(
         /auto-save will resume after the other project changes are saved/i,
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Save components" }),
+      screen.getByRole("button", { name: "Save" }),
     ).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Workflows" }));
+    await user.click(await screen.findByRole("link", { name: "Workflow" }));
     await user.click(
-      await screen.findByRole("button", { name: "Save workflows" }),
+      await screen.findByRole("button", { name: "Save" }),
     );
     await waitFor(() =>
       expect(replaceProjectWorkflowMock).toHaveBeenCalledTimes(1),
@@ -249,19 +274,18 @@ describe("ProjectEditorPage component autosave coordination", () => {
       ],
     });
 
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ openMainPage: false });
+    fireEvent.doubleClick(
+      await screen.findByRole("button", { name: "Main Page graph node" }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Main Page" }));
     await user.click(
-      await screen.findByRole("button", { name: "2. Button: Second" }),
+      await screen.findByRole("button", { name: "Select Button: secondButton" }),
     );
     await user.click(
       screen.getByRole("button", { name: "Move selected component up" }),
     );
-
-    expect(
-      screen.getByRole("button", { name: "1. Button: Second" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Move selected component up" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move selected component up" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move selected component down" })).toBeEnabled();
   });
 });

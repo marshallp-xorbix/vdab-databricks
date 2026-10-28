@@ -13,6 +13,13 @@ export type ComponentBindingType =
   | "lakebaseProvisionedDatabase"
   | "lakebaseAutoscaling";
 
+export interface IBindingSchema {
+  type: ComponentBindingType;
+  label: string;
+  editorType: string;
+  defaultConfig: ProjectJsonObject;
+}
+
 export interface IComponentDefinition {
   id: string;
   codeName: string;
@@ -61,16 +68,22 @@ export class ComponentDefinition implements IComponentDefinition {
 export interface IComponentRegistry {
   version: 1;
   components: IComponentDefinition[];
+  bindingSchemas: IBindingSchema[];
 }
 
 export class ComponentRegistry implements IComponentRegistry {
   version: 1;
   components: ComponentDefinition[];
+  bindingSchemas: IBindingSchema[];
 
   constructor(source: IComponentRegistry) {
     this.version = 1;
     this.components = source.components.map(
       (definition) => new ComponentDefinition(definition),
     );
+    this.bindingSchemas = source.bindingSchemas.map((schema) => ({
+      ...schema,
+      defaultConfig: { ...schema.defaultConfig },
+    }));
   }
 }

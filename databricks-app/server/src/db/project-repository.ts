@@ -29,6 +29,7 @@ export interface NewProject {
 export interface ProjectMetadata {
   name: string;
   description: string | null;
+  theme?: Record<string, unknown> | null;
   expectedVersion: number;
 }
 
@@ -77,6 +78,7 @@ interface ProjectRow extends Record<string, unknown> {
   id: string;
   name: string;
   description: string | null;
+  theme?: unknown;
   version: number;
   created_by: string;
   created_at: Date | string;
@@ -114,7 +116,7 @@ export class PostgresProjectRepository implements ProjectRepository {
         `INSERT INTO vdab_projects
           (id, workspace_id, name, description, created_by)
          VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, name, description, version, created_by, created_at, updated_at`,
+         RETURNING id, name, description, theme, version, created_by, created_at, updated_at`,
         [
           projectId,
           input.workspaceId,
@@ -154,7 +156,7 @@ export class PostgresProjectRepository implements ProjectRepository {
 
   async listProjects(actor: ProjectActor): Promise<ProjectSummary[]> {
     const result = await this.pool.query<ProjectRow>(
-      `SELECT p.id, p.name, p.description, p.version, p.created_by,
+      `SELECT p.id, p.name, p.description, p.theme, p.version, p.created_by,
               p.created_at, p.updated_at,
               CASE WHEN p.created_by = $1 THEN 'owner'
                    WHEN $3 THEN 'installationAdmin'
@@ -192,7 +194,7 @@ export class PostgresProjectRepository implements ProjectRepository {
     actor: ProjectActor,
   ): Promise<ProjectSummary | null> {
     const result = await this.pool.query<ProjectRow>(
-      `SELECT p.id, p.name, p.description, p.version, p.created_by,
+      `SELECT p.id, p.name, p.description, p.theme, p.version, p.created_by,
               p.created_at, p.updated_at,
               CASE WHEN p.created_by = $1 THEN 'owner'
                    WHEN $4 THEN 'installationAdmin'
@@ -238,14 +240,16 @@ export class PostgresProjectRepository implements ProjectRepository {
       await client.query("BEGIN");
       const updateResult = await client.query<ProjectRow>(
         `UPDATE vdab_projects AS p
-         SET name = $5, description = $6, version = p.version + 1, updated_at = now()
+         SET name = $5, description = $6,
+             theme = CASE WHEN $8 THEN $9::jsonb ELSE p.theme END,
+             version = p.version + 1, updated_at = now()
          WHERE p.id = $1 AND p.workspace_id = $2 AND p.deleted_at IS NULL
            AND p.version = $3
            AND (p.created_by = $4 OR EXISTS (
              SELECT 1 FROM vdab_project_collaborators AS c
              WHERE c.project_id = p.id AND c.user_id = $4 AND c.role = 'editor'
            ) OR $7)
-         RETURNING p.id, p.name, p.description, p.version, p.created_by,
+         RETURNING p.id, p.name, p.description, p.theme, p.version, p.created_by,
                    p.created_at, p.updated_at,
                    CASE WHEN p.created_by = $4 THEN 'owner'
                         WHEN $7 THEN 'installationAdmin'
@@ -258,6 +262,8 @@ export class PostgresProjectRepository implements ProjectRepository {
           metadata.name,
           metadata.description,
           actor.isInstallationAdmin,
+          metadata.theme !== undefined,
+          metadata.theme === undefined ? null : JSON.stringify(metadata.theme),
         ],
       );
       const row = updateResult.rows[0];
@@ -418,12 +424,27 @@ function toProjectSummary(
     id: row.id,
     name: row.name,
     description: row.description,
+    ...(row.theme === undefined ? {} : { theme: readNullableJsonObject(row.theme) }),
     version: Number(row.version),
     createdBy: row.created_by,
     createdAt: toIsoString(row.created_at),
     updatedAt: toIsoString(row.updated_at),
     callerRole,
   };
+}
+
+function readNullableJsonObject(value: unknown): Record<string, unknown> | null {
+  if (value === null) return null;
+  if (typeof value === "string") {
+    try {
+      return readNullableJsonObject(JSON.parse(value));
+    } catch {
+      return null;
+    }
+  }
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
 
 function toIsoString(value: Date | string): string {

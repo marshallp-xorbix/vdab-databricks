@@ -9,8 +9,10 @@ import {
   canvasApi,
   type ComponentRegistryResponse,
 } from "../providers/CanvasApi";
+import { getComponentRegistry } from "../api/componentRegistryApi";
 import { useLogger } from "../logger/useLogger";
 import { normalizeVdabComponentEnums } from "../utils/componentEnumGuards";
+import { toLegacyComponentRegistry } from "../utils/projectComponentRegistryAdapter";
 
 interface ComponentRegistryContextType {
   registry: ComponentRegistryResponse | null;
@@ -42,7 +44,10 @@ export function ComponentRegistryProvider({
     const fetchRegistry = async () => {
       try {
         setLoading(true);
-        const data = await canvasApi.getRegistry();
+        const data =
+          import.meta.env.VITE_VDAB_RUNTIME === "databricks"
+            ? toLegacyComponentRegistry(await getComponentRegistry())
+            : await canvasApi.getRegistry();
         if (mounted) {
           setRegistry({
             ...data,

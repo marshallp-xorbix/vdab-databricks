@@ -7,6 +7,7 @@ import type {
   WorkspaceLakebaseTableResource,
 } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
+import { normalizeWorkspaceHost } from "./workspace-host.ts";
 import { createPostgresConnection } from "./workspace-lakebase-postgres-connection.ts";
 import type { LakebasePostgresConnectionFactory } from "./workspace-lakebase-postgres-connection.ts";
 import {
@@ -180,18 +181,4 @@ async function listDatabases(
   const path = `${branchPath(projectId, branchId)}/databases`;
   const records = await listApiRecords(caller, path, "databases", workspaceHost, fetchImplementation);
   return records.map(readDatabase).sort((left, right) => left.databaseName.localeCompare(right.databaseName));
-}
-function normalizeWorkspaceHost(workspaceHost: string): string {
-  const parsedHost = new URL(workspaceHost);
-  if (
-    parsedHost.protocol !== "https:" ||
-    parsedHost.username.length > 0 ||
-    parsedHost.password.length > 0 ||
-    parsedHost.pathname !== "/" ||
-    parsedHost.search.length > 0 ||
-    parsedHost.hash.length > 0
-  ) {
-    throw new Error("DATABRICKS_HOST must be an HTTPS workspace origin.");
-  }
-  return parsedHost.origin;
 }

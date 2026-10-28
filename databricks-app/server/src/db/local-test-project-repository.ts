@@ -234,6 +234,9 @@ export class LocalTestProjectRepository
 
     project.name = metadata.name;
     project.description = metadata.description;
+    if (metadata.theme !== undefined) {
+      this.projectThemes.set(projectId, structuredClone(metadata.theme));
+    }
     project.version += 1;
     project.updatedAt = new Date().toISOString();
     this.projects.set(projectId, project);
@@ -472,11 +475,12 @@ export class LocalTestProjectRepository
     project: ProjectSummary & { workspaceId: string },
     actor: ProjectActor,
   ): ProjectSummary {
-    return mapLocalTestProjectSummary(
+    const summary = mapLocalTestProjectSummary(
       project,
       actor,
       this.hasCollaborator(project.id, actor.userId),
     );
+    return { ...summary, theme: structuredClone(this.projectThemes.get(project.id) ?? null) };
   }
 }
 

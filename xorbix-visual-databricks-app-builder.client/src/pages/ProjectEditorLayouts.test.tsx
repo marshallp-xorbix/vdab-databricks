@@ -24,17 +24,17 @@ describe("ProjectEditorPage", () => {
       }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add columns" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Columns" }));
     await user.selectOptions(screen.getByLabelText("Column count"), "3");
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Left");
-    await user.click(await screen.findByRole("button", { name: "1. Columns: 3 columns" }));
+    await user.click(await screen.findByRole("button", { name: "Select Columns: columns1" }));
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Center");
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -51,8 +51,8 @@ describe("ProjectEditorPage", () => {
     expect(savedInput?.components[1]?.properties.label).toBe("Left");
     expect(savedInput?.components[2]?.properties.label).toBe("Center");
 
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("st.columns(3)");
 
     firstEditor.unmount();
@@ -62,10 +62,11 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
 
+    await user.click(await screen.findByRole("button", { name: "Select Columns: columns1" }));
     expect(await screen.findByLabelText("Column count")).toHaveValue("3");
-    await user.click(screen.getByRole("button", { name: "1.2. TextInput: Center" }));
+    await user.click(screen.getByRole("button", { name: "Select Text Input: textInput2" }));
     expect(await screen.findByLabelText("Label")).toHaveValue("Center");
   }, 20_000);
 
@@ -86,18 +87,18 @@ describe("ProjectEditorPage", () => {
       }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add rows" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Rows" }));
     await user.selectOptions(screen.getByLabelText("Row count"), "3");
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "First row");
-    await user.click(screen.getByRole("button", { name: "1. Rows: 3 rows" }));
+    await user.click(await screen.findByRole("button", { name: "Select Rows: rows1" }));
     await user.selectOptions(screen.getByLabelText("Child component type"), "Button");
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Save record");
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -120,10 +121,10 @@ describe("ProjectEditorPage", () => {
       properties: { label: "Save record" },
     });
 
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview"))
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    expect(await screen.findByLabelText("Generated app code"))
       .toHaveTextContent("st.container()");
-    expect(screen.getByLabelText("Generated Python preview"))
+    expect(screen.getByLabelText("Generated app code"))
       .toHaveTextContent("st.text('Row 3')");
 
     firstEditor.unmount();
@@ -133,10 +134,11 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
 
+    await user.click(await screen.findByRole("button", { name: "Select Rows: rows1" }));
     expect(await screen.findByLabelText("Row count")).toHaveValue("3");
-    await user.click(screen.getByRole("button", { name: "1.2. Button: Save record" }));
+    await user.click(screen.getByRole("button", { name: "Select Button: button1" }));
     expect(await screen.findByLabelText("Label")).toHaveValue("Save record");
   }, 20_000);
 
@@ -157,27 +159,27 @@ describe("ProjectEditorPage", () => {
       }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add tabs" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Tabs" }));
     await user.selectOptions(screen.getByLabelText("Edit tab contents"), "0");
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "First tab control");
 
-    await user.click(screen.getByRole("button", { name: "1. Tabs: 2 tabs" }));
+    await user.click(screen.getByRole("button", { name: "Select Tabs: tabs1" }));
     await user.selectOptions(screen.getByLabelText("Child component type"), "Button");
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Second control");
 
-    await user.click(screen.getByRole("button", { name: "1. Tabs: 2 tabs" }));
+    await user.click(screen.getByRole("button", { name: "Select Tabs: tabs1" }));
     await user.selectOptions(screen.getByLabelText("Edit tab contents"), "1");
     await user.selectOptions(screen.getByLabelText("Child component type"), "Label");
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Text"));
     await user.type(screen.getByLabelText("Text"), "Details content");
 
-    await user.click(screen.getByRole("button", { name: "1. Tabs: 2 tabs" }));
+    await user.click(screen.getByRole("button", { name: "Select Tabs: tabs1" }));
     await user.clear(await screen.findByLabelText("Tab 2 name"));
     await user.type(screen.getByLabelText("Tab 2 name"), "Details");
     await user.selectOptions(screen.getByLabelText("Default tab"), "1");
@@ -189,8 +191,8 @@ describe("ProjectEditorPage", () => {
     await user.click(screen.getByRole("button", { name: "Add child component" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "History enabled");
-    await user.click(screen.getByRole("button", { name: "1. Tabs: 3 tabs" }));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Select Tabs: tabs1" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -214,8 +216,8 @@ describe("ProjectEditorPage", () => {
     expect(savedInput?.components[3]?.layout).toEqual({ tabIndex: 1, y: 0 });
     expect(savedInput?.components[4]?.layout).toEqual({ tabIndex: 2, y: 0 });
 
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    const preview = await screen.findByLabelText("Generated Python preview");
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    const preview = await screen.findByLabelText("Generated app code");
     expect(preview).toHaveTextContent("st.tabs(");
     expect(preview).toHaveTextContent("default='Details'");
     expect(preview).toHaveTextContent("with vdab_tabs1[0]:");
@@ -230,17 +232,17 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
 
+    await user.click(await screen.findByRole("button", { name: "Select Tabs: tabs1" }));
     expect(await screen.findByLabelText("Tab 2 name")).toHaveValue("Details");
     expect(screen.getByLabelText("Default tab")).toHaveValue("1");
-    await user.click(screen.getByRole("button", { name: "1. Tabs: 3 tabs" }));
     await user.selectOptions(screen.getByLabelText("Edit tab contents"), "1");
     expect(screen.getByText("1 component in this tab")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "1.2.1. Label: Details content" }));
+    await user.click(screen.getByRole("button", { name: "Select Label: label1" }));
     expect(await screen.findByLabelText("Text")).toHaveValue("Details content");
 
-    await user.click(screen.getByRole("button", { name: "1. Tabs: 3 tabs" }));
+    await user.click(screen.getByRole("button", { name: "Select Tabs: tabs1" }));
     await user.selectOptions(screen.getByLabelText("Edit tab contents"), "1");
     await user.click(screen.getByRole("button", { name: "Remove active tab" }));
     expect(await screen.findByRole("dialog")).toHaveTextContent(
@@ -250,7 +252,7 @@ describe("ProjectEditorPage", () => {
 
     expect(await screen.findByLabelText("Tab 2 name")).toHaveValue("History");
     expect(screen.getByLabelText("Default tab")).toHaveValue("1");
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalledTimes(2));
     const componentsAfterDelete = replaceProjectComponentsMock.mock.calls[1]?.[0].components;
     expect(componentsAfterDelete).toHaveLength(4);

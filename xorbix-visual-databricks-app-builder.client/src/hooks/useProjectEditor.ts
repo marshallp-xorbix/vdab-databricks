@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useBlocker, useParams } from "react-router-dom";
+import { useBlocker, useParams, useSearchParams } from "react-router-dom";
 import { useProject } from "./useProject";
 import { useProjectComponents } from "./useProjectComponents";
 import { useReplaceProjectComponents } from "./useReplaceProjectComponents";
@@ -12,11 +12,17 @@ import { useProjectComponentsAutosave } from "./useProjectComponentsAutosave";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
 
-type ProjectEditorSection = "components" | "workflows" | "collaborators";
+type ProjectEditorSection =
+  | "components"
+  | "workflows"
+  | "code"
+  | "settings"
+  | "collaborators";
 
 /** Owns project editor query state, drafts, and save/reload operations. */
 export function useProjectEditor() {
   const { appId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const projectQuery = useProject(appId);
   const componentsQuery = useProjectComponents(appId);
   const workflowQuery = useProjectWorkflow(appId);
@@ -27,6 +33,7 @@ export function useProjectEditor() {
   const previewMutation = useGenerateProjectPreview();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [theme, setTheme] = useState<Record<string, unknown>>({});
   const [components, setComponents] = useState<IProjectComponent[]>([]);
   const [hasLoadedComponents, setHasLoadedComponents] = useState(false);
   const [workflow, setWorkflow] = useState<IProjectWorkflowDefinition>({
@@ -35,7 +42,9 @@ export function useProjectEditor() {
   });
   const [hasLoadedWorkflow, setHasLoadedWorkflow] = useState(false);
   const [activeEditorSection, setActiveEditorSection] =
-    useState<ProjectEditorSection>("components");
+    useState<ProjectEditorSection>(() =>
+      readEditorSection(searchParams.get("section")),
+    );
   const [hasOpenedWorkflows, setHasOpenedWorkflows] = useState(false);
   const [isCustomModulesDirty, setCustomModulesDirty] = useState(false);
   const project = projectQuery.data;
@@ -49,9 +58,13 @@ export function useProjectEditor() {
     project?.callerRole === "owner" ||
     project?.callerRole === "installationAdmin";
   const normalizedDescription = description.trim() || null;
+  const isThemeDirty = Boolean(
+    project && JSON.stringify(theme) !== JSON.stringify(project.theme ?? {}),
+  );
   const isMetadataDirty = Boolean(
     project &&
-    (name !== project.name || normalizedDescription !== project.description),
+    (name !== project.name || normalizedDescription !== project.description ||
+      isThemeDirty),
   );
   const isComponentsDirty = Boolean(
     componentsDocument &&
@@ -70,7 +83,9 @@ export function useProjectEditor() {
     isWorkflowDirty ||
     isCustomModulesDirty;
   const navigationBlocker = useBlocker(
-    isDirty &&
+    ({ currentLocation, nextLocation }) =>
+      isDirty &&
+      currentLocation.pathname !== nextLocation.pathname &&
       !updateProjectMutation.isPending &&
       !replaceComponentsMutation.isPending &&
       !replaceWorkflowMutation.isPending,
@@ -80,8 +95,17 @@ export function useProjectEditor() {
     if (project) {
       setName(project.name);
       setDescription(project.description ?? "");
+      setTheme(project.theme ?? {});
     }
   }, [project]);
+
+  useEffect(() => {
+    const section = readEditorSection(searchParams.get("section"));
+    setActiveEditorSection(section);
+    if (section === "workflows" || searchParams.get("tool") === "ai") {
+      setHasOpenedWorkflows(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (componentsDocument && (!hasLoadedComponents || !isComponentsDirty)) {
@@ -121,6 +145,7 @@ export function useProjectEditor() {
         id: project.id,
         name,
         description: normalizedDescription,
+        ...(isThemeDirty ? { theme } : {}),
         version: project.version,
       });
     } catch {
@@ -134,6 +159,7 @@ export function useProjectEditor() {
     if (refreshedProject.data) {
       setName(refreshedProject.data.name);
       setDescription(refreshedProject.data.description ?? "");
+      setTheme(refreshedProject.data.theme ?? {});
     }
   }
 
@@ -181,9 +207,9 @@ export function useProjectEditor() {
     }
   }
 
-  async function handleSaveWorkflow() {
+  async function handleSaveWorkflow(): Promise<boolean> {
     if (!workflowDocument || !canEdit || isMetadataDirty) {
-      return;
+      return false;
     }
 
     try {
@@ -192,8 +218,10 @@ export function useProjectEditor() {
         version: workflowDocument.version,
         workflow,
       });
+      return true;
     } catch {
       // The mutation state renders the safe API error and reload action.
+      return false;
     }
   }
 
@@ -213,6 +241,15 @@ export function useProjectEditor() {
   function handleEditorSectionChange(section: ProjectEditorSection) {
     if (section === "workflows") setHasOpenedWorkflows(true);
     setActiveEditorSection(section);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (section === "components") next.delete("section");
+        else next.set("section", section);
+        return next;
+      },
+      { replace: true },
+    );
   }
 
   useProjectComponentsAutosave({
@@ -246,6 +283,8 @@ export function useProjectEditor() {
     setName,
     description,
     setDescription,
+    theme,
+    setTheme,
     components,
     workflow,
     setWorkflow,
@@ -260,6 +299,7 @@ export function useProjectEditor() {
     canEdit,
     canManageCollaborators,
     isMetadataDirty,
+    isThemeDirty,
     isComponentsDirty,
     isWorkflowDirty,
     isDirty,
@@ -274,4 +314,13 @@ export function useProjectEditor() {
     handleComponentsChange,
     handleEditorSectionChange,
   };
+}
+
+function readEditorSection(value: string | null): ProjectEditorSection {
+  return value === "workflows" ||
+    value === "code" ||
+    value === "settings" ||
+    value === "collaborators"
+    ? value
+    : "components";
 }

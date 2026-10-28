@@ -9,6 +9,10 @@ import urllib.request
 st.set_page_config(page_title='Support assistant', layout='wide')
 st.title('Support assistant')
 
+st.markdown("""<style>
+  .block-container { max-width: 730px; }
+</style>""", unsafe_allow_html=True)
+
 ui_overrides = {'labels': {}}
 _VDAB_MODEL_CHAT_MAX_HISTORY = 40
 _VDAB_MODEL_CHAT_MAX_CONTEXT_MESSAGES = 20

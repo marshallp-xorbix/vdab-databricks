@@ -9,6 +9,33 @@ import type { IWorkspaceServingEndpoint } from "../models/WorkspaceServingEndpoi
 afterEach(() => vi.unstubAllGlobals());
 
 describe("AiBuilderPanel", () => {
+  it("starts a fresh conversation and closes from the header controls", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    renderWithQueryClient(
+      <AiBuilderPanel
+        projectId="project-one"
+        version={4}
+        endpoints={endpoints}
+        components={[]}
+        workflow={{ version: 1, workflows: [] }}
+        customModulesSource=""
+        initialHistory={[{ role: "user", content: "Create a form" }]}
+        onClose={onClose}
+        onApplyProposal={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Create a form")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "New conversation" }));
+    expect(screen.queryByText("Create a form")).not.toBeInTheDocument();
+    expect(screen.getByText(/Describe the app you want to build/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close AI Builder" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("filters endpoint choices, shows progress and lets the user apply a proposal to the draft", async () => {
     const user = userEvent.setup();
     const onApplyProposal = vi.fn();

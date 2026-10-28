@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +11,9 @@ import {
 } from "../api/projectComponentsApi";
 import type { IProject } from "../models/Project";
 import type { IProjectComponent } from "../models/ProjectComponents";
+import { SettingsProvider } from "../context/SettingsContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import StandaloneAppLayout from "../layouts/StandaloneAppLayout";
 import ProjectEditorPage from "./ProjectEditorPage";
 
 vi.mock("../api/projectsApi", () => ({ getProject: vi.fn(), updateProject: vi.fn() }));
@@ -58,8 +61,8 @@ beforeEach(() => {
 describe("DashboardEmbed standalone project flow", () => {
   it("adds, configures, saves, previews, and reopens a current-workspace embed", async () => {
     const user = userEvent.setup();
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add dashboard embed" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Dashboard Embed" }));
 
     const urlInput = screen.getByLabelText("Published dashboard embed URL");
     await user.type(
@@ -69,7 +72,7 @@ describe("DashboardEmbed standalone project flow", () => {
     await user.clear(screen.getByLabelText("Height (px)"));
     await user.type(screen.getByLabelText("Height (px)"), "720");
     await user.click(screen.getByLabelText("Allow dashboard scrolling"));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     expect(savedComponents).toHaveLength(1);
@@ -85,12 +88,12 @@ describe("DashboardEmbed standalone project flow", () => {
       layout: null,
     });
 
-    await user.click(screen.getByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview")).toHaveTextContent("components.iframe");
+    await user.click(screen.getAllByRole("link", { name: "Code" })[0]!);
+    expect(await screen.findByLabelText("Generated app code")).toHaveTextContent("components.iframe");
     expect(generateProjectPreviewMock).toHaveBeenCalled();
 
     firstEditor.unmount();
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ selectFirstComponent: true });
     expect(await screen.findByLabelText("Published dashboard embed URL")).toHaveValue(
       "/embed/dashboardsv3/revenue_12?fullscreenWidget=page_1~chart_2",
     );
@@ -100,17 +103,25 @@ describe("DashboardEmbed standalone project flow", () => {
   }, 15_000);
 });
 
-function renderProjectEditorPage() {
+async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(
-    [{ path: "/apps/:appId", element: <ProjectEditorPage /> }],
+    [{ path: "/apps", element: <StandaloneAppLayout />, children: [{ path: ":appId", element: <ProjectEditorPage /> }, { index: true, element: <h1>Project list route</h1> }] }],
     { initialEntries: ["/apps/project-dashboard-embed"] },
   );
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+      <ThemeProvider>
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,  );
+  fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+  if (options.selectFirstComponent) {
+    (await screen.findByRole("button", { name: /^Select / })).click();
+  }
+  return rendered;
 }

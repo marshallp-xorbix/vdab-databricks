@@ -35,7 +35,7 @@ test("LineChartPreview_MatchesAcceptedPythonFixture", async () => {
   const expectedPython = await readFile(fixturePath, "utf8");
   const preview = new ProjectPreviewGenerator().generate(project, createDocument());
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   assert.equal(preview.previewOnly, true);
 });
 

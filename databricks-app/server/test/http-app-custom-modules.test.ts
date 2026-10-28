@@ -92,10 +92,10 @@ test("HttpApp_ProjectCustomModules_SaveReopenPreviewAndRejectSecrets", async () 
     assert.equal(previewResponse.status, 200);
     assert.deepEqual(
       (preview as { files: Array<{ path: string }> }).files.map((file) => file.path),
-      ["app.py", "custom_modules.py"],
+      ["app.py", "app.yaml", "custom_modules.py", "requirements.txt", ".streamlit/config.toml"],
     );
     assert.match(
-      (preview as { files: Array<{ path: string; content: string }> }).files[1]?.content ?? "",
+      (preview as { files: Array<{ path: string; content: string }> }).files[2]?.content ?? "",
       /def normalize_order\(ctx\):/,
     );
 

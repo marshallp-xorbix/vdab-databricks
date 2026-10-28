@@ -1,4 +1,5 @@
 import type { FC } from "react";
+import { getWorkspaceLakebaseTableColumns } from "../../api/lakebaseAutoscalingWorkspaceApi";
 import {
   databricksDataConnectorApi,
   type UnityCatalogTableDetails,
@@ -113,8 +114,7 @@ export const LakebaseAutoscalingTableSelectorEditor: FC<
     }
 
     if (
-      !workspaceConnectionId ||
-      workspaceConnectionId <= 0 ||
+      (import.meta.env.VITE_VDAB_RUNTIME !== "databricks" && (!workspaceConnectionId || workspaceConnectionId <= 0)) ||
       !next.projectId ||
       !next.branchId ||
       !next.database ||
@@ -126,8 +126,21 @@ export const LakebaseAutoscalingTableSelectorEditor: FC<
 
     let tableDetails: UnityCatalogTableDetails | null = null;
     try {
-      tableDetails =
-        await databricksDataConnectorApi.getLakebaseAutoscalingTableDetails(
+      tableDetails = import.meta.env.VITE_VDAB_RUNTIME === "databricks"
+        ? {
+            columns: (await getWorkspaceLakebaseTableColumns(
+              next.projectId,
+              next.branchId,
+              next.database,
+              next.schema,
+              next.table,
+            )).map((column) => ({
+              name: column.name,
+              type: column.type,
+              nullable: column.nullable,
+            })),
+          }
+        : await databricksDataConnectorApi.getLakebaseAutoscalingTableDetails(
           workspaceConnectionId,
           next.projectId,
           next.branchId,

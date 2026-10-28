@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 const isStandaloneDatabricksRuntime =
   process.env.VITE_VDAB_RUNTIME === "databricks";
+const STATIC_ASSET_RELEASE_SUFFIX = "vdab-static-v1";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,6 +13,20 @@ export default defineConfig({
   resolve: {
     alias: isStandaloneDatabricksRuntime
       ? [
+          {
+            find: /^\.\/(?:GuestAuthActions|SetupAuthActions|SignedInAccountRail)$/,
+            replacement: resolve(
+              import.meta.dirname,
+              "src/components/SaaSAuthControls.standalone.tsx",
+            ),
+          },
+          {
+            find: /^\.\/context\/SaaSRuntimeProviders$/,
+            replacement: resolve(
+              import.meta.dirname,
+              "src/context/SaaSRuntimeProviders.standalone.tsx",
+            ),
+          },
           {
             find: /^(?:\.\.\/|\.\/)*telemetry$/,
             replacement: resolve(
@@ -25,6 +40,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        entryFileNames: `assets/[name]-[hash]-${STATIC_ASSET_RELEASE_SUFFIX}.js`,
+        chunkFileNames: `assets/[name]-[hash]-${STATIC_ASSET_RELEASE_SUFFIX}.js`,
         manualChunks(id) {
           if (id.includes("@monaco-editor") || id.includes("monaco-editor")) {
             return "vendor-monaco";

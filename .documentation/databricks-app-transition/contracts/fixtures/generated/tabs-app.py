@@ -4,6 +4,10 @@ import html
 st.set_page_config(page_title='Preview O\'Brien', layout='wide')
 st.title('Preview O\'Brien')
 
+st.markdown("""<style>
+  .block-container { max-width: 730px; }
+</style>""", unsafe_allow_html=True)
+
 ui_overrides = {'labels': {}}
 
 vdab_maintabs = st.tabs(

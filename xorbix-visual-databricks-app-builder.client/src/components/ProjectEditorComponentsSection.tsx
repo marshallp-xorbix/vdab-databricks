@@ -1,70 +1,82 @@
+import type { ReactNode } from "react";
 import { Button } from "./ui/button";
 import ProjectComponentsEditor from "./ProjectComponentsEditor";
 import type { useProjectEditor } from "../hooks/useProjectEditor";
+import { PAGE_WIDTH_THEME_KEY } from "../utils/pageWidthDefaults";
 
 type ProjectEditorState = ReturnType<typeof useProjectEditor>;
 
 interface IProjectEditorComponentsSectionProps {
   isActive: boolean;
+  toolbar: ReactNode;
   editor: Pick<
     ProjectEditorState,
     | "componentsQuery"
+    | "registryQuery"
+    | "workflowQuery"
     | "replaceComponentsMutation"
     | "replaceWorkflowMutation"
     | "updateProjectMutation"
     | "components"
     | "workflow"
-    | "hasLoadedWorkflow"
     | "isMetadataDirty"
     | "isComponentsDirty"
     | "isWorkflowDirty"
     | "isCustomModulesDirty"
     | "componentsDocument"
     | "canEdit"
-    | "previewMutation"
     | "handleComponentsChange"
     | "setWorkflow"
-    | "handleSaveComponents"
-    | "handleReloadComponents"
-    | "handlePreview"
+    | "theme"
+    | "setTheme"
   >;
 }
 
 function ProjectEditorComponentsSection({
   isActive,
+  toolbar,
   editor,
 }: Readonly<IProjectEditorComponentsSectionProps>) {
   const {
     componentsQuery,
+    registryQuery,
     replaceComponentsMutation,
     replaceWorkflowMutation,
     updateProjectMutation,
     components,
     workflow,
-    hasLoadedWorkflow,
     isMetadataDirty,
     isComponentsDirty,
     isWorkflowDirty,
     isCustomModulesDirty,
     componentsDocument,
     canEdit,
-    previewMutation,
     handleComponentsChange,
     setWorkflow,
-    handleSaveComponents,
-    handleReloadComponents,
-    handlePreview,
   } = editor;
+  const saveError = replaceComponentsMutation.error;
 
   return (
-    <section hidden={!isActive}>
-      {canEdit && isComponentsDirty && (
-        <p role="status" aria-live="polite">
-          {replaceComponentsMutation.isError
-            ? "Automatic save failed. Use Save components to retry."
-            : isMetadataDirty || isWorkflowDirty || isCustomModulesDirty
-              ? "Component auto-save will resume after the other project changes are saved."
-              : "Component changes save automatically after you pause editing. Use Save components to save now."}
+    <section hidden={!isActive} className="h-full min-h-0">
+      {canEdit && replaceComponentsMutation.isError && (
+        <p role="alert" className="px-3 py-2 text-sm text-destructive">
+          Automatic save failed. {saveError instanceof Error
+            ? saveError.message
+            : "Use Save to retry."}
+        </p>
+      )}
+      {canEdit && isComponentsDirty && !replaceComponentsMutation.isError && (
+        <p role="status" aria-live="polite" className="px-3 py-2 text-sm">
+          {isMetadataDirty || isWorkflowDirty || isCustomModulesDirty
+            ? "Component auto-save will resume after the other project changes are saved."
+            : replaceComponentsMutation.isPending
+              ? "Saving components…"
+              : "Component changes save automatically after you pause editing. Use Save to save now."}
+        </p>
+      )}
+      {canEdit && !isComponentsDirty && !replaceComponentsMutation.isPending && (
+        <p role="status" aria-live="polite" className="sr-only">
+          Components saved.
         </p>
       )}
       {componentsQuery.isPending && (
@@ -93,8 +105,8 @@ function ProjectEditorComponentsSection({
       {componentsDocument && (
         <ProjectComponentsEditor
           components={components}
-          isDirty={isComponentsDirty}
-          isSaving={replaceComponentsMutation.isPending}
+          definitions={registryQuery.data?.components ?? []}
+          theme={editor.theme as Record<string, string>}
           isDisabled={
             !canEdit ||
             isMetadataDirty ||
@@ -102,30 +114,17 @@ function ProjectEditorComponentsSection({
             replaceWorkflowMutation.isPending ||
             updateProjectMutation.isPending
           }
-          isSaveDisabled={isWorkflowDirty || isCustomModulesDirty}
-          saveError={
-            replaceComponentsMutation.isError
-              ? replaceComponentsMutation.error instanceof Error
-                ? replaceComponentsMutation.error.message
-                : "The components could not be saved."
-              : null
-          }
-          preview={previewMutation.data ?? null}
-          isPreviewing={previewMutation.isPending}
-          previewError={
-            previewMutation.isError
-              ? previewMutation.error instanceof Error
-                ? previewMutation.error.message
-                : "The preview could not be generated."
-              : null
-          }
           workflow={workflow}
-          isWorkflowLoaded={hasLoadedWorkflow}
+          isWorkflowReady={editor.workflowQuery.isSuccess}
+          toolbar={toolbar}
           onComponentsChange={handleComponentsChange}
           onWorkflowChange={setWorkflow}
-          onSave={() => void handleSaveComponents()}
-          onReload={() => void handleReloadComponents()}
-          onPreview={() => void handlePreview()}
+          onPageWidthChange={(pageWidth) =>
+            editor.setTheme((currentTheme) => ({
+              ...currentTheme,
+              [PAGE_WIDTH_THEME_KEY]: String(pageWidth),
+            }))
+          }
         />
       )}
     </section>

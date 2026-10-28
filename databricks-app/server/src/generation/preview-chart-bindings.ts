@@ -236,11 +236,13 @@ function readColumns(value: unknown, invalidChart: ChartErrorFactory): ChartColu
 
   const columns = value.map((column): ChartColumn => {
     if (
-      !isRecord(column) || hasUnexpectedProperties(column, ["name", "type", "dataType"]) ||
+      !isRecord(column) ||
+      hasUnexpectedProperties(column, ["name", "type", "dataType", "nullable"]) ||
       typeof column.name !== "string" || column.name.length < 1 || column.name.length > 255 ||
       column.name.trim() !== column.name || /[\u0000-\u001f\u007f]/.test(column.name) ||
       (column.type !== undefined && column.type !== null && typeof column.type !== "string") ||
-      (column.dataType !== undefined && column.dataType !== null && typeof column.dataType !== "string")
+      (column.dataType !== undefined && column.dataType !== null && typeof column.dataType !== "string") ||
+      (column.nullable !== undefined && typeof column.nullable !== "boolean")
     ) {
       throw invalidChart("Chart column metadata is invalid.");
     }

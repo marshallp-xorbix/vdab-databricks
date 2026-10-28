@@ -150,6 +150,8 @@ test("ProjectRepository_UpdateIsWorkspaceAndAclScopedAndAuditedInOneTransaction"
     "Updated revenue",
     "Updated description",
     false,
+    false,
+    null,
   ]);
   assert.deepEqual(audit?.values?.slice(1, 7), [
     "workspace-a",

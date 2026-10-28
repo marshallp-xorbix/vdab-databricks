@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import type { DragEvent, FC } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { GripHorizontal } from "lucide-react";
 import { componentRendererFactory } from "../../renderers";
@@ -29,6 +29,10 @@ export interface AppComponentProps {
   sortableHandle?: SortableHandleBindings;
   disableInternalDrag?: boolean;
   workspaceUrl?: string | null;
+  onCanvasDragStart?: (componentId: string, event: DragEvent<HTMLElement>) => void;
+  onCanvasDragEnd?: () => void;
+  onCanvasDragOver?: (event: DragEvent<HTMLElement>) => void;
+  onCanvasDrop?: (componentId: string, event: DragEvent<HTMLElement>) => void;
 }
 
 export const AppComponent: FC<AppComponentProps> = ({
@@ -45,6 +49,10 @@ export const AppComponent: FC<AppComponentProps> = ({
   sortableHandle,
   disableInternalDrag = false,
   workspaceUrl = null,
+  onCanvasDragStart,
+  onCanvasDragEnd,
+  onCanvasDragOver,
+  onCanvasDrop,
 }) => {
   const dragData: ComponentDragData = {
     dragType: "existing",
@@ -116,6 +124,10 @@ export const AppComponent: FC<AppComponentProps> = ({
                 sortableHandle={childRenderOptions?.sortableHandle}
                 disableInternalDrag={childRenderOptions?.disableInternalDrag}
                 workspaceUrl={workspaceUrl}
+                onCanvasDragStart={onCanvasDragStart}
+                onCanvasDragEnd={onCanvasDragEnd}
+                onCanvasDragOver={onCanvasDragOver}
+                onCanvasDrop={onCanvasDrop}
               />
             );
           }}
@@ -135,6 +147,11 @@ export const AppComponent: FC<AppComponentProps> = ({
   return (
     <div
       ref={setNodeRef}
+      draggable={Boolean(onCanvasDragStart)}
+      onDragStart={(event) => onCanvasDragStart?.(component.id, event)}
+      onDragEnd={onCanvasDragEnd}
+      onDragOver={onCanvasDragOver}
+      onDrop={(event) => onCanvasDrop?.(component.id, event)}
       className={`relative transition-all hover:[&>_.appcomponent-controls]:opacity-100 hover:[&>_.appcomponent-controls]:pointer-events-auto ${
         isHandleDragging ? "opacity-45" : ""
       } ${isSelected ? "ring-2 ring-primary ring-offset-2" : ""}`}
@@ -142,7 +159,7 @@ export const AppComponent: FC<AppComponentProps> = ({
       {/* Drag handle (notch) - anchored to the component bounding box */}
       <button
         type="button"
-        aria-label="Drag component"
+        aria-label={`Select ${humanizeComponentType(component.type)}: ${component.codeName || component.id}`}
         className={`appcomponent-controls absolute left-1/2 top-0 z-30 inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded border border-border bg-card/90 shadow-sm transition-opacity ${
           isSelected || isHandleDragging
             ? "opacity-100"
@@ -150,6 +167,10 @@ export const AppComponent: FC<AppComponentProps> = ({
         }`}
         onMouseDown={(e) => {
           // Ensure selection happens before drag begins.
+          e.stopPropagation();
+          onSelect(component.id);
+        }}
+        onClick={(e) => {
           e.stopPropagation();
           onSelect(component.id);
         }}

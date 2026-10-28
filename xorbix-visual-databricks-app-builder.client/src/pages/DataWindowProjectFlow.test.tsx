@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +16,9 @@ import {
 } from "../api/workspaceResourcesApi";
 import type { IProject } from "../models/Project";
 import type { IProjectComponent } from "../models/ProjectComponents";
+import { SettingsProvider } from "../context/SettingsContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import StandaloneAppLayout from "../layouts/StandaloneAppLayout";
 import ProjectEditorPage from "./ProjectEditorPage";
 
 vi.mock("../api/projectsApi", () => ({
@@ -102,10 +105,10 @@ beforeEach(() => {
 describe("DataWindow standalone project flow", () => {
   it("adds, binds, saves, previews, and reopens a Unity Catalog table", async () => {
     const user = userEvent.setup();
-    const firstEditor = renderProjectEditorPage();
+    const firstEditor = await renderProjectEditorPage();
 
     await user.click(
-      await screen.findByRole("button", { name: "Add data window" }),
+      await screen.findByRole("button", { name: "Add Data Window" }),
     );
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Top customers");
@@ -124,7 +127,7 @@ describe("DataWindow standalone project flow", () => {
       screen.getByLabelText("Maximum rows (0 means no explicit limit)"),
       "50",
     );
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(replaceProjectComponentsMock).toHaveBeenCalled(),
@@ -132,6 +135,7 @@ describe("DataWindow standalone project flow", () => {
     expect(savedComponents).toHaveLength(1);
     expect(savedComponents[0]).toMatchObject({
       type: "DataWindow",
+      layout: null,
       codeName: "dataWindow1",
       properties: { label: "Top customers", maxRows: 50 },
       bindings: {
@@ -157,15 +161,13 @@ describe("DataWindow standalone project flow", () => {
       },
     });
 
-    await user.click(
-      await screen.findByRole("button", { name: "Generate preview" }),
-    );
+    await user.click(screen.getAllByRole("link", { name: "Code" })[0]!);
     expect(
-      await screen.findByLabelText("Generated Python preview"),
+      await screen.findByLabelText("Generated app code"),
     ).toHaveTextContent("st.dataframe");
 
     firstEditor.unmount();
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ selectFirstComponent: true });
     expect(await screen.findByLabelText("Label")).toHaveValue("Top customers");
     expect(screen.getByLabelText("Current-workspace catalog")).toHaveValue(
       "main",
@@ -176,10 +178,10 @@ describe("DataWindow standalone project flow", () => {
 
   it("adds, configures a key, saves, previews, and reopens an editable Unity Catalog table", async () => {
     const user = userEvent.setup();
-    const firstEditor = renderProjectEditorPage();
+    const firstEditor = await renderProjectEditorPage();
 
     await user.click(
-      await screen.findByRole("button", { name: "Add editable data window" }),
+      await screen.findByRole("button", { name: "Add Editable Data Window" }),
     );
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Editable customers");
@@ -199,7 +201,7 @@ describe("DataWindow standalone project flow", () => {
       screen.getByText(/checks the whole table for duplicate or null keys/i),
     ).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Row editing"), "dynamic");
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(replaceProjectComponentsMock).toHaveBeenCalled(),
@@ -207,6 +209,7 @@ describe("DataWindow standalone project flow", () => {
     expect(savedComponents).toHaveLength(1);
     expect(savedComponents[0]).toMatchObject({
       type: "EditableDataWindow",
+      layout: null,
       properties: {
         label: "Editable customers",
         numRows: "dynamic",
@@ -235,15 +238,13 @@ describe("DataWindow standalone project flow", () => {
       previewOnly: true,
       files: [{ path: "app.py", content: "st.data_editor(customers)" }],
     });
-    await user.click(
-      await screen.findByRole("button", { name: "Generate preview" }),
-    );
+    await user.click(screen.getAllByRole("link", { name: "Code" })[0]!);
     expect(
-      await screen.findByLabelText("Generated Python preview"),
+      await screen.findByLabelText("Generated app code"),
     ).toHaveTextContent("st.data_editor");
 
     firstEditor.unmount();
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ selectFirstComponent: true });
     expect(await screen.findByLabelText("Label")).toHaveValue(
       "Editable customers",
     );
@@ -253,18 +254,26 @@ describe("DataWindow standalone project flow", () => {
     expect(screen.getByLabelText("Row editing")).toHaveValue("dynamic");
   }, 20_000);
 });
-function renderProjectEditorPage() {
+async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(
-    [{ path: "/apps/:appId", element: <ProjectEditorPage /> }],
+    [{ path: "/apps", element: <StandaloneAppLayout />, children: [{ path: ":appId", element: <ProjectEditorPage /> }, { index: true, element: <h1>Project list route</h1> }] }],
     { initialEntries: ["/apps/project-data-window"] },
   );
 
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+      <ThemeProvider>
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,  );
+  fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+  if (options.selectFirstComponent) {
+    (await screen.findByRole("button", { name: /^Select / })).click();
+  }
+  return rendered;
 }

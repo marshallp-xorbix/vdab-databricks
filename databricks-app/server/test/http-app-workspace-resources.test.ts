@@ -251,6 +251,9 @@ test("HttpApp_WorkspaceAppsList_RejectsLongPageTokenBeforeAdapter", async () => 
         authenticationMode: "local-test",
       };
     },
+    getApp: async (_caller, name) => ({ name, description: null, appState: "UNAVAILABLE", computeState: "STOPPED" }),
+    startApp: async (_caller, name) => ({ name, description: null, appState: "RUNNING", computeState: "ACTIVE" }),
+    stopApp: async (_caller, name) => ({ name, description: null, appState: "UNAVAILABLE", computeState: "STOPPED" }),
   };
   const appHarness = await createAppHarness({ workspaceAppsClient });
 

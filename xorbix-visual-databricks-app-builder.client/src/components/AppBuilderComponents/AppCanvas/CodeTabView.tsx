@@ -49,6 +49,8 @@ interface CodeTabViewProps {
   /** When true (app record still loading), show preview file body until `customModulesCode` is populated from the API. */
   appMetaLoading?: boolean;
   previewErrors?: string[];
+  /** Disables custom module edits for standalone read-only project members. */
+  readOnly?: boolean;
 }
 
 const CodeTabView: FC<CodeTabViewProps> = ({
@@ -63,6 +65,7 @@ const CodeTabView: FC<CodeTabViewProps> = ({
   prebuiltModulesLibrarySource,
   appMetaLoading = false,
   previewErrors = [],
+  readOnly = false,
 }) => {
   const { theme } = useTheme();
   const codeListScrollRef = useRef<HTMLDivElement | null>(null);
@@ -167,7 +170,7 @@ const CodeTabView: FC<CodeTabViewProps> = ({
       : (selectedFile?.content ?? "");
 
   const editorReadOnly =
-    !isCustomModulesEditable || appMetaLoading || isPrebuiltLibrarySelected;
+    readOnly || !isCustomModulesEditable || appMetaLoading || isPrebuiltLibrarySelected;
 
   const showEditor =
     Boolean(selectedFile) || isPrebuiltLibrarySelected;
@@ -375,6 +378,9 @@ const CodeTabView: FC<CodeTabViewProps> = ({
                     onCustomModulesCodeChange(next ?? "");
                   }}
                   options={{
+                    ariaLabel: isCustomModulesEditable
+                      ? "Custom Python module source"
+                      : "Generated app code",
                     readOnly: editorReadOnly,
                     automaticLayout: true,
                     minimap: { enabled: false },

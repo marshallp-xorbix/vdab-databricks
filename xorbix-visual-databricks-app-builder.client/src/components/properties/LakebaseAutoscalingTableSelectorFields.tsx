@@ -5,6 +5,12 @@ import {
   type UnityCatalogTable,
 } from "../../providers/DatabricksDataConnectorApi";
 import {
+  getWorkspaceLakebaseBranchOptions,
+  listWorkspaceLakebaseAutoscalingSelector,
+  resolveWorkspaceLakebaseMetadataSelection,
+} from "../../api/lakebaseAutoscalingWorkspaceApi";
+import { listWorkspaceLakebaseSchemas, listWorkspaceLakebaseTables } from "../../api/workspaceLakebaseResourcesApi";
+import {
   formatAutoscalingBranchLabel,
   getAutoscalingProjectPickerLabel,
   getPostgresDatabaseNameForWirePick,
@@ -35,6 +41,8 @@ export interface LakebaseAutoscalingTableSelectorValue {
   schema?: string;
   table?: string;
 }
+
+const IS_DATABRICKS_RUNTIME = import.meta.env.VITE_VDAB_RUNTIME === "databricks";
 
 interface LakebaseAutoscalingTableSelectorFieldsProps {
   value: LakebaseAutoscalingTableSelectorValue;
@@ -72,7 +80,7 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
   const [tableLoadAttempt, setTableLoadAttempt] = useState(0);
 
   const workspaceMissing =
-    !workspaceConnectionId || workspaceConnectionId <= 0
+    !IS_DATABRICKS_RUNTIME && (!workspaceConnectionId || workspaceConnectionId <= 0)
       ? WORKSPACE_CONNECTION_MISSING_MESSAGE
       : null;
 
@@ -88,9 +96,9 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
     setLoadingSelector(true);
     setSelectorError(null);
     try {
-      const raw = await databricksDataConnectorApi.getLakebaseAutoscalingSelector(
-        workspaceConnectionId!,
-      );
+      const raw = IS_DATABRICKS_RUNTIME
+        ? await listWorkspaceLakebaseAutoscalingSelector()
+        : await databricksDataConnectorApi.getLakebaseAutoscalingSelector(workspaceConnectionId!);
       setProjects(normalizeLakebaseAutoscalingSelector(raw).projects);
     } catch (err) {
       console.error(
@@ -131,7 +139,7 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
         table: undefined,
       });
     }
-  }, [projects, value.projectId, onChange]);
+  }, [projects, value, onChange]);
 
   const selectedProject = projects.find((p) => p.projectId === value.projectId);
   const branchOptions = selectedProject?.branches ?? [];
@@ -168,6 +176,13 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
 
     return legacyDatabaseName.trim();
   }, [legacyDatabaseName, value.catalog, value.database]);
+
+  const selectedDatabaseResourceId = useMemo(() => {
+    if (!selectedBranch || !selectedDatabaseName) {
+      return "";
+    }
+    return getWireDatabaseIdForLogicalName(selectedBranch, selectedDatabaseName).trim();
+  }, [selectedBranch, selectedDatabaseName]);
 
   const databasePickOptions = useMemo(
     () =>
@@ -212,10 +227,8 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
     });
   }, [
     selectedDatabaseName,
-    value.database,
-    value.catalog,
-    onChange,
     value,
+    onChange,
   ]);
 
   /**
@@ -414,7 +427,7 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
     const run = async () => {
       if (
         workspaceMissing ||
-        !workspaceConnectionId ||
+        (!IS_DATABRICKS_RUNTIME && !workspaceConnectionId) ||
         !value.projectId ||
         !value.branchId
       ) {
@@ -429,13 +442,29 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
       setLoadingDatabases(true);
       setDatabaseLoadError(null);
       try {
-        const data = await databricksDataConnectorApi.getLakebaseAutoscalingDatabases(
-          workspaceConnectionId,
-          value.projectId,
-          value.branchId,
-        );
+        const selectedBranch = projects
+          .find((project) => project.projectId === value.projectId)
+          ?.branches.find((branch) => branch.branchId === value.branchId);
+        const options = IS_DATABRICKS_RUNTIME && selectedBranch
+          ? await getWorkspaceLakebaseBranchOptions(value.projectId, selectedBranch)
+          : null;
+        const data = options
+          ? options.map((option) => option.postgresDatabaseName ?? "")
+          : await databricksDataConnectorApi.getLakebaseAutoscalingDatabases(
+              workspaceConnectionId!, value.projectId, value.branchId,
+            );
         if (active) {
           setDatabases(data || []);
+          if (options && selectedBranch && selectedBranch.endpoints.length !== options.length) {
+            setProjects((current) => current.map((project) => project.projectId !== value.projectId
+              ? project
+              : {
+                  ...project,
+                  branches: project.branches.map((branch) => branch.branchId === value.branchId
+                    ? { ...branch, endpoints: options }
+                    : branch),
+                }));
+          }
         }
       } catch (err) {
         if (active) {
@@ -454,6 +483,7 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
       active = false;
     };
   }, [
+    projects,
     workspaceConnectionId,
     workspaceMissing,
     value.projectId,
@@ -550,13 +580,27 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
       setLoadingSchemas(true);
       setSchemaLoadError(null);
       try {
-        const data = await databricksDataConnectorApi.getLakebaseAutoscalingSchemas(
-          workspaceConnectionId!,
-          value.projectId,
-          value.branchId,
-          legacyDatabaseId,
-          selectedDatabaseName,
-        );
+        let data: string[];
+        if (IS_DATABRICKS_RUNTIME) {
+          const metadataSelection = await resolveWorkspaceLakebaseMetadataSelection(
+            value.projectId,
+            value.branchId,
+            selectedDatabaseResourceId,
+          );
+          if (!metadataSelection) {
+            throw new Error("No readable Lakebase database endpoint is available for this selection.");
+          }
+          data = (await listWorkspaceLakebaseSchemas({
+              projectId: value.projectId,
+              branchId: value.branchId,
+              endpointId: metadataSelection.endpointId,
+              databaseName: metadataSelection.databaseName,
+            })).items.map((schema) => schema.name);
+        } else {
+          data = await databricksDataConnectorApi.getLakebaseAutoscalingSchemas(
+              workspaceConnectionId!, value.projectId, value.branchId, legacyDatabaseId, selectedDatabaseName,
+            );
+        }
         if (active) {
           setSchemas(data || []);
         }
@@ -581,6 +625,7 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
     value.projectId,
     value.branchId,
     legacyDatabaseId,
+    selectedDatabaseResourceId,
     selectedDatabaseName,
     schemaLoadAttempt,
   ]);
@@ -605,14 +650,32 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
       setLoadingTables(true);
       setTableLoadError(null);
       try {
-        const data = await databricksDataConnectorApi.getLakebaseAutoscalingTables(
-          workspaceConnectionId!,
-          value.projectId,
-          value.branchId,
-          legacyDatabaseId,
-          selectedDatabaseName,
-          schema,
-        );
+        let data: UnityCatalogTable[];
+        if (IS_DATABRICKS_RUNTIME) {
+          const metadataSelection = await resolveWorkspaceLakebaseMetadataSelection(
+            value.projectId,
+            value.branchId,
+            selectedDatabaseResourceId,
+          );
+          if (!metadataSelection) {
+            throw new Error("No readable Lakebase database endpoint is available for this selection.");
+          }
+          data = (await listWorkspaceLakebaseTables({
+              projectId: value.projectId,
+              branchId: value.branchId,
+              endpointId: metadataSelection.endpointId,
+              databaseName: metadataSelection.databaseName,
+            }, schema)).items.map((table) => ({
+              catalog: metadataSelection.databaseName,
+              schema,
+              table: table.name,
+              fullName: `${metadataSelection.databaseName}.${schema}.${table.name}`,
+            }));
+        } else {
+          data = await databricksDataConnectorApi.getLakebaseAutoscalingTables(
+              workspaceConnectionId!, value.projectId, value.branchId, legacyDatabaseId, selectedDatabaseName, schema,
+            );
+        }
         if (active) {
           setTables(data || []);
         }
@@ -637,6 +700,7 @@ export const LakebaseAutoscalingTableSelectorFields: FC<
     value.projectId,
     value.branchId,
     legacyDatabaseId,
+    selectedDatabaseResourceId,
     selectedDatabaseName,
     value.schema,
     tableLoadAttempt,

@@ -59,12 +59,17 @@ test("ProjectPreviewGenerator_TextInputMatchesAcceptedPythonFixture", async () =
 
   const preview = generator.generate(project, document);
 
-  assert.deepEqual(preview, {
-    projectId: "project-preview",
-    version: 4,
-    previewOnly: true,
-    files: [{ path: "app.py", content: expectedPython }],
-  });
+  assert.equal(preview.projectId, "project-preview");
+  assert.equal(preview.version, 4);
+  assert.equal(preview.previewOnly, true);
+  assert.equal(preview.files.find((file) => file.path === "app.py")?.content, expectedPython);
+  assert.deepEqual(preview.files.map((file) => file.path), [
+    "app.py",
+    "app.yaml",
+    "custom_modules.py",
+    "requirements.txt",
+    ".streamlit/config.toml",
+  ]);
 });
 
 test("ProjectPreviewGenerator_ButtonMatchesAcceptedPythonFixture", async () => {
@@ -76,10 +81,37 @@ test("ProjectPreviewGenerator_ButtonMatchesAcceptedPythonFixture", async () => {
   const expectedPython = await readFile(fixturePath, "utf8");
   const preview = generator.generate(project, createDocument([createButton()]));
 
-  assert.deepEqual(preview.files, [
-    { path: "app.py", content: expectedPython },
-  ]);
+  assert.equal(preview.files.find((file) => file.path === "app.py")?.content, expectedPython);
   assert.equal(preview.previewOnly, true);
+});
+
+test("ProjectPreviewGenerator_EmitsStreamlitThemeConfiguration", () => {
+  const generator = new ProjectPreviewGenerator();
+  const themedProject = {
+    ...project,
+    theme: {
+      primaryColor: "#123456",
+      backgroundColor: "invalid",
+      textColor: "#ABCDEF",
+    },
+  } satisfies ProjectSummary;
+
+  const preview = generator.generate(themedProject, createDocument([]));
+
+  assert.deepEqual(preview.files.find((file) => file.path === ".streamlit/config.toml"), {
+    path: ".streamlit/config.toml",
+    content: '[theme]\nprimaryColor = "#123456"\nbackgroundColor = "#252526"\nsecondaryBackgroundColor = "#2D2D30"\ntextColor = "#ABCDEF"\n',
+  });
+});
+
+test("ProjectPreviewGenerator_EmitsSavedPageWidthInGeneratedStreamlitSource", () => {
+  const preview = new ProjectPreviewGenerator().generate(
+    { ...project, theme: { pageWidth: 1120 } },
+    createDocument([]),
+  );
+  const source = preview.files.find((file) => file.path === "app.py")?.content ?? "";
+
+  assert.match(source, /\.block-container \{ max-width: 1120px; \}/);
 });
 
 test("ProjectPreviewGenerator_AddsApprovedAsyncpgOnlyForLakebaseBackedOutput", () => {
@@ -119,10 +151,10 @@ test("ProjectPreviewGenerator_AddsApprovedAsyncpgOnlyForLakebaseBackedOutput", (
 
   assert.deepEqual(
     lakebasePreview.files.map((file) => file.path),
-    ["app.py", "requirements.txt", ASYNC_PG_LICENSE_FILE_PATH],
+    ["app.py", "app.yaml", "custom_modules.py", "requirements.txt", ".streamlit/config.toml", ASYNC_PG_LICENSE_FILE_PATH],
   );
-  assert.equal(lakebasePreview.files[1]?.content, "asyncpg==0.32.0\n");
-  assert.equal(lakebasePreview.files[2]?.content, ASYNC_PG_LICENSE_TEXT);
+  assert.equal(lakebasePreview.files.find((file) => file.path === "requirements.txt")?.content, "asyncpg==0.32.0\n");
+  assert.equal(lakebasePreview.files.find((file) => file.path === ASYNC_PG_LICENSE_FILE_PATH)?.content, ASYNC_PG_LICENSE_TEXT);
   assert.match(
     lakebasePreview.files[0]?.content ?? "",
     /source_kind='lakebaseAutoscaling'/,
@@ -133,7 +165,7 @@ test("ProjectPreviewGenerator_AddsApprovedAsyncpgOnlyForLakebaseBackedOutput", (
   );
   assert.deepEqual(
     unityCatalogPreview.files.map((file) => file.path),
-    ["app.py"],
+    ["app.py", "app.yaml", "custom_modules.py", "requirements.txt", ".streamlit/config.toml"],
   );
   assert.doesNotMatch(
     unityCatalogPreview.files[0]?.content ?? "",
@@ -148,9 +180,9 @@ test("ProjectPreviewGenerator_UsesViewerAuthorizedDatabaseInstanceCredentialsFor
       createDataWindow({ bindings: createProvisionedLakebaseBinding() }),
     ]),
   );
-  const source = preview.files[0]?.content ?? "";
+  const source = preview.files.find((file) => file.path === "app.py")?.content ?? "";
 
-  assert.equal(preview.files[1]?.content, "asyncpg==0.32.0\n");
+  assert.equal(preview.files.find((file) => file.path === "requirements.txt")?.content, "asyncpg==0.32.0\n");
   assert.match(
     source,
     /_vdab_lakebase_provisioned_query_df\('public', 'customers', 100/,

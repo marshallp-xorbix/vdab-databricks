@@ -37,6 +37,7 @@ export function generateProjectSource(
   projectName: string,
   components: ProjectComponent[],
   workflow: ProjectWorkflowDefinition = { version: 1, workflows: [] },
+  pageWidth = 730,
 ): string {
   const imports = new Set(["import streamlit as st"]);
   const usesLakebase = projectUsesLakebase(components, workflow);
@@ -146,6 +147,10 @@ export function generateProjectSource(
     "",
     `st.set_page_config(page_title=${pythonString(projectName)}, layout='wide')`,
     `st.title(${pythonString(projectName)})`,
+    "",
+    'st.markdown("""<style>',
+    `  .block-container { max-width: ${pageWidth}px; }`,
+    '</style>""", unsafe_allow_html=True)',
     "",
     workflow.workflows.length > 0
       ? "ui_overrides = st.session_state.setdefault('ui_overrides', {'labels': {}})"

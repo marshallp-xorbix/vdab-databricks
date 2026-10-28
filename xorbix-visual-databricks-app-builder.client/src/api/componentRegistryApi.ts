@@ -2,6 +2,7 @@ import {
   ComponentRegistry,
   type ComponentCategory,
   type ComponentBindingType,
+  type IBindingSchema,
   type IComponentDefinition,
   type IComponentRegistry,
 } from "../models/ComponentRegistry";
@@ -51,7 +52,34 @@ function parseRegistry(value: unknown): IComponentRegistry {
     throw new Error("The component registry returned duplicate component types.");
   }
 
-  return new ComponentRegistry({ version: 1, components });
+  const bindingSchemas = value.bindingSchemas.map(parseBindingSchema);
+  const bindingTypes = new Set(bindingSchemas.map((schema) => schema.type));
+  if (bindingTypes.size !== bindingSchemas.length) {
+    throw new Error("The component registry returned duplicate binding types.");
+  }
+
+  return new ComponentRegistry({ version: 1, components, bindingSchemas });
+}
+
+function parseBindingSchema(value: unknown): IBindingSchema {
+  if (
+    !isRecord(value) ||
+    !isOneOf(value.type, COMPONENT_BINDING_TYPES) ||
+    typeof value.label !== "string" ||
+    value.label.trim().length === 0 ||
+    typeof value.editorType !== "string" ||
+    value.editorType.trim().length === 0 ||
+    !isJsonObject(value.defaultConfig)
+  ) {
+    throw new Error("The component registry returned an invalid binding schema.");
+  }
+
+  return {
+    type: value.type,
+    label: value.label,
+    editorType: value.editorType,
+    defaultConfig: value.defaultConfig,
+  };
 }
 
 function parseDefinition(value: unknown): IComponentDefinition {

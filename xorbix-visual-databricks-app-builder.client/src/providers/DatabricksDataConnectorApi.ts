@@ -75,6 +75,8 @@ export interface LakebaseAutoscalingEndpointOption {
   suspendTimeoutDuration?: string | null;
   effectiveStatus?: string | null;
   selectorDisplay?: LakebaseAutoscalingSelectorDisplay;
+  /** Read-write endpoint ID used only for caller-scoped metadata reads. */
+  metadataEndpointId?: string;
 }
 
 export interface LakebaseAutoscalingBranchOption {

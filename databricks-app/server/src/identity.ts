@@ -1,6 +1,7 @@
 import type { IncomingMessage } from "node:http";
 import type { CallerIdentity } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
+import { normalizeWorkspaceHost } from "./workspace-host.ts";
 
 const AUTHENTICATION_MODE_LOCAL_TEST = "local-test";
 const AUTHENTICATION_MODE_DATABRICKS = "databricks";
@@ -127,23 +128,6 @@ function requireWorkspaceHost(workspaceHost: string | undefined): void {
   }
 
   normalizeWorkspaceHost(workspaceHost);
-}
-
-function normalizeWorkspaceHost(workspaceHost: string): string {
-  const parsedHost = new URL(workspaceHost);
-
-  if (
-    parsedHost.protocol !== "https:" ||
-    parsedHost.username.length > 0 ||
-    parsedHost.password.length > 0 ||
-    parsedHost.pathname !== "/" ||
-    parsedHost.search.length > 0 ||
-    parsedHost.hash.length > 0
-  ) {
-    throw new Error("DATABRICKS_HOST must be an HTTPS workspace origin.");
-  }
-
-  return parsedHost.origin;
 }
 
 function readSingleHeader(

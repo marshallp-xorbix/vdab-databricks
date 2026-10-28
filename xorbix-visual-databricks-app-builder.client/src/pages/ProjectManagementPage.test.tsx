@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import type { IProject } from "../models/Project";
 import {
@@ -71,12 +72,12 @@ describe("ProjectManagementPage", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading projects");
     expect(
-      await screen.findByRole("heading", { name: "No projects yet" }),
+      await screen.findByRole("heading", { name: "No apps yet" }),
     ).toBeInTheDocument();
   });
 
   it("lists projects and opens the selected project", async () => {
-    listProjectsMock.mockResolvedValueOnce({ items: [project] });
+    listProjectsMock.mockResolvedValue({ items: [project] });
 
     const router = renderProjectManagementPage();
     fireEvent.click(
@@ -94,13 +95,20 @@ describe("ProjectManagementPage", () => {
     createProjectMock.mockResolvedValue(project);
 
     const router = renderProjectManagementPage();
-    fireEvent.change(screen.getByLabelText("Name"), {
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Create New App" }),
+    );
+    fireEvent.change(screen.getByLabelText("App name"), {
       target: { value: "Revenue dashboard" },
     });
-    fireEvent.change(screen.getByLabelText("Description"), {
-      target: { value: "Finance team" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
+    fireEvent.change(
+      screen.getByLabelText("Description", { selector: "textarea" }),
+      {
+        target: { value: "Finance team" },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create app" }));
 
     await waitFor(() => expect(createProjectMock).toHaveBeenCalled());
     expect(createProjectMock.mock.calls[0]?.[0]).toEqual({
@@ -144,6 +152,12 @@ describe("ProjectManagementPage", () => {
     });
 
     renderProjectManagementPage();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Project import and export actions" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Import a standalone project…" }),
+    );
     fireEvent.change(await screen.findByLabelText("Project JSON file"), {
       target: {
         files: [
@@ -178,6 +192,12 @@ describe("ProjectManagementPage", () => {
     Object.defineProperty(oversizedFile, "size", { value: 1_048_577 });
 
     renderProjectManagementPage();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Project import and export actions" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Import a standalone project…" }),
+    );
     const importInput = await screen.findByLabelText("Project JSON file");
     fireEvent.change(importInput, { target: { files: [oversizedFile] } });
 
@@ -194,6 +214,7 @@ describe("ProjectManagementPage", () => {
   });
 
   it("exports a project through the standalone portability endpoint", async () => {
+    const user = userEvent.setup();
     listProjectsMock.mockResolvedValueOnce({ items: [project] });
     exportProjectMock.mockResolvedValue({
       format: "vdab-project",
@@ -213,9 +234,12 @@ describe("ProjectManagementPage", () => {
     );
 
     renderProjectManagementPage();
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Export project" }),
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Actions for Revenue dashboard",
+      }),
     );
+    await user.click(await screen.findByRole("menuitem", { name: "Export project" }));
 
     await waitFor(() =>
       expect(exportProjectMock.mock.calls[0]?.[0]).toBe(project.id),
@@ -223,15 +247,14 @@ describe("ProjectManagementPage", () => {
   });
 
   it("confirms owner deletion and refreshes the visible project list", async () => {
-    listProjectsMock
-      .mockResolvedValueOnce({ items: [project] })
-      .mockResolvedValueOnce({ items: [] });
+    listProjectsMock.mockResolvedValue({ items: [project] });
     deleteProjectMock.mockResolvedValue(undefined);
 
     renderProjectManagementPage();
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Delete project" }),
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Actions for Revenue dashboard" }),
     );
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete project" }));
 
     expect(screen.getByRole("dialog")).toHaveTextContent(
       "cannot be undone in the app",
@@ -246,13 +269,11 @@ describe("ProjectManagementPage", () => {
     await waitFor(() =>
       expect(deleteProjectMock.mock.calls[0]?.[0]).toBe(project.id),
     );
-    expect(
-      await screen.findByRole("heading", { name: "No projects yet" }),
-    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("does not offer project deletion to an editor", async () => {
-    listProjectsMock.mockResolvedValueOnce({
+    listProjectsMock.mockResolvedValue({
       items: [{ ...project, callerRole: "editor" }],
     });
 

@@ -25,7 +25,7 @@ import type {
   ModalChildComponentType,
 } from "../utils/projectComponentFactory";
 
-interface IProjectComponentPropertiesEditorProps {
+export interface IProjectComponentPropertiesEditorProps {
   component: IProjectComponent;
   components: IProjectComponent[];
   isDisabled: boolean;

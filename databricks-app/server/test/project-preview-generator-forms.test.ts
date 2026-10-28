@@ -113,7 +113,7 @@ test("ProjectPreviewGenerator_FormMatchesAcceptedPythonFixture", async () => {
     createDocument([form, input, checkbox]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   assert.match(expectedPython, /st\.form_submit_button\('Save O\\'Brien'\)/);
   assert.ok(expectedPython.indexOf("st.text_input(") < expectedPython.indexOf("st.checkbox("));
 });
@@ -207,7 +207,7 @@ test("ProjectPreviewGenerator_ModalMatchesAcceptedPythonFixtureWithNestedLayout"
     createDocument([modal, details, note]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   assert.match(expectedPython, /def show_reviewDialog\(\):/);
   assert.match(expectedPython, /position='center', dismissible=True/);
   assert.match(expectedPython, /st\.button\('Close', key='vdab_reviewdialog_close'\)/);

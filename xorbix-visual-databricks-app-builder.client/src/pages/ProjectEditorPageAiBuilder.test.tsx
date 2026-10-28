@@ -10,6 +10,7 @@ import {
   replaceProjectWorkflowMock,
   getProjectCustomModulesMock,
   replaceProjectCustomModulesMock,
+  generateProjectPreviewMock,
   listWorkspaceServingEndpointsMock,
   project,
   workflowDocument,
@@ -24,8 +25,24 @@ afterEach(resetProjectEditorTestState);
 beforeEach(initializeProjectEditorTestState);
 
 describe("ProjectEditorPage AI Builder drafts", () => {
+  it("opens the AI Builder directly from the shared builder Prompt action", async () => {
+    const user = userEvent.setup();
+    await renderProjectEditorPage();
+
+    await user.click(await screen.findByRole("link", { name: "Prompt" }));
+
+    expect(await screen.findByRole("region", { name: "AI Builder" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "What would you like to change?" })).toBeInTheDocument();
+  });
+
   it("applies AI proposals to the editable aggregates and preserves them across editor tabs", async () => {
     const user = userEvent.setup();
+    generateProjectPreviewMock.mockResolvedValue({
+      projectId: project.id,
+      version: 1,
+      previewOnly: true,
+      files: [{ path: "app.py", content: "import streamlit as st\n" }],
+    });
     const proposedComponent = {
       key: "ai-save-button",
       type: "Button" as const,
@@ -78,15 +95,19 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       authenticationMode: "databricks",
     });
 
-    renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Workflows" }));
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("link", { name: "Workflow" }));
+    await user.click(screen.getByRole("link", { name: "Prompt" }));
     const endpointSelect = await screen.findByRole("combobox", {
       name: "Serving endpoint",
     });
     await waitFor(() => expect(endpointSelect).toHaveValue("builder-model"));
+    await user.click(screen.getByRole("link", { name: "Settings" }));
     await waitFor(() =>
       expect(screen.getByLabelText("Name")).toHaveValue(project.name),
     );
+    await user.click(screen.getByRole("link", { name: "Workflow" }));
+    await user.click(screen.getByRole("link", { name: "Prompt" }));
     const promptInput = screen.getByRole("textbox", {
       name: "What would you like to change?",
     });
@@ -106,27 +127,30 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       screen.getByRole("button", { name: "Apply proposal to draft" }),
     );
 
-    await user.click(screen.getByRole("button", { name: "App components" }));
+    await user.click(screen.getByRole("link", { name: "Canvas" }));
     expect(
-      screen.getByRole("button", { name: "Save components" }),
+      screen.getByRole("button", { name: "Save" }),
     ).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Workflows" }));
+    await user.click(screen.getByRole("link", { name: "Workflow" }));
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    await user.click(await screen.findByRole("button", { name: "custom_modules.py" }));
     expect(
-      await screen.findByLabelText("Custom Python module source"),
-    ).toHaveValue(
-      "# AI module draft\ndef normalize(value):\n    return value\n",
-    );
-    expect(
-      screen.getByText("Module changes are not saved."),
+      screen.getByText("Custom Python changes are not saved."),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Save workflows" }),
-    ).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Save modules" })).toBeEnabled();
+      screen.getByRole("button", { name: "Save" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save custom modules" })).toBeEnabled();
   }, 15_000);
 
   it("saves AI component, workflow, and module drafts at each shared project version", async () => {
     const user = userEvent.setup();
+    generateProjectPreviewMock.mockResolvedValue({
+      projectId: project.id,
+      version: 1,
+      previewOnly: true,
+      files: [{ path: "app.py", content: "import streamlit as st\n" }],
+    });
     let sharedVersion = 1;
     let savedComponents: Awaited<
       ReturnType<typeof getProjectComponents>
@@ -237,8 +261,9 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       authenticationMode: "databricks",
     });
 
-    renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Workflows" }));
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("link", { name: "Workflow" }));
+    await user.click(screen.getByRole("link", { name: "Prompt" }));
     const promptInput = await screen.findByRole("textbox", {
       name: "What would you like to change?",
     });
@@ -252,26 +277,28 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       screen.getByRole("button", { name: "Apply proposal to draft" }),
     );
 
-    await user.click(screen.getByRole("button", { name: "App components" }));
-    await user.click(screen.getByRole("button", { name: "Workflows" }));
+    await user.click(screen.getByRole("link", { name: "Canvas" }));
+    await user.click(await screen.findByRole("link", { name: "Workflow" }));
     await user.click(
-      await screen.findByRole("button", { name: "Save workflows" }),
+      await screen.findByRole("button", { name: "Save" }),
     );
     await waitFor(() =>
       expect(replaceProjectWorkflowMock).toHaveBeenCalledTimes(1),
     );
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Save workflows" }),
+        screen.getByRole("button", { name: "Save" }),
       ).toBeDisabled(),
     );
-    await user.click(screen.getByRole("button", { name: "App components" }));
+    await user.click(screen.getByRole("link", { name: "Canvas" }));
     expect(
-      screen.getByRole("button", { name: "Save components" }),
+      await screen.findByRole("button", { name: "Save" }),
     ).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Workflows" }));
+    await user.click(screen.getByRole("link", { name: "Workflow" }));
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    await user.click(await screen.findByRole("button", { name: "custom_modules.py" }));
     await user.click(
-      await screen.findByRole("button", { name: "Save modules" }),
+      await screen.findByRole("button", { name: "Save custom modules" }),
     );
 
     await waitFor(() =>
@@ -287,7 +314,7 @@ describe("ProjectEditorPage AI Builder drafts", () => {
     expect(sharedVersion).toBe(4);
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Save modules" }),
+        screen.getByRole("button", { name: "Save custom modules" }),
       ).toBeDisabled(),
     );
     expect(

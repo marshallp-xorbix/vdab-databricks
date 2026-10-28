@@ -29,6 +29,11 @@ const assetChecks = [
       /StripeProvider|BillingApi|SubscriptionApi|TenantApi|TenantInvite/i,
   },
   {
+    name: "standalone-assets-exclude-saas-admin-and-account-routes",
+    fingerprint:
+      /TenantManagement|TenantDetail|TenantEdit|UserManagement|UserEdit|AdministrationDashboard|AccountBilling|AccountDashboard|AuthenticatedLayout|StripeEventHistory/i,
+  },
+  {
     name: "standalone-assets-exclude-workspace-credentials",
     fingerprint:
       /DATABRICKS_(?:TOKEN|CLIENT_SECRET)|x-forwarded-access-token|access_token/i,

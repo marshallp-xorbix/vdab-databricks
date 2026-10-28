@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { createRouteConfig } from "./routes";
+import createDatabricksRoutes from "./route-config/databricksRoutes";
+import createSaaSRoutes from "./route-config/saasRoutes";
 
-describe("createRouteConfig", () => {
+describe("runtime route graphs", () => {
   it("keeps the Databricks route graph independent from SaaS identity routes", () => {
-    const routes = JSON.stringify(createRouteConfig(true));
+    const routes = JSON.stringify(createDatabricksRoutes());
 
     expect(routes).toContain("StandaloneAppLayout.tsx");
-    expect(routes).toContain("ProjectManagementPage.tsx");
-    expect(routes).toContain("ProjectEditorPage.tsx");
+    expect(routes).toContain("ProjectManagementRoute.tsx");
+    expect(routes).toContain("ProjectEditorRoute.tsx");
     expect(routes).toContain("WorkspaceSetupPage.tsx");
     expect(routes).not.toContain("AuthenticatedLayout.tsx");
     expect(routes).not.toContain("LoginPage.tsx");
@@ -16,7 +17,7 @@ describe("createRouteConfig", () => {
   });
 
   it("retains the legacy route graph for the SaaS reference build", () => {
-    const routes = JSON.stringify(createRouteConfig(false));
+    const routes = JSON.stringify(createSaaSRoutes());
 
     expect(routes).toContain("AuthenticatedLayout.tsx");
     expect(routes).toContain("LoginPage.tsx");

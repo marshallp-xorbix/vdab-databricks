@@ -6,6 +6,10 @@ import urllib.parse
 st.set_page_config(page_title='Quarterly overview', layout='wide')
 st.title('Quarterly overview')
 
+st.markdown("""<style>
+  .block-container { max-width: 730px; }
+</style>""", unsafe_allow_html=True)
+
 ui_overrides = {'labels': {}}
 _vdab_dashboard_workspace_host = os.environ.get('DATABRICKS_HOST', '')
 _vdab_dashboard_workspace = urllib.parse.urlsplit(_vdab_dashboard_workspace_host)

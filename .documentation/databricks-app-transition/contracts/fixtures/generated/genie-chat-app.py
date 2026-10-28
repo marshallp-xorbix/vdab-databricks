@@ -11,6 +11,10 @@ import urllib.request
 st.set_page_config(page_title='Workspace Genie', layout='wide')
 st.title('Workspace Genie')
 
+st.markdown("""<style>
+  .block-container { max-width: 730px; }
+</style>""", unsafe_allow_html=True)
+
 ui_overrides = {'labels': {}}
 
 _VDAB_GENIE_MAX_HISTORY = 200

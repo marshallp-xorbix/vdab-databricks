@@ -1,10 +1,11 @@
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import PropertiesPanel from "./PropertiesPanel";
 import type { VdabComponent } from "../../../types/components";
 import type { Binding } from "../../../types/components/bindings";
 import type { WorkflowDefinition } from "../../../types/workflow";
 import type { NormalizedAppResource } from "../../../models/DatabricksAppModels";
 import type { CanvasContextType } from "../../../types/editor";
+import type { IProjectComponentPropertiesEditorProps } from "../../ProjectComponentPropertiesEditor";
 
 interface RightSidebarProps {
   selectedComponent: VdabComponent | null;
@@ -31,6 +32,8 @@ interface RightSidebarProps {
   canvasContextType?: CanvasContextType;
   pageWidth?: number;
   onPageWidthChange?: (pageWidth: number) => void;
+  projectComponentEditor?: IProjectComponentPropertiesEditorProps;
+  projectComponentTreeActions?: ReactNode;
 }
 
 const RightSidebar: FC<RightSidebarProps> = ({
@@ -52,6 +55,8 @@ const RightSidebar: FC<RightSidebarProps> = ({
   canvasContextType,
   pageWidth,
   onPageWidthChange,
+  projectComponentEditor,
+  projectComponentTreeActions,
 }) => {
   return (
     <aside className="builder-sidebar-surface builder-chrome-surface flex h-full w-80 flex-col overflow-hidden border-l border-[var(--builder-chrome-border)]">
@@ -76,6 +81,8 @@ const RightSidebar: FC<RightSidebarProps> = ({
           canvasContextType={canvasContextType}
           pageWidth={pageWidth}
           onPageWidthChange={onPageWidthChange}
+          projectComponentEditor={projectComponentEditor}
+          projectComponentTreeActions={projectComponentTreeActions}
         />
       </div>
     </aside>

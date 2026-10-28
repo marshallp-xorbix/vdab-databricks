@@ -4,6 +4,7 @@ import type {
   WorkspaceAppsPage,
 } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
+import { normalizeWorkspaceHost } from "./workspace-host.ts";
 import {
   MAX_WORKSPACE_JSON_RESPONSE_BYTES,
   discardHttpResponseBody,
@@ -26,6 +27,9 @@ export interface WorkspaceAppsClient {
     caller: CallerIdentity,
     query: WorkspaceAppsQuery,
   ): Promise<WorkspaceAppsPage>;
+  getApp(caller: CallerIdentity, appName: string): Promise<WorkspaceAppSummary>;
+  startApp(caller: CallerIdentity, appName: string): Promise<WorkspaceAppSummary>;
+  stopApp(caller: CallerIdentity, appName: string): Promise<WorkspaceAppSummary>;
 }
 
 interface DatabricksAppListResponse {
@@ -59,7 +63,111 @@ export function createWorkspaceAppsClient(
         pinnedWorkspaceHost,
         fetchImplementation,
       ),
+    getApp: async (caller, appName) =>
+      requestWorkspaceApp(caller, appName, "GET", workspaceHost, fetchImplementation),
+    startApp: async (caller, appName) =>
+      requestWorkspaceApp(caller, appName, "POST", workspaceHost, fetchImplementation, "start"),
+    stopApp: async (caller, appName) =>
+      requestWorkspaceApp(caller, appName, "POST", workspaceHost, fetchImplementation, "stop"),
   };
+}
+
+async function requestWorkspaceApp(
+  caller: CallerIdentity,
+  appName: string,
+  method: "GET" | "POST",
+  workspaceHost: string,
+  fetchImplementation: typeof fetch,
+  action?: "start" | "stop",
+): Promise<WorkspaceAppSummary> {
+  validateWorkspaceAppName(appName);
+  if (!caller.databricksAccessToken) {
+    throw new ApplicationError(
+      401,
+      "databricks_session_required",
+      "Sign in required",
+      "Open this app through Databricks and sign in to continue.",
+    );
+  }
+
+  const suffix = action ? `/${action}` : "";
+  const endpoint = new URL(
+    `${WORKSPACE_APPS_PATH}/${encodeURIComponent(appName)}${suffix}`,
+    workspaceHost,
+  );
+  let response: Response;
+  try {
+    response = await fetchImplementation(endpoint, {
+      method,
+      headers: {
+        Authorization: `Bearer ${caller.databricksAccessToken}`,
+        Accept: "application/json",
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    throw new ApplicationError(
+      502,
+      "databricks_unavailable",
+      "Databricks is unavailable",
+      "The workspace App operation could not be completed. Try again shortly.",
+    );
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    await discardHttpResponseBody(response);
+    throw new ApplicationError(
+      response.status,
+      response.status === 401 ? "databricks_auth_failed" : "databricks_apps_access_denied",
+      response.status === 401 ? "Databricks sign-in expired" : "Apps access is not available",
+      response.status === 401
+        ? "Refresh the app and sign in to Databricks again."
+        : "The current user needs Apps authorization and permission to manage this workspace App.",
+    );
+  }
+  if (!response.ok) {
+    await discardHttpResponseBody(response);
+    throw new ApplicationError(
+      502,
+      "databricks_request_failed",
+      "Databricks request failed",
+      "The workspace App operation could not be completed. Try again shortly.",
+    );
+  }
+
+  try {
+    const value = await readBoundedJsonResponse(response, MAX_WORKSPACE_JSON_RESPONSE_BYTES);
+    if (!isDatabricksAppRecord(value) || !isWorkspaceAppState(value)) {
+      throw new Error("Invalid App response.");
+    }
+    return toWorkspaceAppSummary(value);
+  } catch {
+    throw new ApplicationError(
+      502,
+      "databricks_invalid_response",
+      "Invalid Databricks response",
+      "Databricks returned an invalid App response.",
+    );
+  }
+}
+
+function validateWorkspaceAppName(appName: string): void {
+  if (!/^[a-z0-9][a-z0-9-]{0,28}[a-z0-9]$/.test(appName)) {
+    throw new ApplicationError(
+      400,
+      "invalid_app_name",
+      "Invalid App name",
+      "The workspace App name is invalid.",
+    );
+  }
+}
+
+function isWorkspaceAppState(value: DatabricksAppRecord): boolean {
+  return (
+    typeof value.app_status?.state === "string" &&
+    typeof value.compute_status?.state === "string"
+  );
 }
 
 async function listWorkspaceApps(
@@ -166,23 +274,6 @@ async function listWorkspaceApps(
         : null,
     authenticationMode: "databricks",
   };
-}
-
-function normalizeWorkspaceHost(workspaceHost: string): string {
-  const parsedHost = new URL(workspaceHost);
-
-  if (
-    parsedHost.protocol !== "https:" ||
-    parsedHost.username.length > 0 ||
-    parsedHost.password.length > 0 ||
-    parsedHost.pathname !== "/" ||
-    parsedHost.search.length > 0 ||
-    parsedHost.hash.length > 0
-  ) {
-    throw new Error("DATABRICKS_HOST must be an HTTPS workspace origin.");
-  }
-
-  return parsedHost.origin;
 }
 
 function validateWorkspaceAppsQuery(query: WorkspaceAppsQuery): void {

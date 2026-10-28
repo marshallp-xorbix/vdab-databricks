@@ -24,6 +24,7 @@ export interface ProjectSummary {
   id: string;
   name: string;
   description: string | null;
+  theme?: Record<string, unknown> | null;
   version: number;
   createdBy: string;
   createdAt: string;

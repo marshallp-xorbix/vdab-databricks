@@ -43,6 +43,27 @@ export async function handleWorkspaceHttpRoute(
     return 200;
   }
 
+  const workspaceAppRoute = requestPath.match(
+    /^\/api\/v1\/workspace\/apps\/([^/]+)(?:\/(start|stop))?$/,
+  );
+  if (workspaceAppRoute && ["GET", "POST"].includes(method)) {
+    const caller = await options.identityResolver(request);
+    const appName = decodeURIComponent(workspaceAppRoute[1] ?? "");
+    const action = workspaceAppRoute[2];
+    if (method === "GET" && !action) {
+      sendJson(response, 200, await options.workspaceAppsService.getApp(caller, appName));
+      return 200;
+    }
+    if (method === "POST" && action === "start") {
+      sendJson(response, 200, await options.workspaceAppsService.startApp(caller, appName));
+      return 200;
+    }
+    if (method === "POST" && action === "stop") {
+      sendJson(response, 200, await options.workspaceAppsService.stopApp(caller, appName));
+      return 200;
+    }
+  }
+
   const executionRoute = matchWorkspaceExecutionResourcesRoute(
     method,
     requestUrl,

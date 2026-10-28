@@ -75,6 +75,9 @@ export async function listApiRecords(
     }
     const values = body[collectionName];
     if (!Array.isArray(values)) {
+      if (values === undefined && pageToken !== null && body.next_page_token === undefined) {
+        return records;
+      }
       throw invalidLakebaseResponse();
     }
     records.push(...values);

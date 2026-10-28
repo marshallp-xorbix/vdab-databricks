@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +16,9 @@ import {
 } from "../api/workspaceResourcesApi";
 import type { IProject } from "../models/Project";
 import type { IProjectComponent } from "../models/ProjectComponents";
+import { SettingsProvider } from "../context/SettingsContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import StandaloneAppLayout from "../layouts/StandaloneAppLayout";
 import ProjectEditorPage from "./ProjectEditorPage";
 
 vi.mock("../api/projectsApi", () => ({ getProject: vi.fn(), updateProject: vi.fn() }));
@@ -92,9 +95,9 @@ beforeEach(() => {
 describe("SpiralStory standalone project flow", () => {
   it("adds, maps, configures, saves, previews, and reopens the story", async () => {
     const user = userEvent.setup();
-    const firstEditor = renderProjectEditorPage();
+    const firstEditor = await renderProjectEditorPage();
 
-    await user.click(await screen.findByRole("button", { name: "Add spiral story" }));
+    await user.click(await screen.findByRole("button", { name: "Add Spiral Story" }));
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "Journey Tracker");
     await user.selectOptions(screen.getByLabelText("Current-workspace catalog"), "main");
@@ -122,7 +125,7 @@ describe("SpiralStory standalone project flow", () => {
     await user.click(screen.getByLabelText("Show high-risk glow"));
     await user.click(screen.getByLabelText("Show schedule variance"));
     await user.click(screen.getByLabelText("Space milestones by timeline"));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     expect(savedComponents).toHaveLength(1);
@@ -155,11 +158,11 @@ describe("SpiralStory standalone project flow", () => {
       },
     });
 
-    await user.click(screen.getByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview")).toHaveTextContent("__SPIRAL_PAYLOAD__");
+    await user.click(screen.getAllByRole("link", { name: "Code" })[0]!);
+    expect(await screen.findByLabelText("Generated app code")).toHaveTextContent("__SPIRAL_PAYLOAD__");
 
     firstEditor.unmount();
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ selectFirstComponent: true });
     expect(await screen.findByLabelText("Title")).toHaveValue("Journey Tracker");
     expect(screen.getByLabelText("Journey name column")).toHaveValue("journey");
     expect(screen.getByLabelText("Progress % aggregation")).toHaveValue("max");
@@ -171,17 +174,25 @@ describe("SpiralStory standalone project flow", () => {
   }, 30_000);
 });
 
-function renderProjectEditorPage() {
+async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(
-    [{ path: "/apps/:appId", element: <ProjectEditorPage /> }],
+    [{ path: "/apps", element: <StandaloneAppLayout />, children: [{ path: ":appId", element: <ProjectEditorPage /> }, { index: true, element: <h1>Project list route</h1> }] }],
     { initialEntries: ["/apps/project-spiral-story"] },
   );
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+      <ThemeProvider>
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,  );
+  fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+  if (options.selectFirstComponent) {
+    (await screen.findByRole("button", { name: /^Select / })).click();
+  }
+  return rendered;
 }

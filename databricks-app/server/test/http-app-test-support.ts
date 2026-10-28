@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer, type AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -71,6 +71,8 @@ export async function createAppHarness(
     join(staticDirectory, "index.html"),
     "<!doctype html><title>test</title>",
   );
+  await mkdir(join(staticDirectory, "assets"));
+  await writeFile(join(staticDirectory, "assets", "test.js"), "export {};\n");
   const identityResolver =
     options.identityResolver ??
     createIdentityResolver({
@@ -213,6 +215,9 @@ export function createEmptyAppsClient(): WorkspaceAppsClient {
       nextPageToken: null,
       authenticationMode: "local-test",
     }),
+    getApp: async (_caller, name) => ({ name, description: null, appState: "UNAVAILABLE", computeState: "STOPPED" }),
+    startApp: async (_caller, name) => ({ name, description: null, appState: "RUNNING", computeState: "ACTIVE" }),
+    stopApp: async (_caller, name) => ({ name, description: null, appState: "UNAVAILABLE", computeState: "STOPPED" }),
   };
 }
 

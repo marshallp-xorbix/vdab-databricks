@@ -40,6 +40,7 @@ import { AiBuilderResourceContextService } from "./ai-builder-resource-context.t
 import { AiBuilderWorkspaceClient } from "./ai-builder-workspace-client.ts";
 import { createWorkspaceSetupDiagnosticsClient } from "./workspace-setup-diagnostics-client.ts";
 import { WorkspaceSetupDiagnosticsService } from "./workspace-setup-diagnostics-service.ts";
+import { normalizeWorkspaceHost } from "./workspace-host.ts";
 
 const DEFAULT_PORT = 8000;
 const SHUTDOWN_TIMEOUT_MS = 10_000;
@@ -49,7 +50,9 @@ const authenticationMode = process.env.VDAB_AUTH_MODE;
 const isLocalTestMode = authenticationMode === AUTHENTICATION_MODE_LOCAL_TEST;
 const workspaceHost = isLocalTestMode
   ? null
-  : (process.env.DATABRICKS_HOST ?? null);
+  : process.env.DATABRICKS_HOST
+    ? normalizeWorkspaceHost(process.env.DATABRICKS_HOST)
+    : null;
 const workspaceId = isLocalTestMode
   ? "local-test-workspace"
   : (process.env.DATABRICKS_WORKSPACE_ID ?? null);

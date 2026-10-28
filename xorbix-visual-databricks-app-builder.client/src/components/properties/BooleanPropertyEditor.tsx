@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { useId, type FC } from "react";
 import { cn } from "../../lib/utils";
 import {
   PROPERTY_ERROR_CLASS,
@@ -18,11 +18,14 @@ export const BooleanPropertyEditor: FC<BooleanPropertyEditorProps> = ({
   error,
   onChange,
 }) => {
+  const inputId = useId();
+
   return (
     <div>
       <div className="flex items-center justify-between">
-        <label className={PROPERTY_INLINE_LABEL_CLASS}>{label}</label>
+        <label htmlFor={inputId} className={PROPERTY_INLINE_LABEL_CLASS}>{label}</label>
         <input
+          id={inputId}
           type="checkbox"
           checked={value || false}
           onChange={(e) => onChange(e.target.checked)}

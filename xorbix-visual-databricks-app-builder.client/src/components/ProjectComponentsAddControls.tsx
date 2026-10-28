@@ -57,6 +57,11 @@ function ProjectComponentsAddControls({
           type="button"
           variant="outline"
           disabled={isDisabled}
+          draggable={!isDisabled}
+          onDragStart={(event) => {
+            event.dataTransfer.setData("text/vdab-component-type", type);
+            event.dataTransfer.effectAllowed = "copy";
+          }}
           onClick={() => onAdd(type)}
         >
           {ADD_COMPONENT_LABELS[type]}

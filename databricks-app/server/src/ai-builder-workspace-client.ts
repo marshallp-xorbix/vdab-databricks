@@ -1,6 +1,7 @@
 import { ApplicationError } from "./application-error.ts";
 import type { CallerIdentity } from "./contracts.ts";
 import { AI_BUILDER_TOOLS } from "./ai-builder-tool.ts";
+import { normalizeWorkspaceHost } from "./workspace-host.ts";
 
 const INVOCATION_TIMEOUT_MS = 120_000;
 const AI_BUILDER_MAX_OUTPUT_TOKENS = 8_192;
@@ -76,20 +77,6 @@ export class AiBuilderWorkspaceClient {
     }
     return response;
   }
-}
-
-function normalizeWorkspaceHost(workspaceHost: string): string {
-  let parsedHost: URL;
-  try {
-    parsedHost = new URL(workspaceHost);
-  } catch {
-    throw new Error("The configured Databricks host must be a valid HTTPS origin.");
-  }
-  if (parsedHost.protocol !== "https:" || parsedHost.username || parsedHost.password ||
-      parsedHost.pathname !== "/" || parsedHost.search || parsedHost.hash) {
-    throw new Error("The configured Databricks host must be a valid HTTPS origin.");
-  }
-  return parsedHost.origin;
 }
 
 function mapEndpointFailure(status: number): ApplicationError {

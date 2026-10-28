@@ -10,6 +10,7 @@ interface BuilderLeftPanelProps {
   activeTabType: TabType | undefined;
   onAddModal: (modal: VdabComponent) => void;
   isDragActive: boolean;
+  onAddComponent?: (componentType: string, category: string) => void;
 }
 
 const BuilderLeftPanel: FC<BuilderLeftPanelProps> = ({
@@ -17,6 +18,7 @@ const BuilderLeftPanel: FC<BuilderLeftPanelProps> = ({
   activeTabType,
   onAddModal,
   isDragActive,
+  onAddComponent,
 }) => {
   if (builderMode === "canvas") {
     const isAppFlow = !activeTabType || activeTabType === TabType.MainFlow;
@@ -43,7 +45,10 @@ const BuilderLeftPanel: FC<BuilderLeftPanelProps> = ({
 
     return (
       <div className="builder-sidebar-surface builder-chrome-surface flex h-full flex-col overflow-hidden border-r border-[var(--builder-chrome-border)]">
-        <ComponentPanel disableScroll={isDragActive} />
+        <ComponentPanel
+          disableScroll={isDragActive}
+          onAddComponent={onAddComponent}
+        />
       </div>
     );
   }

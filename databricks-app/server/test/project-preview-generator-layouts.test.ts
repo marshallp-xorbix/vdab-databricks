@@ -59,7 +59,7 @@ test("ProjectPreviewGenerator_ExpanderChildrenMatchOrderedPythonFixture", async 
     createDocument([expander, input, button, label]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   const source = preview.files[0]?.content ?? "";
   assert.equal((source.match(/st\.text_area\(/g) ?? []).length, 1);
   assert.ok(source.indexOf("html.escape(str(") < source.indexOf("st.text_area("));
@@ -157,7 +157,7 @@ test("ProjectPreviewGenerator_ColumnsChildrenMatchOrderedPythonFixture", async (
     createDocument([columns, input, label, button]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   const source = preview.files[0]?.content ?? "";
   assert.equal((source.match(/st\.columns\(3\)/g) ?? []).length, 1);
   assert.equal((source.match(/st\.text_input\(/g) ?? []).length, 1);
@@ -278,7 +278,7 @@ test("ProjectPreviewGenerator_RowsChildrenMatchOrderedPythonFixture", async () =
     createDocument([rows, input, label, button]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   const source = preview.files[0]?.content ?? "";
   assert.equal((source.match(/st\.container\(\)/g) ?? []).length, 1);
   assert.equal((source.match(/st\.text\('Row /g) ?? []).length, 0);
@@ -395,7 +395,7 @@ test("ProjectPreviewGenerator_TabsChildrenMatchOrderedPythonFixture", async () =
   );
   const source = preview.files[0]?.content ?? "";
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   assert.ok(source.indexOf("html.escape(str(") < source.indexOf("st.button("));
   assert.match(source, /default='Details'/);
   assert.match(source, /st\.text\('Audit'\)/);

@@ -4,6 +4,7 @@ import type {
   WorkspaceLakebaseTableResource,
 } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
+import { normalizeWorkspaceHost } from "./workspace-host.ts";
 import { createProvisionedPostgresConnection } from "./workspace-lakebase-provisioned-postgres-client.ts";
 import type {
   ProvisionedPostgresConnection,
@@ -366,18 +367,6 @@ function groupTableRows(rows: unknown[]): WorkspaceLakebaseTableResource[] {
     table.columns.push({ name: columnName, type: dataType, nullable: row.is_nullable === "YES" });
   }
   return [...tables.values()].sort((left, right) => left.name.localeCompare(right.name));
-}
-
-function normalizeWorkspaceHost(value: string): string {
-  try {
-    const host = new URL(value);
-    if (host.protocol !== "https:" || host.username || host.password || host.pathname !== "/" || host.search || host.hash) {
-      throw new Error();
-    }
-    return host.origin;
-  } catch {
-    throw new ApplicationError(500, "workspace_configuration_invalid", "Workspace configuration unavailable", "The installed workspace could not be configured safely.");
-  }
 }
 
 function requireCaller(caller: CallerIdentity): void {

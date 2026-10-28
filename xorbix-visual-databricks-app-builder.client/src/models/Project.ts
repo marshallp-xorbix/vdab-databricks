@@ -4,6 +4,7 @@ export interface IProject {
   id: string;
   name: string;
   description: string | null;
+  theme?: Record<string, unknown> | null;
   version: number;
   createdBy: string;
   createdAt: string;
@@ -15,6 +16,7 @@ export class Project implements IProject {
   id: string;
   name: string;
   description: string | null;
+  theme?: Record<string, unknown> | null;
   version: number;
   createdBy: string;
   createdAt: string;
@@ -25,6 +27,7 @@ export class Project implements IProject {
     this.id = source.id ?? "";
     this.name = source.name ?? "";
     this.description = source.description ?? null;
+    this.theme = source.theme ?? null;
     this.version = source.version ?? 1;
     this.createdBy = source.createdBy ?? "";
     this.createdAt = source.createdAt ?? "";

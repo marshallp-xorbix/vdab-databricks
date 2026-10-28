@@ -16,6 +16,9 @@ import {
 } from "../api/workspaceResourcesApi";
 import type { IProject } from "../models/Project";
 import type { IProjectComponent } from "../models/ProjectComponents";
+import { SettingsProvider } from "../context/SettingsContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import StandaloneAppLayout from "../layouts/StandaloneAppLayout";
 import ProjectEditorPage from "./ProjectEditorPage";
 
 vi.mock("../api/projectsApi", () => ({ getProject: vi.fn(), updateProject: vi.fn() }));
@@ -94,9 +97,10 @@ beforeEach(() => {
 describe("AmoebaStory standalone project flow", () => {
   it("adds, maps, configures, saves, previews, and reopens the interactive story", async () => {
     const user = userEvent.setup();
-    const firstEditor = renderProjectEditorPage();
+    const firstEditor = await renderProjectEditorPage();
 
-    await user.click(await screen.findByRole("button", { name: "Add Amoeba story" }));
+    fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+    await user.click(await screen.findByRole("button", { name: "Add Amoeba Story" }));
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "Regional portfolio");
     await user.selectOptions(screen.getByLabelText("Current-workspace catalog"), "main");
@@ -134,7 +138,7 @@ describe("AmoebaStory standalone project flow", () => {
     fireEvent.change(screen.getByLabelText("Pulse threshold"), { target: { value: "72" } });
     fireEvent.change(screen.getByLabelText("Shape variation"), { target: { value: "0.6" } });
     fireEvent.change(screen.getByLabelText("Animation speed"), { target: { value: "1.5" } });
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     expect(savedComponents).toHaveLength(1);
@@ -173,11 +177,13 @@ describe("AmoebaStory standalone project flow", () => {
       },
     });
 
-    await user.click(screen.getByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview")).toHaveTextContent("components.html(story_html, height=560)");
+    await user.click((await screen.findAllByRole("link", { name: "Code" }))[0]!);
+    expect(await screen.findByLabelText("Generated app code")).toHaveTextContent("components.html(story_html, height=560)");
 
     firstEditor.unmount();
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ selectFirstComponent: true });
+    fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+    await user.click(await screen.findByRole("button", { name: "Select Amoeba Story: amoebaStory1" }));
     expect(await screen.findByLabelText("Title")).toHaveValue("Regional portfolio");
     expect(screen.getByLabelText("Entity ID column")).toHaveValue("entity_id");
     expect(screen.getByLabelText("Time filter column")).toHaveValue("period");
@@ -188,17 +194,25 @@ describe("AmoebaStory standalone project flow", () => {
   }, 60_000);
 });
 
-function renderProjectEditorPage() {
+async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(
-    [{ path: "/apps/:appId", element: <ProjectEditorPage /> }],
+    [{ path: "/apps", element: <StandaloneAppLayout />, children: [{ path: ":appId", element: <ProjectEditorPage /> }, { index: true, element: <h1>Project list route</h1> }] }],
     { initialEntries: ["/apps/project-amoeba-story"] },
   );
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+      <ThemeProvider>
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,  );
+  fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+  if (options.selectFirstComponent) {
+    (await screen.findByRole("button", { name: /^Select / })).click();
+  }
+  return rendered;
 }

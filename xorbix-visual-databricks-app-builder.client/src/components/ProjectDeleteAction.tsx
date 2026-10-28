@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
+import { DropdownMenuItem } from "./ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -13,10 +14,14 @@ import type { IProject } from "../models/Project";
 
 interface IProjectDeleteActionProps {
   project: IProject;
+  renderAsMenuItem?: boolean;
 }
 
 /** Offers owner-only project deletion with clear child-App retention behavior. */
-function ProjectDeleteAction({ project }: Readonly<IProjectDeleteActionProps>) {
+function ProjectDeleteAction({
+  project,
+  renderAsMenuItem = false,
+}: Readonly<IProjectDeleteActionProps>) {
   const [isOpen, setIsOpen] = useState(false);
   const deleteProjectMutation = useDeleteProject();
   const canDelete =
@@ -34,16 +39,30 @@ function ProjectDeleteAction({ project }: Readonly<IProjectDeleteActionProps>) {
 
   if (!canDelete) return null;
 
+  function openConfirmation(event?: Event) {
+    event?.preventDefault();
+    setIsOpen(true);
+  }
+
   return (
     <>
-      <Button
-        className="mt-4"
-        type="button"
-        variant="destructive"
-        onClick={() => setIsOpen(true)}
-      >
-        Delete project
-      </Button>
+      {renderAsMenuItem ? (
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onSelect={openConfirmation}
+        >
+          Delete project
+        </DropdownMenuItem>
+      ) : (
+        <Button
+          className="mt-4"
+          type="button"
+          variant="destructive"
+          onClick={() => openConfirmation()}
+        >
+          Delete project
+        </Button>
+      )}
       <Dialog
         open={isOpen}
         onOpenChange={(open) =>

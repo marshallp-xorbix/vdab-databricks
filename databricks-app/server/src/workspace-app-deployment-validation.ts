@@ -1,4 +1,5 @@
 import { ApplicationError } from "./application-error.ts";
+export { normalizeWorkspaceHost } from "./workspace-host.ts";
 
 const APP_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,28}[a-z0-9]$/;
 const SUPPORTED_API_USER_SCOPES = [
@@ -57,22 +58,6 @@ export function validateAppName(appName: string): void {
       "App names must be 2–30 lowercase letters, numbers, or hyphens and begin and end with a letter or number.",
     );
   }
-}
-
-/** Pins workspace API requests to an HTTPS origin without URL components. */
-export function normalizeWorkspaceHost(workspaceHost: string): string {
-  const parsedHost = new URL(workspaceHost);
-  if (
-    parsedHost.protocol !== "https:" ||
-    parsedHost.username ||
-    parsedHost.password ||
-    parsedHost.pathname !== "/" ||
-    parsedHost.search ||
-    parsedHost.hash
-  ) {
-    throw new Error("DATABRICKS_HOST must be an HTTPS workspace origin.");
-  }
-  return parsedHost.origin;
 }
 
 /** Validates and normalizes the scopes requested by a generated child App. */

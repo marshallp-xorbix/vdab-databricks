@@ -19,6 +19,9 @@ import {
   SelectValue,
 } from "../ui/select";
 import { useUnityCatalogHierarchy } from "./useUnityCatalogHierarchy";
+import { listWorkspaceTables } from "../../api/workspaceResourcesApi";
+
+const IS_DATABRICKS_RUNTIME = import.meta.env.VITE_VDAB_RUNTIME === "databricks";
 
 export interface UnityCatalogTableSelectorValue {
   catalog?: string;
@@ -66,7 +69,7 @@ export const UnityCatalogTableSelectorFields: FC<
   });
 
   const workspaceMissing =
-    !workspaceConnectionId || workspaceConnectionId <= 0
+    !IS_DATABRICKS_RUNTIME && (!workspaceConnectionId || workspaceConnectionId <= 0)
       ? WORKSPACE_CONNECTION_MISSING_MESSAGE
       : null;
 
@@ -113,13 +116,21 @@ export const UnityCatalogTableSelectorFields: FC<
       }
 
       try {
-        const tablesData =
-          await databricksDataConnectorApi.getUnityCatalogTables(
-            workspaceConnectionId!,
-            selectedCatalog,
-            selectedSchema,
-          );
-        if (active) setTables(tablesData || []);
+        const tablesData = IS_DATABRICKS_RUNTIME
+          ? await listWorkspaceTables(selectedCatalog, selectedSchema)
+          : await databricksDataConnectorApi.getUnityCatalogTables(
+              workspaceConnectionId!, selectedCatalog, selectedSchema,
+            );
+        if (active) {
+          setTables(IS_DATABRICKS_RUNTIME
+            ? tablesData.items.map((table) => ({
+                catalog: selectedCatalog,
+                schema: selectedSchema,
+                table: table.name,
+                fullName: `${selectedCatalog}.${selectedSchema}.${table.name}`,
+              }))
+            : tablesData);
+        }
       } catch (err) {
         if (active) {
           setTables([]);
@@ -176,7 +187,9 @@ export const UnityCatalogTableSelectorFields: FC<
 
   const catalogField = (
     <div className="min-w-0 space-y-1">
-      <Label className={labelCls}>Catalog</Label>
+      <Label className={labelCls}>
+        {IS_DATABRICKS_RUNTIME ? "Current-workspace catalog" : "Catalog"}
+      </Label>
       <Select
         value={selectedCatalog || undefined}
         onValueChange={handleCatalogChange}

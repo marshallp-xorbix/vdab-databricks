@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { useId, type FC } from "react";
 import { cn } from "../../lib/utils";
 import {
   PROPERTY_CONTROL_CLASS,
@@ -23,10 +23,13 @@ export const StringPropertyEditor: FC<StringPropertyEditorProps> = ({
   error,
   onChange,
 }) => {
+  const inputId = useId();
+
   return (
     <div>
-      <label className={PROPERTY_FIELD_LABEL_CLASS}>{label}</label>
+      <label htmlFor={inputId} className={PROPERTY_FIELD_LABEL_CLASS}>{label}</label>
       <input
+        id={inputId}
         type="text"
         value={value || ""}
         placeholder={placeholder}

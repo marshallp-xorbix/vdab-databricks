@@ -16,6 +16,9 @@ import {
 } from "../api/workspaceResourcesApi";
 import type { IProject } from "../models/Project";
 import type { IProjectComponent } from "../models/ProjectComponents";
+import { SettingsProvider } from "../context/SettingsContext";
+import { ThemeProvider } from "../context/ThemeContext";
+import StandaloneAppLayout from "../layouts/StandaloneAppLayout";
 import ProjectEditorPage from "./ProjectEditorPage";
 
 vi.mock("../api/projectsApi", () => ({ getProject: vi.fn(), updateProject: vi.fn() }));
@@ -87,9 +90,9 @@ beforeEach(() => {
 describe("BarChart standalone project flow", () => {
   it("adds, binds, configures, saves, previews, and reopens a Unity Catalog chart", async () => {
     const user = userEvent.setup();
-    const firstEditor = renderProjectEditorPage();
+    const firstEditor = await renderProjectEditorPage();
 
-    await user.click(await screen.findByRole("button", { name: "Add bar chart" }));
+    await user.click(await screen.findByRole("button", { name: "Add Bar Chart" }));
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "Revenue by region");
     fireEvent.change(screen.getByLabelText("Series color"), { target: { value: "#2f77cc" } });
@@ -106,7 +109,7 @@ describe("BarChart standalone project flow", () => {
     const axisTitles = screen.getAllByLabelText("Axis title");
     await user.type(axisTitles[0] as HTMLInputElement, "Region");
     await user.type(axisTitles[1] as HTMLInputElement, "Revenue");
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     expect(savedComponents).toHaveLength(1);
@@ -137,11 +140,11 @@ describe("BarChart standalone project flow", () => {
       },
     });
 
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    expect(await screen.findByLabelText("Generated Python preview")).toHaveTextContent("st.vega_lite_chart");
+    await user.click(screen.getAllByRole("link", { name: "Code" })[0]!);
+    expect(await screen.findByLabelText("Generated app code")).toHaveTextContent("st.vega_lite_chart");
 
     firstEditor.unmount();
-    renderProjectEditorPage();
+    await renderProjectEditorPage({ selectFirstComponent: true });
     expect(await screen.findByLabelText("Title")).toHaveValue("Revenue by region");
     expect(screen.getByLabelText("Series color")).toHaveValue("#2f77cc");
     expect(screen.getByLabelText("Current-workspace catalog")).toHaveValue("main");
@@ -153,17 +156,25 @@ describe("BarChart standalone project flow", () => {
   }, 20_000);
 });
 
-function renderProjectEditorPage() {
+async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const router = createMemoryRouter(
-    [{ path: "/apps/:appId", element: <ProjectEditorPage /> }],
+    [{ path: "/apps", element: <StandaloneAppLayout />, children: [{ path: ":appId", element: <ProjectEditorPage /> }, { index: true, element: <h1>Project list route</h1> }] }],
     { initialEntries: ["/apps/project-bar-chart"] },
   );
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+      <ThemeProvider>
+        <SettingsProvider>
+          <RouterProvider router={router} />
+        </SettingsProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,  );
+  fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
+  if (options.selectFirstComponent) {
+    (await screen.findByRole("button", { name: /^Select / })).click();
+  }
+  return rendered;
 }

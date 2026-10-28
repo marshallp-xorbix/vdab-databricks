@@ -106,7 +106,7 @@ test("ProjectPreviewGenerator_FileUploadMatchesCallerAuthorizedVolumePythonFixtu
     ]),
   );
 
-  assert.deepEqual(preview.files, [{ path: "app.py", content: expectedPython }]);
+  assert.deepEqual(preview.files.find((file) => file.path === "app.py"), { path: "app.py", content: expectedPython });
   assert.match(expectedPython, /accept_multiple_files=True/);
   assert.match(expectedPython, /_vdab_upload_to_volume\(/);
   assert.match(expectedPython, /class _VDABNoRedirectHandler\(urllib\.request\.HTTPRedirectHandler\)/);

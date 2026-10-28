@@ -88,6 +88,56 @@ export function moveProjectComponent(
   });
 }
 
+/** Moves a component before a compatible sibling without changing its parent. */
+export function moveProjectComponentBefore(
+  components: IProjectComponent[],
+  componentKey: string,
+  targetKey: string,
+): IProjectComponent[] {
+  const siblings = readComponentSiblings(components, componentKey);
+  const targetSiblings = readComponentSiblings(components, targetKey);
+  if (
+    !siblings ||
+    !targetSiblings ||
+    siblings.parent?.key !== targetSiblings.parent?.key ||
+    (siblings.parent?.type === "Tabs" &&
+      targetSiblings.parent?.type === "Tabs" &&
+      readTabIndex(
+        components.find((component) => component.key === componentKey)
+          ?.layout ?? null,
+      ) !==
+        readTabIndex(
+          components.find((component) => component.key === targetKey)?.layout ??
+            null,
+        ))
+  ) {
+    return components;
+  }
+
+  const targetIndex = siblings.keys.indexOf(targetKey);
+  if (targetIndex < 0 || siblings.index === targetIndex) {
+    return components;
+  }
+
+  let reorderedComponents = components;
+  const desiredIndex =
+    siblings.index < targetIndex ? targetIndex - 1 : targetIndex;
+  while (true) {
+    const currentSiblings = readComponentSiblings(
+      reorderedComponents,
+      componentKey,
+    );
+    if (!currentSiblings || currentSiblings.index === desiredIndex) {
+      return reorderedComponents;
+    }
+    reorderedComponents = moveProjectComponent(
+      reorderedComponents,
+      componentKey,
+      currentSiblings.index < desiredIndex ? "down" : "up",
+    );
+  }
+}
+
 /** Removes the selected component and every component nested below it. */
 export function removeProjectComponentSubtree(
   components: IProjectComponent[],

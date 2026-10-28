@@ -1,4 +1,5 @@
 import type {
+  WorkspaceAppSummary,
   CallerIdentity,
   WorkspaceAppsPage,
 } from "./contracts.ts";
@@ -26,5 +27,20 @@ export class WorkspaceAppsService {
       ...page,
       authenticationMode: caller.authenticationMode,
     };
+  }
+
+  /** Reads one workspace App using the acting user's authorization. */
+  async getApp(caller: CallerIdentity, appName: string): Promise<WorkspaceAppSummary> {
+    return this.workspaceAppsClient.getApp(caller, appName);
+  }
+
+  /** Starts a workspace App using the acting user's authorization. */
+  async startApp(caller: CallerIdentity, appName: string): Promise<WorkspaceAppSummary> {
+    return this.workspaceAppsClient.startApp(caller, appName);
+  }
+
+  /** Stops a workspace App using the acting user's authorization. */
+  async stopApp(caller: CallerIdentity, appName: string): Promise<WorkspaceAppSummary> {
+    return this.workspaceAppsClient.stopApp(caller, appName);
   }
 }

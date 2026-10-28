@@ -224,20 +224,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function requireWorkspaceOrigin(workspaceHost: string | undefined): string {
   const value = requireValue(workspaceHost, "DATABRICKS_HOST");
-  const parsedHost = new URL(value);
-
-  if (
-    parsedHost.protocol !== "https:" ||
-    parsedHost.username.length > 0 ||
-    parsedHost.password.length > 0 ||
-    parsedHost.pathname !== "/" ||
-    parsedHost.search.length > 0 ||
-    parsedHost.hash.length > 0
-  ) {
-    throw new Error("DATABRICKS_HOST must be an HTTPS workspace origin.");
-  }
-
-  return parsedHost.origin;
+  return normalizeWorkspaceHost(value);
 }
 
 function requireValue(value: string | undefined, name: string): string {
@@ -249,3 +236,4 @@ function requireValue(value: string | undefined, name: string): string {
 
   return normalizedValue;
 }
+import { normalizeWorkspaceHost } from "../workspace-host.ts";

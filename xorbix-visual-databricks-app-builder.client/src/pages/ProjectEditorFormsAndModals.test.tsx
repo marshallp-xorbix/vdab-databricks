@@ -24,8 +24,8 @@ describe("ProjectEditorPage", () => {
       }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add form" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Form" }));
     await user.clear(screen.getByLabelText("Submit button label"));
     await user.type(screen.getByLabelText("Submit button label"), "Save record");
     await user.click(screen.getByRole("switch", { name: "Clear values after submit" }));
@@ -36,13 +36,13 @@ describe("ProjectEditorPage", () => {
     await user.click(screen.getByRole("button", { name: "Add form control" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Record name");
-    await user.click(screen.getByRole("button", { name: "1. Form: 1 form controls" }));
+    await user.click(screen.getByRole("button", { name: "Select Form: form1" }));
     await user.selectOptions(screen.getByLabelText("Form control type"), "Checkbox");
     await user.click(screen.getByRole("button", { name: "Add form control" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Approved");
-    await user.click(screen.getByRole("button", { name: "1. Form: 2 form controls" }));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Select Form: form1" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -69,8 +69,8 @@ describe("ProjectEditorPage", () => {
       properties: { label: "Approved" },
     });
 
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    const preview = await screen.findByLabelText("Generated Python preview");
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    const preview = await screen.findByLabelText("Generated app code");
     expect(preview).toHaveTextContent("with st.form(");
     expect(preview).toHaveTextContent("width=720");
     expect(preview).toHaveTextContent("st.form_submit_button('Save record')");
@@ -85,15 +85,15 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
 
-    await user.click(await screen.findByRole("button", { name: "1. Form: 2 form controls" }));
+    await user.click(await screen.findByRole("button", { name: "Select Form: form1" }));
     expect(await screen.findByLabelText("Submit button label")).toHaveValue("Save record");
     expect(screen.getByRole("switch", { name: "Clear values after submit" }))
       .toHaveAttribute("data-state", "checked");
     expect(screen.getByLabelText("Form width")).toHaveValue("custom");
     expect(screen.getByLabelText("Form width in pixels")).toHaveValue(720);
-    await user.click(screen.getByRole("button", { name: "1.2. Checkbox: Approved" }));
+    await user.click(screen.getByRole("button", { name: "Select Checkbox: checkbox1" }));
     expect(await screen.findByLabelText("Label")).toHaveValue("Approved");
   }, 30_000);
 
@@ -114,8 +114,9 @@ describe("ProjectEditorPage", () => {
       }],
     });
 
-    const firstEditor = renderProjectEditorPage();
-    await user.click(await screen.findByRole("button", { name: "Add modal" }));
+    const firstEditor = await renderProjectEditorPage();
+    await user.click(screen.getByRole("button", { name: "App Flow" }));
+    await user.click(await screen.findByRole("button", { name: "Add Modal" }));
     await user.clear(screen.getByLabelText("Dialog title"));
     await user.type(screen.getByLabelText("Dialog title"), "Review item");
     await user.selectOptions(screen.getByLabelText("Dialog width"), "medium");
@@ -128,12 +129,11 @@ describe("ProjectEditorPage", () => {
     await user.click(screen.getByRole("button", { name: "1. Modal: Review item" }));
     await user.selectOptions(screen.getByLabelText("Modal content type"), "Form");
     await user.click(screen.getByRole("button", { name: "Add modal content" }));
-    await user.click(screen.getByRole("button", { name: "1.2. Form: 0 form controls" }));
     await user.click(screen.getByRole("button", { name: "Add form control" }));
     await user.clear(await screen.findByLabelText("Label"));
     await user.type(screen.getByLabelText("Label"), "Modal note");
     await user.click(screen.getByRole("button", { name: "1. Modal: Review item" }));
-    await user.click(screen.getByRole("button", { name: "Save components" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
     const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
@@ -164,8 +164,8 @@ describe("ProjectEditorPage", () => {
       properties: { label: "Modal note" },
     });
 
-    await user.click(await screen.findByRole("button", { name: "Generate preview" }));
-    const preview = await screen.findByLabelText("Generated Python preview");
+    await user.click(screen.getByRole("link", { name: "Code" }));
+    const preview = await screen.findByLabelText("Generated app code");
     expect(preview).toHaveTextContent(
       "@st.dialog('Review item', width='medium', position='right', dismissible=False)",
     );
@@ -180,15 +180,16 @@ describe("ProjectEditorPage", () => {
       version: 2,
       components: savedInput?.components ?? [],
     });
-    renderProjectEditorPage();
+    await renderProjectEditorPage();
 
-    await user.click(await screen.findByRole("button", { name: "1. Modal: Review item" }));
+    await user.click(screen.getByRole("button", { name: "App Flow" }));
+    await user.dblClick(await screen.findByRole("button", { name: "1. Modal: Review item" }));
     expect(await screen.findByLabelText("Dialog width")).toHaveValue("medium");
     expect(screen.getByLabelText("Dialog position")).toHaveValue("right");
     expect(screen.getByRole("switch", { name: "Allow dialog dismissal" }))
       .toHaveAttribute("data-state", "unchecked");
-    await user.click(screen.getByRole("button", { name: "1.2. Form: 1 form controls" }));
-    await user.click(screen.getByRole("button", { name: "1.2.1. TextInput: Modal note" }));
+    await user.click(screen.getByRole("button", { name: "Select Form: form1" }));
+    await user.click(screen.getByRole("button", { name: "Select Text Input: textInput2" }));
     expect(await screen.findByLabelText("Label")).toHaveValue("Modal note");
   }, 30_000);
 });

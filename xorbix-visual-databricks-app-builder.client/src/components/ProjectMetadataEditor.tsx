@@ -16,6 +16,7 @@ interface IProjectMetadataEditorProps {
   onDescriptionChange: (description: string) => void;
   onSave: () => void;
   onReload: () => void;
+  showActions?: boolean;
 }
 
 function ProjectMetadataEditor({
@@ -31,6 +32,7 @@ function ProjectMetadataEditor({
   onDescriptionChange,
   onSave,
   onReload,
+  showActions = true,
 }: Readonly<IProjectMetadataEditorProps>) {
   return (
     <form
@@ -79,14 +81,14 @@ function ProjectMetadataEditor({
           Project saved.
         </p>
       )}
-      <div>
+      {showActions && <div>
         <Button
           type="submit"
           disabled={!canEdit || !isDirty || isDisabled || isSaving}
         >
           {isSaving ? "Saving…" : "Save project"}
         </Button>
-      </div>
+      </div>}
     </form>
   );
 }

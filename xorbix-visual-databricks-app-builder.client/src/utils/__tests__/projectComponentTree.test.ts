@@ -3,6 +3,7 @@ import type { IProjectComponent } from "../../models/ProjectComponents";
 import {
   getProjectComponentMoveAvailability,
   moveProjectComponent,
+  moveProjectComponentBefore,
   removeProjectComponentSubtree,
 } from "../projectComponentTree";
 
@@ -98,6 +99,48 @@ describe("projectComponentTree", () => {
     const reordered = moveProjectComponent(components, "second-control", "up");
 
     expect(reordered[0]?.children).toEqual(["second-control", "first-control"]);
+  });
+
+  it("moves a root component before another root and preserves nested nodes", () => {
+    const components = [
+      createComponent("first-root", { children: ["first-child"] }),
+      createComponent("first-child"),
+      createComponent("second-root"),
+      createComponent("third-root"),
+    ];
+
+    const reordered = moveProjectComponentBefore(
+      components,
+      "third-root",
+      "second-root",
+    );
+
+    expect(reordered[0]?.key).toBe("first-root");
+    expect(reordered[0]?.children).toEqual(["first-child"]);
+    expect(
+      reordered
+        .filter((component) => component.key !== "first-child")
+        .map((component) => component.key),
+    ).toEqual(["first-root", "third-root", "second-root"]);
+  });
+
+  it("does not move a component across different parents", () => {
+    const components = [
+      createComponent("first-parent", {
+        type: "Form",
+        children: ["first-child"],
+      }),
+      createComponent("second-parent", {
+        type: "Form",
+        children: ["second-child"],
+      }),
+      createComponent("first-child"),
+      createComponent("second-child"),
+    ];
+
+    expect(
+      moveProjectComponentBefore(components, "first-child", "second-child"),
+    ).toBe(components);
   });
 
   it("reindexes modal controls after changing their order", () => {

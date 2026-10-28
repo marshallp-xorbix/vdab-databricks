@@ -19,16 +19,16 @@ const project: ProjectSummary = {
 };
 
 const columns = [
-  { name: "entity_id", type: "BIGINT", dataType: "BIGINT" },
-  { name: "entity_name", type: "STRING", dataType: "STRING" },
-  { name: "segment", type: "STRING", dataType: "STRING" },
-  { name: "period", type: "TIMESTAMP", dataType: "TIMESTAMP" },
-  { name: "size", type: "DECIMAL(12,2)", dataType: "DECIMAL" },
-  { name: "x_position", type: "DOUBLE", dataType: "DOUBLE" },
-  { name: "y_position", type: "DOUBLE", dataType: "DOUBLE" },
-  { name: "change_value", type: "DOUBLE", dataType: "DOUBLE" },
-  { name: "health", type: "DOUBLE", dataType: "DOUBLE" },
-  { name: "risk", type: "DOUBLE", dataType: "DOUBLE" },
+  { name: "entity_id", type: "BIGINT", dataType: "BIGINT", nullable: false },
+  { name: "entity_name", type: "STRING", dataType: "STRING", nullable: true },
+  { name: "segment", type: "STRING", dataType: "STRING", nullable: true },
+  { name: "period", type: "TIMESTAMP", dataType: "TIMESTAMP", nullable: true },
+  { name: "size", type: "DECIMAL(12,2)", dataType: "DECIMAL", nullable: true },
+  { name: "x_position", type: "DOUBLE", dataType: "DOUBLE", nullable: true },
+  { name: "y_position", type: "DOUBLE", dataType: "DOUBLE", nullable: true },
+  { name: "change_value", type: "DOUBLE", dataType: "DOUBLE", nullable: true },
+  { name: "health", type: "DOUBLE", dataType: "DOUBLE", nullable: true },
+  { name: "risk", type: "DOUBLE", dataType: "DOUBLE", nullable: true },
 ];
 
 test("AmoebaStoryPreview_MatchesAcceptedCanvasFixtureAndEscapesEmbeddedData", async () => {
@@ -173,6 +173,14 @@ test("AmoebaStoryInput_RejectsMalformedPropertiesBindingsAndComponentShape", () 
         error instanceof ApplicationError && error.status === 400,
     );
   }
+});
+
+test("AmoebaStoryInput_AcceptsLakebaseColumnNullabilityMetadata", () => {
+  const component = createAmoebaStory({ bindings: createLakebaseBinding() });
+
+  assert.doesNotThrow(() =>
+    readComponentsInput({ version: 1, components: [component] }),
+  );
 });
 
 function generate(component: ProjectComponent): string {

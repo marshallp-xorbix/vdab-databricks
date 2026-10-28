@@ -1,4 +1,5 @@
 import type { CallerIdentity, WorkspaceSetupDiagnostics } from "./contracts.ts";
+import { normalizeWorkspaceHost } from "./workspace-host.ts";
 
 const APPS_PATH = "/api/2.0/apps/";
 const OAUTH_CONSENT_PATH = "/api/2.0/oauth-app-integrations/";
@@ -268,23 +269,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
-}
-
-function normalizeWorkspaceHost(workspaceHost: string): string {
-  const parsedHost = new URL(workspaceHost);
-
-  if (
-    parsedHost.protocol !== "https:" ||
-    parsedHost.username.length > 0 ||
-    parsedHost.password.length > 0 ||
-    parsedHost.pathname !== "/" ||
-    parsedHost.search.length > 0 ||
-    parsedHost.hash.length > 0
-  ) {
-    throw new Error("DATABRICKS_HOST must be an HTTPS workspace origin.");
-  }
-
-  return parsedHost.origin;
 }
 
 function unavailableAuthorization(
