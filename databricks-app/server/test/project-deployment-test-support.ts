@@ -234,6 +234,15 @@ class MemoryWorkspaceAppsClient implements WorkspaceAppDeploymentClient {
       : null;
   }
 
+  async updateAppResources(
+    _caller: CallerIdentity,
+    appName: string,
+    resources: WorkspaceAppDetails["resources"],
+  ): Promise<void> {
+    const app = this.apps.get(appName);
+    if (app) app.resources = structuredClone(resources);
+  }
+
   async createApp(
     _caller: CallerIdentity,
     appName: string,
@@ -320,6 +329,7 @@ export function makeApp(
     usesGitSource: false,
     userApiScopes: ["sql"],
     resources: [],
+    unsupportedResourceCount: 0,
     ...overrides,
   };
   app.effectiveUserApiScopes = effectiveUserApiScopes;

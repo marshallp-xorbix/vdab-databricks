@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import ProjectDeploymentHistoryItem from "./ProjectDeploymentHistoryItem";
 import ProjectDeploymentSecretResourcesEditor from "./ProjectDeploymentSecretResourcesEditor";
+import ProjectAppResourceGrantsEditor from "./ProjectAppResourceGrantsEditor";
 import ProjectDeploymentReadiness from "./ProjectDeploymentReadiness";
 import ProjectDeploymentTargetSelector from "./ProjectDeploymentTargetSelector";
 import ProjectDeploymentTargetStatus from "./ProjectDeploymentTargetStatus";
@@ -20,6 +21,8 @@ interface IProjectDeploymentPanelProps {
   projectId: string;
   canEdit: boolean | undefined;
   hasUnsavedChanges: boolean;
+  initialMode?: ProjectChildAppMode;
+  initialAppName?: string;
 }
 
 /** Deploys saved project snapshots as isolated Streamlit child Apps. */
@@ -27,6 +30,8 @@ function ProjectDeploymentPanel({
   projectId,
   canEdit,
   hasUnsavedChanges,
+  initialMode = "createNew",
+  initialAppName = "",
 }: Readonly<IProjectDeploymentPanelProps>) {
   const historyQuery = useProjectDeployments(projectId);
   const readinessQuery = useProjectDeploymentReadiness(
@@ -35,10 +40,14 @@ function ProjectDeploymentPanel({
   const { refetch: refetchReadiness } = readinessQuery;
   const childApp = historyQuery.data?.childApp ?? null;
   const [mode, setMode] = useState<ProjectChildAppMode>(
-    childApp?.mode ?? "createNew",
+    childApp?.mode ?? initialMode,
   );
-  const [newAppName, setNewAppName] = useState("");
-  const [selectedAppName, setSelectedAppName] = useState("");
+  const [newAppName, setNewAppName] = useState(
+    initialMode === "createNew" ? initialAppName : "",
+  );
+  const [selectedAppName, setSelectedAppName] = useState(
+    initialMode === "linkExisting" ? initialAppName : "",
+  );
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
   const [secretResources, setSecretResources] = useState<
     IWorkspaceSecretResourceSelection[]
@@ -189,6 +198,14 @@ function ProjectDeploymentPanel({
             : "App details could not be loaded."
         }
         missingScopes={eligibility.missingScopes}
+      />
+
+      <ProjectAppResourceGrantsEditor
+        projectId={projectId}
+        target={target}
+        requiredResources={readinessQuery.data?.appResources ?? []}
+        canEdit={Boolean(canEdit && childApp)}
+        isLinked={Boolean(childApp)}
       />
 
       {canEdit && !hasUnsavedChanges && (

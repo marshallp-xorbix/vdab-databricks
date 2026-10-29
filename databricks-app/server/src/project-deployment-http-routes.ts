@@ -77,6 +77,28 @@ export async function handleProjectDeploymentHttpRoute(
     return 200;
   }
 
+  if (route.type === "resources") {
+    if (requestUrl.search !== "") {
+      throw new ApplicationError(
+        400,
+        "invalid_app_resource_grants_request",
+        "Invalid App resource grants request",
+        "App resource grant updates do not accept query parameters.",
+      );
+    }
+    sendJson(
+      response,
+      202,
+      await deploymentService.updateResourceGrants(
+        caller,
+        requestId,
+        projectId,
+        parseJsonRequestBody(requestBody, request.headers["content-type"]),
+      ),
+    );
+    return 202;
+  }
+
   if (route.type === "history") {
     requireEmptyRequestBody(
       requestBody,

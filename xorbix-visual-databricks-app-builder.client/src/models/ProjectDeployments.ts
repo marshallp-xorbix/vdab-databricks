@@ -159,7 +159,9 @@ export interface IWorkspaceAppDeploymentTarget {
   sourceCodePath: string | null;
   usesGitSource: boolean;
   userApiScopes: string[];
+  appResources: IWorkspaceAppResource[];
   secretResources: IWorkspaceSecretAppResource[];
+  unsupportedResourceCount: number;
 }
 
 export class WorkspaceAppDeploymentTarget implements IWorkspaceAppDeploymentTarget {
@@ -175,7 +177,9 @@ export class WorkspaceAppDeploymentTarget implements IWorkspaceAppDeploymentTarg
   sourceCodePath: string | null;
   usesGitSource: boolean;
   userApiScopes: string[];
+  appResources: IWorkspaceAppResource[];
   secretResources: IWorkspaceSecretAppResource[];
+  unsupportedResourceCount: number;
 
   constructor(source: Partial<IWorkspaceAppDeploymentTarget> = {}) {
     this.appId = source.appId ?? null;
@@ -190,6 +194,8 @@ export class WorkspaceAppDeploymentTarget implements IWorkspaceAppDeploymentTarg
     this.sourceCodePath = source.sourceCodePath ?? null;
     this.usesGitSource = source.usesGitSource ?? false;
     this.userApiScopes = source.userApiScopes ?? [];
+    this.appResources = source.appResources ?? [];
     this.secretResources = source.secretResources ?? [];
+    this.unsupportedResourceCount = source.unsupportedResourceCount ?? 0;
   }
 }

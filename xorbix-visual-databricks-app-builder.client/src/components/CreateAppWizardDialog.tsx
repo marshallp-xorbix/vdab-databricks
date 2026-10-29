@@ -34,8 +34,15 @@ import { useDatabricksAppNames } from "../hooks/useDatabricksAppNames";
 import { authLinkClassName } from "../constants/authBranding";
 import { cn } from "../lib/utils";
 import type { IProject } from "../models/Project";
+import { useWorkspaceApps } from "../hooks/useWorkspaceApps";
+import type { ProjectChildAppMode } from "../models/ProjectDeployments";
 
 const WIZARD_STEPS = 3;
+
+export interface IStandaloneProjectTarget {
+  mode: ProjectChildAppMode;
+  appName: string;
+}
 
 function formatCreateAppError(error: unknown): string {
   if (error instanceof ApiError) {
@@ -56,7 +63,11 @@ export interface CreateAppWizardDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreated: (app: AppDto) => void;
   standaloneProjectMode?: boolean;
-  onProjectCreated?: (name: string, description: string | null) => Promise<void>;
+  onProjectCreated?: (
+    name: string,
+    description: string | null,
+    target: IStandaloneProjectTarget,
+  ) => Promise<void>;
 }
 
 export default function CreateAppWizardDialog({
@@ -80,7 +91,17 @@ export default function CreateAppWizardDialog({
   const [newAppDescription, setNewAppDescription] = useState("");
   const [linkedDatabricksAppName, setLinkedDatabricksAppName] = useState("");
   const [newDatabricksAppName, setNewDatabricksAppName] = useState("");
+  const [standaloneTargetMode, setStandaloneTargetMode] =
+    useState<ProjectChildAppMode>("linkExisting");
+  const [standaloneAppName, setStandaloneAppName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const standaloneAppsQuery = useWorkspaceApps(
+    open && standaloneProjectMode && wizardStep === 2 && standaloneTargetMode === "linkExisting",
+  );
+  const standaloneApps = useMemo(
+    () => standaloneAppsQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [standaloneAppsQuery.data],
+  );
 
   const parsedWorkspaceId = useMemo(() => {
     const n = parseInt(selectedConnectionId, 10);
@@ -109,6 +130,8 @@ export default function CreateAppWizardDialog({
     setNewAppDescription("");
     setLinkedDatabricksAppName("");
     setNewDatabricksAppName("");
+    setStandaloneTargetMode("linkExisting");
+    setStandaloneAppName("");
     setIsCreating(false);
   }, []);
 
@@ -173,10 +196,13 @@ export default function CreateAppWizardDialog({
 
   const handleCreateApp = async () => {
     if (standaloneProjectMode) {
-      if (!newAppName.trim() || !onProjectCreated) return;
+      if (!newAppName.trim() || !onProjectCreated || !canCreateStandaloneProject) return;
       setIsCreating(true);
       try {
-        await onProjectCreated(newAppName.trim(), newAppDescription.trim() || null);
+        await onProjectCreated(newAppName.trim(), newAppDescription.trim() || null, {
+          mode: standaloneTargetMode,
+          appName: standaloneAppName.trim(),
+        });
         resetWizard();
         onOpenChange(false);
       } catch (error) {
@@ -226,6 +252,12 @@ export default function CreateAppWizardDialog({
     }
   };
 
+  const canCreateStandaloneProject =
+    standaloneProjectMode &&
+    (standaloneTargetMode === "createNew"
+      ? /^[a-z][a-z0-9-]{0,28}[a-z0-9]$/.test(standaloneAppName.trim())
+      : standaloneApps.some((app) => app.name === standaloneAppName.trim()));
+
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="bg-card p-6 rounded-xl shadow-xl max-w-md w-full border border-border">
@@ -235,12 +267,49 @@ export default function CreateAppWizardDialog({
           </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground pt-1">
           {standaloneProjectMode
-            ? `Step ${wizardStep + 1} of 2. Set up your app, then review it before creating.`
+            ? `Step ${wizardStep + 1} of ${WIZARD_STEPS}. Confirm the workspace, choose an App target, then review your project.`
             : `Step ${wizardStep + 1} of ${WIZARD_STEPS}. Choose a workspace, then link or create a Databricks app, then enter app details.`}
         </DialogDescription>
         </DialogHeader>
 
         {standaloneProjectMode && wizardStep === 0 && (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border p-4 text-sm">
+              <p className="font-medium">Databricks workspace</p>
+              <p className="mt-1 text-muted-foreground">
+                VDAB uses the workspace where this builder is installed. Apps and resources are selected from that workspace.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {standaloneProjectMode && wizardStep === 1 && (
+          <div className="space-y-4">
+            <Label htmlFor="wizard-standalone-target" className="text-sm font-medium text-foreground">
+              Databricks App
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Link an App already in this workspace or create a new App target. The App is linked when you deploy from the project.
+            </p>
+            <Select
+              value={standaloneTargetMode}
+              onValueChange={(value: string) => {
+                setStandaloneTargetMode(value as ProjectChildAppMode);
+                setStandaloneAppName("");
+              }}
+            >
+              <SelectTrigger id="wizard-standalone-target" className="mt-2 w-full rounded-md">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="linkExisting">Link existing Databricks App</SelectItem>
+                <SelectItem value="createNew">Create new Databricks App</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {standaloneProjectMode && wizardStep === 2 && (
           <div className="space-y-4">
             <div>
               <Label htmlFor="wizard-app-name" className="text-sm font-medium text-foreground">
@@ -270,7 +339,7 @@ export default function CreateAppWizardDialog({
             </div>
           </div>
         )}
-        {standaloneProjectMode && wizardStep === 1 && (
+        {standaloneProjectMode && wizardStep === 2 && (
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-muted/30 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">App</p>
@@ -279,11 +348,35 @@ export default function CreateAppWizardDialog({
                 {newAppDescription.trim() || "No description"}
               </p>
             </div>
+            {standaloneTargetMode === "createNew" ? (
+              <div>
+                <Label htmlFor="wizard-standalone-app-name" className="text-sm font-medium text-foreground">New Databricks App name</Label>
+                <Input id="wizard-standalone-app-name" value={standaloneAppName} onChange={(event) => setStandaloneAppName(event.target.value)} placeholder="unique-app-name" className="mt-1" />
+                <p className="mt-1 text-xs text-muted-foreground">Use 2–30 lowercase letters, numbers, or hyphens.</p>
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="wizard-standalone-existing-app" className="text-sm font-medium text-foreground">Existing Databricks App</Label>
+                {standaloneAppsQuery.isPending ? (
+                  <p role="status" className="mt-2 text-sm text-muted-foreground">Loading Apps in this workspace…</p>
+                ) : standaloneAppsQuery.isError ? (
+                  <p role="alert" className="mt-2 text-sm text-destructive">{standaloneAppsQuery.error instanceof Error ? standaloneAppsQuery.error.message : "Workspace Apps could not be loaded."}</p>
+                ) : (
+                  <Select value={standaloneAppName} onValueChange={setStandaloneAppName}>
+                    <SelectTrigger id="wizard-standalone-existing-app" className="mt-1 w-full"><SelectValue placeholder="Select an App…" /></SelectTrigger>
+                    <SelectContent>{standaloneApps.map((app) => <SelectItem key={app.name} value={app.name}>{app.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+                {standaloneAppsQuery.hasNextPage && (
+                  <Button type="button" variant="outline" className="mt-2" disabled={standaloneAppsQuery.isFetchingNextPage} onClick={() => void standaloneAppsQuery.fetchNextPage()}>
+                    {standaloneAppsQuery.isFetchingNextPage ? "Loading more Apps…" : "Load more Apps"}
+                  </Button>
+                )}
+              </div>
+            )}
             <div className="rounded-lg border border-border p-4 text-sm">
-              <p className="font-medium">Workspace and deployment</p>
-              <p className="mt-1 text-muted-foreground">
-                This app is saved in the Lakebase database bound to this workspace. You can choose a Databricks App when you are ready to deploy.
-              </p>
+              <p className="font-medium">Review</p>
+              <p className="mt-1 text-muted-foreground">{newAppName.trim() || "Untitled app"} · {standaloneTargetMode === "createNew" ? `Create ${standaloneAppName || "a new App"}` : `Link ${standaloneAppName || "an existing App"}`}</p>
             </div>
           </div>
         )}
@@ -476,7 +569,7 @@ export default function CreateAppWizardDialog({
               Back
             </Button>
           )}
-          {wizardStep < (standaloneProjectMode ? 1 : 2) && (
+          {wizardStep < (standaloneProjectMode ? 2 : 2) && (
             <Button
               type="button"
               disabled={
@@ -488,19 +581,27 @@ export default function CreateAppWizardDialog({
               }
               onClick={() => {
                 if (!standaloneProjectMode && wizardStep === 0 && !canGoNextFromWorkspace) return;
-                setWizardStep((s) => Math.min(standaloneProjectMode ? 1 : 2, s + 1));
+                setWizardStep((s) => Math.min(2, s + 1));
               }}
             >
               {standaloneProjectMode ? "Continue" : "Next"}
             </Button>
           )}
-          {wizardStep === (standaloneProjectMode ? 1 : 2) && (
+          {wizardStep === 2 && (
             <Button
               type="button"
-              disabled={standaloneProjectMode ? !newAppName.trim() || isCreating : !canSubmit}
+              disabled={standaloneProjectMode
+                ? !newAppName.trim() || !canCreateStandaloneProject || isCreating
+                : !canSubmit}
               onClick={() => void handleCreateApp()}
             >
-              {isCreating ? "Creating…" : "Create app"}
+              {isCreating
+                ? "Creating…"
+                : standaloneProjectMode
+                  ? standaloneTargetMode === "linkExisting"
+                    ? "Create and link project"
+                    : "Create project"
+                  : "Create app"}
             </Button>
           )}
         </DialogFooter>

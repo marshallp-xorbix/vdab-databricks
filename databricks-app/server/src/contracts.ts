@@ -185,7 +185,9 @@ export interface WorkspaceAppDeploymentTarget {
   sourceCodePath: string | null;
   usesGitSource: boolean;
   userApiScopes: string[];
+  appResources: WorkspaceAppResource[];
   secretResources: WorkspaceSecretAppResource[];
+  unsupportedResourceCount: number;
 }
 
 /** Safe name exposed for a resource visible to the current workspace user. */

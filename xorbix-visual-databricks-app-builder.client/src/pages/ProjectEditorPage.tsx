@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { RefreshCw, Rocket, Sparkles } from "lucide-react";
+import { Bot, CloudUpload, RefreshCcw, Save } from "lucide-react";
 import { Button } from "../components/ui/button";
 import ProjectMetadataEditor from "../components/ProjectMetadataEditor";
 import ProjectEditorUnsavedChangesDialog from "../components/ProjectEditorUnsavedChangesDialog";
@@ -141,10 +141,10 @@ function ProjectEditorPage({
       <Button
         size="sm"
         asChild
-        className="h-auto bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
+        className="h-auto bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
       >
         <Link to={`/apps/${project.id}?tool=ai`}>
-          <Sparkles className="mr-1 h-3.5 w-3.5" />
+          <Bot className="mr-1 h-3.5 w-3.5" />
           Prompt
         </Link>
       </Button>
@@ -152,18 +152,19 @@ function ProjectEditorPage({
         size="sm"
         disabled={!canEdit || !isActiveSectionDirty || updateProjectMutation.isPending || replaceComponentsMutation.isPending || replaceWorkflowMutation.isPending}
         onClick={handleSaveActiveSection}
-        className="h-auto bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
+        className="h-auto bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
       >
+        <Save className="mr-1 h-3 w-3" />
         {updateProjectMutation.isPending ? "Saving…" : "Save"}
       </Button>
       <Button
         size="sm"
         variant="outline"
         asChild
-        className="h-auto px-2 py-1.5 text-xs font-semibold"
+        className="h-auto border border-[var(--builder-chrome-border)] bg-card px-3 py-1.5 text-xs font-semibold text-[var(--builder-chrome-foreground)] hover:bg-muted"
       >
         <Link to={`/apps/${project.id}?section=settings&settings=resources#project-deployment`}>
-          <Rocket className="mr-1 h-3.5 w-3.5" />
+          <CloudUpload className="mr-1 h-3 w-3" />
           Deploy
         </Link>
       </Button>
@@ -178,9 +179,9 @@ function ProjectEditorPage({
             editor.registryQuery.refetch(),
           ]);
         }}
-        className="h-auto px-1.5 py-1 text-xs font-semibold"
+        className="inline-flex h-auto items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold text-[var(--builder-chrome-foreground)] hover:bg-[var(--builder-chrome-hover)]"
       >
-        <RefreshCw className="mr-1 h-3.5 w-3.5" />
+        <RefreshCcw className="h-4 w-4" />
         Refresh
       </Button>
       <ProjectAppLifecycleControls
@@ -296,6 +297,8 @@ function ProjectEditorPage({
               projectId={project.id}
               canEdit={canEdit}
               hasUnsavedChanges={isDirty}
+              initialMode={readDeploymentMode(searchParams.get("deployMode"))}
+              initialAppName={searchParams.get("deployAppName") ?? ""}
             />
             )}
             {settingsTab === "permissions" && <>
@@ -347,4 +350,8 @@ function readSettingsTab(value: string | null): string {
   return value === "theme" || value === "resources" || value === "permissions"
     ? value
     : "details";
+}
+
+function readDeploymentMode(value: string | null): "createNew" | "linkExisting" {
+  return value === "linkExisting" ? "linkExisting" : "createNew";
 }

@@ -2,6 +2,7 @@
 export type ProjectDeploymentRoute =
   | { type: "history"; projectId: string }
   | { type: "readiness"; projectId: string }
+  | { type: "resources"; projectId: string }
   | { type: "start"; projectId: string }
   | { type: "deployment"; projectId: string; deploymentId: string }
   | { type: "retry"; projectId: string; deploymentId: string }
@@ -17,6 +18,12 @@ export function matchProjectDeploymentRoute(
   const readinessMatch = pathname.match(/^\/api\/v1\/projects\/([^/]+)\/deployments\/readiness$/);
   if (method === "GET" && readinessMatch) {
     return { type: "readiness", projectId: readinessMatch[1] ?? "" };
+  }
+  const resourceMatch = pathname.match(
+    /^\/api\/v1\/projects\/([^/]+)\/deployments\/resources$/,
+  );
+  if (method === "PATCH" && resourceMatch) {
+    return { type: "resources", projectId: resourceMatch[1] ?? "" };
   }
   const match = pathname.match(PROJECT_DEPLOYMENTS_PATH);
   if (!match) return null;

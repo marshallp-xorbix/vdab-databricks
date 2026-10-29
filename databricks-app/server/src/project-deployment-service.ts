@@ -40,10 +40,10 @@ import {
   requireProjectDeploymentEditor as requireEditor,
 } from "./project-deployment-service-errors.ts";
 import type { WorkspaceAppDeploymentClient } from "./workspace-app-deployment-client.ts";
-import type { WorkspaceAppDetails } from "./workspace-app-deployment-client.ts";
 import { resolveWorkspaceSecretResources } from "./workspace-app-secret-resource-binding.ts";
 import { validateWorkspaceAppResources } from "./workspace-app-resource-validation.ts";
 import { ProjectDeploymentTargetService } from "./project-deployment-target-service.ts";
+import { ProjectAppResourceGrantsService } from "./project-app-resource-grants-service.ts";
 
 /** Coordinates caller-authorized generated App deployment and recovery. */
 export class ProjectDeploymentService {
@@ -52,6 +52,7 @@ export class ProjectDeploymentService {
   private readonly repository: ProjectDeploymentRepository;
   private readonly workspaceClient: WorkspaceAppDeploymentClient;
   private readonly targetService: ProjectDeploymentTargetService;
+  private readonly resourceGrantsService: ProjectAppResourceGrantsService;
   private readonly workspaceId: string;
 
   constructor(
@@ -66,6 +67,13 @@ export class ProjectDeploymentService {
     this.repository = repository;
     this.workspaceClient = workspaceClient;
     this.targetService = new ProjectDeploymentTargetService(workspaceClient);
+    this.resourceGrantsService = new ProjectAppResourceGrantsService(
+      projectService,
+      previewService,
+      repository,
+      workspaceClient,
+      workspaceId,
+    );
     this.workspaceId = workspaceId;
   }
 
@@ -95,8 +103,25 @@ export class ProjectDeploymentService {
     const { resources, ...target } = app;
     return {
       ...target,
+      appResources: resources,
       secretResources: resources.filter(isSecretResource),
+      unsupportedResourceCount: app.unsupportedResourceCount ?? 0,
     };
+  }
+
+  /** Saves central child-App service-principal grants with project ACL checks. */
+  async updateResourceGrants(
+    caller: CallerIdentity,
+    requestId: string,
+    projectId: string,
+    body: unknown,
+  ): Promise<{ appName: string; resourceCount: number }> {
+    return this.resourceGrantsService.update(
+      caller,
+      requestId,
+      projectId,
+      body,
+    );
   }
 
   /** Reports local generator authorization requirements before a workspace mutation. */
@@ -162,7 +187,7 @@ export class ProjectDeploymentService {
     }
     const appSpaceName =
       await this.workspaceClient.getInstalledAppSpace(caller);
-    const existingApp = await this.readCurrentTargetApp(
+    const existingApp = await this.targetService.getCurrentTargetApp(
       caller,
       input.appName,
       mode,
@@ -237,19 +262,6 @@ export class ProjectDeploymentService {
       createMarker,
       appSpaceName,
     );
-  }
-
-  private async readCurrentTargetApp(
-    caller: CallerIdentity,
-    appName: string,
-    mode: "createNew" | "linkExisting",
-    childApp: Awaited<ReturnType<ProjectDeploymentRepository["getChildApp"]>>,
-  ): Promise<WorkspaceAppDetails | null> {
-    if (!childApp && mode === "createNew") return null;
-    if (childApp?.mode === "createNew" && !childApp.appId) {
-      return this.workspaceClient.getApp(caller, appName);
-    }
-    return this.targetService.requireExistingApp(caller, appName);
   }
 
   /** Refreshes the selected Databricks deployment state without exposing source. */

@@ -29,6 +29,17 @@ vi.mock("../hooks/useDatabricksAppNames", () => ({
   })),
 }));
 
+vi.mock("../hooks/useWorkspaceApps", () => ({
+  useWorkspaceApps: vi.fn(() => ({
+    data: { pages: [{ items: [{ name: "existing-child", appState: "STOPPED" }] }] },
+    isPending: false,
+    isError: false,
+    hasNextPage: false,
+    fetchNextPage: vi.fn(),
+    isFetchingNextPage: false,
+  })),
+}));
+
 vi.mock("./ui/use-toast", () => ({
   toast: vi.fn(),
 }));
@@ -230,26 +241,37 @@ describe("CreateAppWizardDialog", () => {
     expect(payload.databricksAppName).toBe("brand-new-dbx");
   });
 
-  it("standalone mode skips workspace selection and creates a local project", async () => {
+  it("standalone mode pins the workspace, selects an App target, and creates a project", async () => {
     const onProjectCreated = vi.fn().mockResolvedValue(undefined);
     const { onOpenChange } = renderDialog({
       standaloneProjectMode: true,
       onProjectCreated,
     });
 
-    expect(await screen.findByLabelText("App name")).toBeInTheDocument();
+    expect(await screen.findByText("Databricks workspace")).toBeInTheDocument();
     expect(mockGetWorkspacesByTenant).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByTestId("wizard-native-select"), {
+      target: { value: "createNew" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByLabelText("App name")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("App name"), {
       target: { value: "Revenue dashboard" },
     });
     fireEvent.change(screen.getByLabelText("Description", { selector: "textarea" }), {
       target: { value: "Finance team" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("button", { name: "Create app" }));
+    fireEvent.change(screen.getByLabelText("New Databricks App name"), {
+      target: { value: "revenue-dashboard" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
 
     await waitFor(() => {
-      expect(onProjectCreated).toHaveBeenCalledWith("Revenue dashboard", "Finance team");
+      expect(onProjectCreated).toHaveBeenCalledWith("Revenue dashboard", "Finance team", {
+        mode: "createNew",
+        appName: "revenue-dashboard",
+      });
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

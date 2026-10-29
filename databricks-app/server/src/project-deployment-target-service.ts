@@ -1,7 +1,13 @@
 import type { CallerIdentity, WorkspaceAppResource } from "./contracts.ts";
 import { MAX_APPS_PER_WORKSPACE } from "./contracts.ts";
-import type { ProjectDeploymentRecord } from "./db/project-deployment-repository.ts";
-import { hasExactWorkspaceAppResources } from "./workspace-app-resource-validation.ts";
+import type {
+  ProjectChildAppRecord,
+  ProjectDeploymentRecord,
+} from "./db/project-deployment-repository.ts";
+import {
+  containsWorkspaceAppResources,
+  hasExactWorkspaceAppResources,
+} from "./workspace-app-resource-validation.ts";
 import type {
   WorkspaceAppDeploymentClient,
   WorkspaceAppDetails,
@@ -71,6 +77,9 @@ export class ProjectDeploymentTargetService {
       existing.appId,
       expectedAppSpaceName,
     );
+    if (!hasExactWorkspaceAppResources(existing.resources, requiredResources)) {
+      throw missingChildAppResources();
+    }
   }
 
   /** Reads and validates an existing linked target as the acting caller. */
@@ -81,6 +90,20 @@ export class ProjectDeploymentTargetService {
     const app = await this.workspaceClient.getApp(caller, appName);
     if (!app) throw childAppMissing();
     return app;
+  }
+
+  /** Reads the current target for a project create, link, or redeploy request. */
+  async getCurrentTargetApp(
+    caller: CallerIdentity,
+    appName: string,
+    mode: "createNew" | "linkExisting",
+    childApp: ProjectChildAppRecord | null,
+  ): Promise<WorkspaceAppDetails | null> {
+    if (!childApp && mode === "createNew") return null;
+    if (childApp?.mode === "createNew" && !childApp.appId) {
+      return this.workspaceClient.getApp(caller, appName);
+    }
+    return this.requireExistingApp(caller, appName);
   }
 
   /** Verifies the target identity, scopes, source mode, and resource set. */
@@ -104,7 +127,7 @@ export class ProjectDeploymentTargetService {
         !(app.effectiveUserApiScopes ?? app.userApiScopes).includes(scope),
     );
     if (missingScopes.length > 0) throw missingChildAppScopes(missingScopes);
-    if (!hasExactWorkspaceAppResources(app.resources, requiredResources)) {
+    if (!containsWorkspaceAppResources(app.resources, requiredResources)) {
       throw missingChildAppResources();
     }
   }

@@ -1,26 +1,26 @@
 # Deployment and operations
 
-## Existing sandbox installation
+## Existing workspace-source installation
 
-The maintained sandbox installation is Databricks App `vdab-builder-sandbox`. Its default source is the single folder:
+Build the release package from the repository, then synchronize its contents to the same workspace source folder and redeploy the existing App:
 
-`/Workspace/Users/patrick.wayne.marshall@gmail.com/.vdab/builder/vdab-builder-sandbox`
-
-Build the release package from the repository, then synchronize its contents to this same folder and deploy the existing App:
-
-```powershell
+```sh
 cd databricks-app
 npm run build
 npm run smoke
 cd ..
-databricks sync .\databricks-app\.build /Workspace/Users/<your-email>/.vdab/builder/vdab-builder-sandbox --profile <profile>
-databricks apps deploy vdab-builder-sandbox --source-code-path /Workspace/Users/<your-email>/.vdab/builder/vdab-builder-sandbox --mode SNAPSHOT --profile <profile>
-databricks apps get vdab-builder-sandbox --profile <profile>
+
+APP_NAME="your-vdab-app"
+WORKSPACE_USER="you@example.com"
+PROFILE="your-databricks-profile"
+WORKSPACE_SOURCE="/Workspace/Users/${WORKSPACE_USER}/.vdab/builder/${APP_NAME}"
+
+databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE"
+databricks apps deploy "$APP_NAME" --source-code-path "$WORKSPACE_SOURCE" --mode SNAPSHOT --profile "$PROFILE"
+databricks apps get "$APP_NAME" --profile "$PROFILE"
 ```
 
-Use the same profile, App name, and source folder on every update. Do not make a new dated folder for each build. Databricks keeps deployment snapshots under its managed App deployment area; the user-owned `.vdab/builder/` directory should contain only the current package source. Never delete the `postgres` Lakebase resource, customer database, child Apps, or their data as part of a builder source update.
-
-The current sandbox workspace verified this flow on 2026-10-29: the package deployed from the path above, the App reached deployment `SUCCEEDED`, `app_status=RUNNING`, and `default_source_code_path` matched that path. See CLI output in the active task history; it is not a substitute for subsequent health checks.
+Use the same profile, App name, and source folder on every update. Do not make a new dated folder for each build. Databricks keeps deployment snapshots under its managed App deployment area; the workspace source folder should contain only the current package source. Never delete the `postgres` Lakebase resource, customer database, child Apps, or their data as part of a builder source update. See the [Databricks deployment guide](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy) for additional deployment options.
 
 ## First install
 

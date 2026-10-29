@@ -87,7 +87,6 @@ function isWorkspaceAppResource(
     return false;
   if (isRecord(value.postgres) && Object.keys(value).length === 3) {
     return (
-      /^vdab-pg-[a-f0-9]{16}$/.test(value.name) &&
       typeof value.postgres.database === "string" &&
       /^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}\/databases\/[A-Za-z0-9_-]{1,128}$/.test(
         value.postgres.database,
@@ -97,7 +96,6 @@ function isWorkspaceAppResource(
   }
   if (isRecord(value.database) && Object.keys(value).length === 3) {
     return (
-      /^vdab-db-[a-f0-9]{16}$/.test(value.name) &&
       typeof value.database.instance_name === "string" &&
       /^[A-Za-z0-9_-]{1,128}$/.test(value.database.instance_name) &&
       typeof value.database.database_name === "string" &&
@@ -107,16 +105,15 @@ function isWorkspaceAppResource(
   }
   if (isRecord(value.sql_warehouse) && Object.keys(value).length === 3) {
     return (
-      /^vdab-wh-[a-f0-9]{16}$/.test(value.name) &&
       typeof value.sql_warehouse.id === "string" &&
       /^[A-Za-z0-9_-]{1,128}$/.test(value.sql_warehouse.id) &&
-      value.sql_warehouse.permission === "CAN_USE"
+      ["CAN_USE", "CAN_MANAGE", "IS_OWNER"].includes(
+        String(value.sql_warehouse.permission),
+      )
     );
   }
   if (isRecord(value.secret) && Object.keys(value).length === 3) {
-    return (
-      isWorkspaceSecretAppResource(value) && value.secret.permission === "READ"
-    );
+    return isWorkspaceSecretAppResource(value);
   }
   return false;
 }
@@ -207,6 +204,27 @@ export async function getWorkspaceAppDeploymentTarget(
   if (!response.ok) throw new Error(await readErrorMessage(response));
   const value: unknown = await response.json();
   return value === null ? null : parseWorkspaceAppDeploymentTarget(value);
+}
+
+/** Updates the linked child App's service-principal resource grants. */
+export async function updateProjectResourceGrants(input: {
+  projectId: string;
+  resources: IWorkspaceAppResource[];
+}): Promise<void> {
+  const response = await fetch(
+    `${projectPath(input.projectId)}/deployments/resources`,
+    {
+      method: "PATCH",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ resources: input.resources }),
+    },
+  );
+  if (!response.ok) throw new Error(await readErrorMessage(response));
+  await response.body?.cancel();
 }
 
 /** Refreshes a deployment state through the installed workspace's Apps API. */
@@ -355,8 +373,13 @@ function parseWorkspaceAppDeploymentTarget(
     typeof value.usesGitSource !== "boolean" ||
     !Array.isArray(value.userApiScopes) ||
     value.userApiScopes.some((scope) => typeof scope !== "string") ||
+    !Array.isArray(value.appResources) ||
+    !value.appResources.every(isWorkspaceAppResource) ||
     !Array.isArray(value.secretResources) ||
-    !value.secretResources.every(isWorkspaceSecretAppResource)
+    !value.secretResources.every(isWorkspaceSecretAppResource) ||
+    typeof value.unsupportedResourceCount !== "number" ||
+    !Number.isInteger(value.unsupportedResourceCount) ||
+    value.unsupportedResourceCount < 0
   ) {
     throw new Error("The workspace returned invalid child App details.");
   }
@@ -373,7 +396,9 @@ function parseWorkspaceAppDeploymentTarget(
     sourceCodePath: value.sourceCodePath,
     usesGitSource: value.usesGitSource,
     userApiScopes: value.userApiScopes as string[],
+    appResources: value.appResources as IWorkspaceAppResource[],
     secretResources: value.secretResources as IWorkspaceSecretAppResource[],
+    unsupportedResourceCount: value.unsupportedResourceCount,
   });
 }
 

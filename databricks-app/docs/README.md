@@ -17,6 +17,7 @@ This is the maintained product and engineering guide for the standalone VDAB Dat
 
 ## Build and operate
 
+- [VDAB user guide](users-guide.md)
 - [Local development and verification](development.md)
 - [Deployment and operations](deployment-and-operations.md)
 

@@ -32,6 +32,18 @@ export function hasExactWorkspaceAppResources(
   );
 }
 
+/** Checks that every project-required binding remains in an edited grant set. */
+export function containsWorkspaceAppResources(
+  resources: WorkspaceAppResource[],
+  required: WorkspaceAppResource[],
+): boolean {
+  return required.every((requiredResource) =>
+    resources.some((resource) =>
+      sameWorkspaceAppResource(resource, requiredResource),
+    ),
+  );
+}
+
 function validateWorkspaceAppResource(resource: WorkspaceAppResource): void {
   if (
     !/^[a-z][a-z0-9-]{0,28}[a-z0-9]$/.test(resource.name) ||
@@ -42,7 +54,6 @@ function validateWorkspaceAppResource(resource: WorkspaceAppResource): void {
   }
   if ("postgres" in resource) {
     if (
-      !/^vdab-pg-[a-f0-9]{16}$/.test(resource.name) ||
       !/^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}\/databases\/[A-Za-z0-9_-]{1,128}$/.test(
         resource.postgres.database,
       ) ||
@@ -54,9 +65,10 @@ function validateWorkspaceAppResource(resource: WorkspaceAppResource): void {
   }
   if ("sql_warehouse" in resource) {
     if (
-      !/^vdab-wh-[a-f0-9]{16}$/.test(resource.name) ||
       !/^[A-Za-z0-9_-]{1,128}$/.test(resource.sql_warehouse.id) ||
-      resource.sql_warehouse.permission !== "CAN_USE"
+      !["CAN_USE", "CAN_MANAGE", "IS_OWNER"].includes(
+        resource.sql_warehouse.permission,
+      )
     ) {
       throw invalidDeploymentResource();
     }
@@ -66,14 +78,13 @@ function validateWorkspaceAppResource(resource: WorkspaceAppResource): void {
     if (
       !isValidSecretIdentifier(resource.secret.scope) ||
       !isValidSecretIdentifier(resource.secret.key) ||
-      resource.secret.permission !== "READ"
+      !["READ", "WRITE", "MANAGE"].includes(resource.secret.permission)
     ) {
       throw invalidDeploymentResource();
     }
     return;
   }
   if (
-    !/^vdab-db-[a-f0-9]{16}$/.test(resource.name) ||
     !/^[A-Za-z0-9_-]{1,128}$/.test(resource.database.instance_name) ||
     !/^[A-Za-z0-9_$-]{1,63}$/.test(resource.database.database_name) ||
     resource.database.permission !== "CAN_CONNECT_AND_CREATE"

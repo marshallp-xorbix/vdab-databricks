@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { useComponentRegistry } from "../../../context/ComponentRegistryContext";
 import {
@@ -47,6 +47,8 @@ const ControlItem: FC<ControlItemProps> = ({
   return (
     <div
       ref={setNodeRef}
+      role="button"
+      tabIndex={0}
       className={`relative flex flex-col items-center justify-center rounded-lg border border-[var(--builder-chrome-border)] bg-muted h-16 px-1 py-1.5 transition-colors touch-none ${
         isDragging
           ? "cursor-grabbing border-primary bg-card"
@@ -54,6 +56,14 @@ const ControlItem: FC<ControlItemProps> = ({
       }`}
       {...listeners}
       {...attributes}
+      aria-label={onAddComponent ? `Add ${label}` : undefined}
+      onClick={() => onAddComponent?.(componentType, category)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          onAddComponent?.(componentType, category);
+        }
+      }}
     >
       <div className="mb-0 flex items-center justify-center">
         <Icon size={16} />
@@ -61,21 +71,6 @@ const ControlItem: FC<ControlItemProps> = ({
       <span className="text-xs font-medium text-foreground text-center">
         {label}
       </span>
-      {onAddComponent && (
-        <button
-          type="button"
-          aria-label={`Add ${label}`}
-          title={`Add ${label} to canvas`}
-          className="absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded border border-[var(--builder-chrome-border)] bg-background text-foreground hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddComponent(componentType, category);
-          }}
-        >
-          <Plus aria-hidden="true" className="size-3" />
-        </button>
-      )}
     </div>
   );
 };

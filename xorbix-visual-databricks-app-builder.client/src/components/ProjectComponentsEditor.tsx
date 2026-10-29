@@ -1,5 +1,6 @@
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import MainFlowView from "./AppBuilderComponents/AppCanvas/MainFlowView";
 import BuilderLeftPanel from "./AppBuilderComponents/AppBuilderPanels/BuilderLeftPanel";
 import type {
@@ -19,6 +20,11 @@ import { toCanvasComponents } from "../utils/projectCanvasAdapter";
 import { getPageWidthFromTheme } from "../utils/pageWidthDefaults";
 import type { IProjectComponentPropertiesEditorProps } from "./ProjectComponentPropertiesEditor";
 import ProjectComponentTreeActions from "./ProjectComponentTreeActions";
+import { useTheme } from "../context/ThemeContext";
+import { getStreamlitThemeDefaults } from "./AppBuilderComponents/AppSettingsTab/themeDefaults";
+import type { ComponentDragData } from "../types/dnd";
+import { readComponentDragData } from "../utils/dndPayload";
+import { nestedLayoutFirstCollisionDetection } from "../utils/componentDragCollision";
 
 interface IProjectComponentsEditorProps {
   components: IProjectComponent[];
@@ -51,6 +57,12 @@ function ProjectComponentsEditor({
     onComponentsChange,
     onWorkflowChange,
   });
+  const { theme: productTheme } = useTheme();
+  const [activeDragData, setActiveDragData] = useState<ComponentDragData | null>(null);
+  const resolvedTheme = useMemo(
+    () => ({ ...getStreamlitThemeDefaults(productTheme), ...theme }),
+    [productTheme, theme],
+  );
   const canvasWorkflow = useMemo(
     () => toWorkflowBuilderDefinition(workflow, components),
     [workflow, components],
@@ -143,7 +155,6 @@ function ProjectComponentsEditor({
               builderMode="canvas"
               activeTabType={TabType.MainFlow}
               onAddModal={canvasEditor.addCanvasComponent}
-              onAddComponent={canvasEditor.addCanvasComponentFromPalette}
               isDragActive={Boolean(canvasEditor.dragDrop.dropIndicator)}
             />
           </aside>
@@ -187,10 +198,20 @@ function ProjectComponentsEditor({
       ) : (
       <DndContext
         sensors={canvasEditor.sensors}
-        onDragStart={canvasEditor.dragDrop.handleDragStart}
+        collisionDetection={nestedLayoutFirstCollisionDetection}
+        onDragStart={(event) => {
+          setActiveDragData(readComponentDragData(event.active.data.current) ?? null);
+          canvasEditor.dragDrop.handleDragStart(event);
+        }}
         onDragMove={canvasEditor.dragDrop.handleDragMove}
-        onDragCancel={canvasEditor.dragDrop.handleDragCancel}
-        onDragEnd={canvasEditor.dragDrop.handleDragEnd}
+        onDragCancel={(event) => {
+          canvasEditor.dragDrop.handleDragCancel(event);
+          setActiveDragData(null);
+        }}
+        onDragEnd={(event) => {
+          canvasEditor.dragDrop.handleDragEnd(event);
+          setActiveDragData(null);
+        }}
       >
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-card">
           <aside className="h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)]">
@@ -215,7 +236,7 @@ function ProjectComponentsEditor({
                 formComponents={canvasEditor.canvasComponents}
                 contextType={canvasContextType}
                 modalId={activeModalId}
-                theme={theme}
+                theme={resolvedTheme}
                 onRemoveComponent={canvasEditor.removeCanvasComponent}
                 selectedComponentId={editor.selectedKey}
                 onSelectComponent={editor.selectComponent}
@@ -254,7 +275,14 @@ function ProjectComponentsEditor({
             />
           </aside>
         </div>
-        <DragOverlay dropAnimation={null} />
+        <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]}>
+          {activeDragData ? (
+            <div className="pointer-events-none inline-flex items-center gap-1 rounded-md border border-border bg-card/95 px-2 py-1 text-xs text-foreground shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="max-w-28 truncate">{activeDragData.label}</span>
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
       )}
 

@@ -8,14 +8,9 @@ import {
   useMemo,
 } from "react";
 import {
-  closestCenter,
-  type Collision,
-  type CollisionDetection,
   DndContext,
   DragOverlay,
   MouseSensor,
-  pointerWithin,
-  rectIntersection,
   type DragCancelEvent,
   type DragEndEvent,
   type DragStartEvent,
@@ -78,6 +73,7 @@ import { getGenieChatDeployBlockingMessage } from "../utils/genieChatValidation"
 import { getModelChatDeployBlockingMessage } from "../utils/modelChatValidation";
 import { normalizeComponentsHeightPixels } from "../utils/componentProps/heightPixelsUtils";
 import { getLayoutTabIndex } from "../utils/layoutUtils";
+import { nestedLayoutFirstCollisionDetection } from "../utils/componentDragCollision";
 
 const MainFlowView = lazy(
   () => import("../components/AppBuilderComponents/AppCanvas/MainFlowView"),
@@ -221,54 +217,6 @@ function BuilderModeFallback() {
     </div>
   );
 }
-
-const preferLayoutCollisions = (
-  collisions: Collision[],
-  droppableContainers: Parameters<CollisionDetection>[0]["droppableContainers"],
-): Collision[] => {
-  if (collisions.length <= 1) {
-    return collisions;
-  }
-
-  const getContainerById = (id: Collision["id"]) =>
-    droppableContainers.find((container) => container.id === id);
-
-  const layoutCollisions = collisions.filter((collision) => {
-    const container = getContainerById(collision.id);
-    return container?.data.current?.dropType === "layout";
-  });
-
-  if (layoutCollisions.length === 0) {
-    return collisions;
-  }
-
-  const withArea = layoutCollisions.map((collision) => {
-    const container = getContainerById(collision.id);
-    const rect = container?.rect.current;
-    const area = rect ? rect.width * rect.height : Number.MAX_SAFE_INTEGER;
-    return { collision, area };
-  });
-
-  withArea.sort((left, right) => left.area - right.area);
-  return [withArea[0].collision];
-};
-
-const nestedLayoutFirstCollisionDetection: CollisionDetection = (args) => {
-  const pointerCollisions = pointerWithin(args);
-  if (pointerCollisions.length > 0) {
-    return preferLayoutCollisions(pointerCollisions, args.droppableContainers);
-  }
-
-  const intersectCollisions = rectIntersection(args);
-  if (intersectCollisions.length > 0) {
-    return preferLayoutCollisions(
-      intersectCollisions,
-      args.droppableContainers,
-    );
-  }
-
-  return closestCenter(args);
-};
 
 export default function AppBuilder() {
   const params = useParams<{ appId?: string }>();

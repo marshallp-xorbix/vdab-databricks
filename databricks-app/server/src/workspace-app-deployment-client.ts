@@ -52,6 +52,7 @@ export interface WorkspaceAppDetails {
   usesGitSource: boolean;
   userApiScopes: string[];
   resources: WorkspaceAppResource[];
+  unsupportedResourceCount?: number;
 }
 
 /** Caller-authorized App and immutable source deployment operations. */
@@ -62,6 +63,11 @@ export interface WorkspaceAppDeploymentClient {
     caller: CallerIdentity,
     appName: string,
   ): Promise<WorkspaceAppDetails | null>;
+  updateAppResources(
+    caller: CallerIdentity,
+    appName: string,
+    resources: WorkspaceAppResource[],
+  ): Promise<void>;
   createApp(
     caller: CallerIdentity,
     appName: string,
@@ -104,6 +110,8 @@ export function createWorkspaceAppDeploymentClient(
     countApps: (caller) => countApps(caller, host, fetchImplementation),
     getApp: (caller, appName) =>
       getApp(caller, appName, host, fetchImplementation),
+    updateAppResources: (caller, appName, resources) =>
+      updateAppResources(caller, appName, resources, host, fetchImplementation),
     createApp: (
       caller,
       appName,
@@ -234,6 +242,30 @@ async function getApp(
     return null;
   }
   return parseWorkspaceAppResponse(await readResponse(response));
+}
+
+async function updateAppResources(
+  caller: CallerIdentity,
+  appName: string,
+  resources: WorkspaceAppResource[],
+  host: string,
+  fetchImplementation: typeof fetch,
+): Promise<void> {
+  validateAppName(appName);
+  const response = await callDatabricks(
+    caller,
+    new URL(`${APPS_PATH}/${encodeURIComponent(appName)}/update`, host),
+    "POST",
+    {
+      app: {
+        name: appName,
+        resources: validateWorkspaceAppResources(resources),
+      },
+      update_mask: "resources",
+    },
+    fetchImplementation,
+  );
+  await discardHttpResponseBody(response);
 }
 
 async function createApp(

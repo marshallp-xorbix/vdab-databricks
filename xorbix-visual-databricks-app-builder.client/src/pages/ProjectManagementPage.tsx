@@ -4,6 +4,7 @@ import { MoreVertical, Search } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import CreateAppWizardDialog from "../components/CreateAppWizardDialog";
+import type { IStandaloneProjectTarget } from "../components/CreateAppWizardDialog";
 import { useCreateProject } from "../hooks/useCreateProject";
 import { useProjects } from "../hooks/useProjects";
 import { useExportProject } from "../hooks/useExportProject";
@@ -40,12 +41,22 @@ function ProjectManagementPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
 
-  async function handleCreate(name: string, description: string | null) {
+  async function handleCreate(
+    name: string,
+    description: string | null,
+    target: IStandaloneProjectTarget,
+  ) {
     const createdProject = await createProjectMutation.mutateAsync({
       name,
       description,
     });
-    await navigate(`/apps/${createdProject.id}`);
+    const query = new URLSearchParams({
+      section: "settings",
+      settings: "resources",
+      deployMode: target.mode,
+      deployAppName: target.appName,
+    });
+    await navigate(`/apps/${createdProject.id}?${query.toString()}`);
   }
 
   const filteredProjects = (projectsQuery.data?.items ?? []).filter((project) =>

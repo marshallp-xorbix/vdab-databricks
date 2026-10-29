@@ -42,7 +42,7 @@ export function parseWorkspaceAppResponse(value: unknown): WorkspaceAppDetails {
       hasGitSource(value.git_repository) ||
       hasGitSource(readNestedValue(value.active_deployment, "git_source")),
     userApiScopes: readStringArray(value.user_api_scopes),
-    resources: readWorkspaceAppResources(value.resources),
+    ...readWorkspaceAppResources(value.resources),
   };
 }
 
@@ -130,10 +130,15 @@ function readStringArray(value: unknown): string[] {
   return value as string[];
 }
 
-function readWorkspaceAppResources(value: unknown): WorkspaceAppResource[] {
-  if (value === undefined || value === null) return [];
+function readWorkspaceAppResources(value: unknown): {
+  resources: WorkspaceAppResource[];
+  unsupportedResourceCount: number;
+} {
+  if (value === undefined || value === null)
+    return { resources: [], unsupportedResourceCount: 0 };
   if (!Array.isArray(value)) throw invalidDatabricksResponse();
   const resources: WorkspaceAppResource[] = [];
+  let unsupportedResourceCount = 0;
   for (const entry of value) {
     if (!isRecord(entry)) throw invalidDatabricksResponse();
     if (entry.postgres !== undefined)
@@ -144,8 +149,9 @@ function readWorkspaceAppResources(value: unknown): WorkspaceAppResource[] {
       resources.push(readSqlWarehouseAppResource(entry));
     else if (entry.secret !== undefined)
       resources.push(readSecretAppResource(entry));
+    else unsupportedResourceCount += 1;
   }
-  return resources;
+  return { resources, unsupportedResourceCount };
 }
 
 function readSecretAppResource(

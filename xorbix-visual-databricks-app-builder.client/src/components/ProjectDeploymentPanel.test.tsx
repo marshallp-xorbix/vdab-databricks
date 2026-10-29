@@ -22,10 +22,22 @@ vi.mock("../hooks/useRollbackProjectDeployment", () => ({
 vi.mock("../hooks/useStartProjectDeployment", () => ({
   useStartProjectDeployment: vi.fn(),
 }));
+vi.mock("../hooks/useUpdateProjectResourceGrants", () => ({
+  useUpdateProjectResourceGrants: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isError: false,
+    isSuccess: false,
+    error: null,
+  }),
+}));
 vi.mock("../hooks/useWorkspaceAppDeploymentTarget", () => ({
   useWorkspaceAppDeploymentTarget: vi.fn(),
 }));
 vi.mock("../hooks/useWorkspaceApps", () => ({ useWorkspaceApps: vi.fn() }));
+vi.mock("../hooks/useWorkspaceSqlWarehouses", () => ({
+  useWorkspaceSqlWarehouses: () => ({ data: { items: [] }, isPending: false, isError: false }),
+}));
 
 const useReadinessMock = vi.mocked(useProjectDeploymentReadiness);
 const useHistoryMock = vi.mocked(useProjectDeployments);

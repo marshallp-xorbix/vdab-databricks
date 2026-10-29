@@ -98,6 +98,10 @@ describe("ProjectManagementPage", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Create New App" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Databricks App" }));
+    await userEvent.click(screen.getByRole("option", { name: "Create new Databricks App" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(screen.getByLabelText("App name"), {
       target: { value: "Revenue dashboard" },
     });
@@ -107,8 +111,10 @@ describe("ProjectManagementPage", () => {
         target: { value: "Finance team" },
       },
     );
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("button", { name: "Create app" }));
+    fireEvent.change(screen.getByLabelText("New Databricks App name"), {
+      target: { value: "revenue-dashboard" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
 
     await waitFor(() => expect(createProjectMock).toHaveBeenCalled());
     expect(createProjectMock.mock.calls[0]?.[0]).toEqual({

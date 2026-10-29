@@ -182,6 +182,7 @@ describe("project deployment API", () => {
       sourceCodePath: null,
       usesGitSource: false,
       userApiScopes: ["sql"],
+      appResources: [],
       secretResources: [
         {
           name: "api-key",
@@ -193,6 +194,7 @@ describe("project deployment API", () => {
           },
         },
       ],
+      unsupportedResourceCount: 0,
     };
     const fetchMock = vi
       .fn()
