@@ -11,7 +11,7 @@ import {
 
 test("ProjectPortability_FixtureImportsWithoutWorkspaceBindingsOrChildAppIdentity", async () => {
   const fixture = JSON.parse(await readFile(
-    resolve(import.meta.dirname, "../../../.documentation/databricks-app-transition/contracts/fixtures/standalone-project-v1.json"),
+    resolve(import.meta.dirname, "./fixtures/contracts/standalone-project-v1.json"),
     "utf8",
   )) as unknown;
 
@@ -299,7 +299,7 @@ function createSnapshot(): ProjectAggregateSnapshot {
 
 async function readFixture(): Promise<Record<string, unknown>> {
   return JSON.parse(await readFile(
-    resolve(import.meta.dirname, "../../../.documentation/databricks-app-transition/contracts/fixtures/standalone-project-v1.json"),
+    resolve(import.meta.dirname, "./fixtures/contracts/standalone-project-v1.json"),
     "utf8",
   )) as Record<string, unknown>;
 }

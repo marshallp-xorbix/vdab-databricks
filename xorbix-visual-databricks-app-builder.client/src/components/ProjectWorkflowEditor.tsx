@@ -6,6 +6,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetTitle,
 } from "./ui/sheet";
 import { useProjectCustomModules } from "../hooks/useProjectCustomModules";
 import { useWorkspaceServingEndpoints } from "../hooks/useWorkspaceServingEndpoints";
@@ -168,6 +169,7 @@ export function ProjectWorkflowEditor({
           overlayClassName="pointer-events-none"
           className="!inset-y-auto !top-auto !right-4 !bottom-4 !h-[70vh] !w-96 !max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border-2 border-primary bg-card p-0 shadow-xl sm:!max-w-96 [&>button]:hidden"
         >
+          <SheetTitle className="sr-only">AI Builder</SheetTitle>
           <SheetDescription className="sr-only">
             Request a project change using a workspace serving endpoint and review it before applying.
           </SheetDescription>

@@ -224,10 +224,11 @@ export function addProjectComponentFromLegacyCanvas(
     ...created,
     key: canvasComponent.id,
     codeName: canvasComponent.codeName || created.codeName,
-    properties: {
-      ...created.properties,
-      ...canvasComponent.props,
-    } as ProjectJsonObject,
+    properties: toStandaloneProperties(
+      canvasComponent.type,
+      created.properties,
+      canvasComponent.props,
+    ),
     bindings: canvasComponent.bindings as ProjectJsonObject | undefined ?? null,
     layout: readLegacyLayout(canvasComponent.layout) ?? (parent ? { y: childIndex } : null),
   };
@@ -247,6 +248,19 @@ export function addProjectComponentFromLegacyCanvas(
     ],
     component,
   };
+}
+
+function toStandaloneProperties(
+  type: ProjectComponentAddType,
+  defaults: ProjectJsonObject,
+  canvasProperties: Record<string, unknown>,
+): ProjectJsonObject {
+  const properties = { ...defaults, ...canvasProperties };
+
+  if (type === "GenieChat") delete properties.genieSpaceAppResourceName;
+  if (type === "ModelChat") delete properties.servingEndpointAppResourceName;
+
+  return properties;
 }
 
 function readLegacyLayout(value: string | undefined): ProjectJsonObject | null {

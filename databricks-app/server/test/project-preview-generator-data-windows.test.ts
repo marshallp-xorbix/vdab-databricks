@@ -76,7 +76,7 @@ test("ProjectPreviewGenerator_DataWindowUsesViewerAuthorizedSqlAndRendersTableOp
 
 test("ProjectPreviewGenerator_DataWindowMatchesAcceptedPythonFixture", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/data-window-app.py",
+    "./fixtures/contracts/generated/data-window-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -187,7 +187,7 @@ test("ProjectPreviewGenerator_DataWindowRejectsInvalidValues", () => {
 
 test("ProjectPreviewGenerator_EditableDataWindowMatchesAcceptedPythonFixture", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/editable-data-window-app.py",
+    "./fixtures/contracts/generated/editable-data-window-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

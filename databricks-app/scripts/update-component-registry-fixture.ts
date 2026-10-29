@@ -4,7 +4,7 @@ import { ComponentRegistryService } from "../server/src/component-registry/compo
 
 const fixturePath = resolve(
   import.meta.dirname,
-  "../../.documentation/databricks-app-transition/contracts/fixtures/http-v1/component-definitions-response.json",
+  "../server/test/fixtures/contracts/http-v1/component-definitions-response.json",
 );
 const registry = new ComponentRegistryService().getRegistry();
 

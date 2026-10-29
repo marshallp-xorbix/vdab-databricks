@@ -37,7 +37,7 @@ test("DashboardEmbedSave_NormalizesHostAndWorkspaceId_AndMatchesGeneratedFixture
 
   const source = generate(component);
   const fixture = await readFile(new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/dashboard-embed-app.py",
+    "./fixtures/contracts/generated/dashboard-embed-app.py",
     import.meta.url,
   ), "utf8");
   assert.equal(source, fixture);

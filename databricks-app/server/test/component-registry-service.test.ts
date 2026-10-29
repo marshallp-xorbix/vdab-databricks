@@ -10,7 +10,7 @@ import {
 
 const registryFixturePath = resolve(
   import.meta.dirname,
-  "../../../.documentation/databricks-app-transition/contracts/fixtures/http-v1/component-definitions-response.json",
+  "./fixtures/contracts/http-v1/component-definitions-response.json",
 );
 
 test("ComponentRegistryService_ReturnsAllDefinitionsMatchingGoldenFixture", async () => {

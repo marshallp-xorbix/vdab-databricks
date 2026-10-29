@@ -57,6 +57,26 @@ describe("projectCanvasAdapter", () => {
     });
   });
 
+  it.each([
+    [ComponentType.GenieChat, "genieSpaceAppResourceName"],
+    [ComponentType.ModelChat, "servingEndpointAppResourceName"],
+  ])("removes legacy App resource properties when adding %s", (type, legacyProperty) => {
+    const canvasComponent: VdabComponent = {
+      id: "workspace-chat",
+      codeName: "workspaceChat1",
+      type,
+      category: ComponentCategory.Visualization,
+      props: { [legacyProperty]: "legacy-resource", title: "Workspace chat" },
+      children: [],
+      schemaVersion: 1,
+    };
+
+    const result = addProjectComponentFromLegacyCanvas([], canvasComponent);
+
+    expect(result?.component.properties).not.toHaveProperty(legacyProperty);
+    expect(result?.component.properties.title).toBe("Workspace chat");
+  });
+
   it("adds a retained palette component to a project layout container", () => {
     const components = [projectComponent("form", "Form")];
     const textInput: VdabComponent = {

@@ -233,11 +233,13 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
     : [];
   const hasBindingsSection = Boolean(
     selectedComponent?.supportedBindings &&
-      selectedComponent.supportedBindings.length > 0,
+      selectedComponent.supportedBindings.length > 0 &&
+      !projectComponentEditor,
   );
   const hasStoryFieldMappings =
     selectedComponent != null &&
-    selectedComponent.type in STORY_FIELD_MAPPING_PANELS;
+    selectedComponent.type in STORY_FIELD_MAPPING_PANELS &&
+    !projectComponentEditor;
   const StoryFieldMappingsPanel = selectedComponent
     ? STORY_FIELD_MAPPING_PANELS[selectedComponent.type]
     : undefined;

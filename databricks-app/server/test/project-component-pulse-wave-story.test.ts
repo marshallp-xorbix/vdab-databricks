@@ -31,7 +31,7 @@ const columns = [
 
 test("PulseWaveStoryPreview_MatchesLegacyCanvasFixtureAndViewerQuery", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/pulse-wave-story-app.py",
+    "./fixtures/contracts/generated/pulse-wave-story-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

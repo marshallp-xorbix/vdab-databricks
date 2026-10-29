@@ -78,7 +78,7 @@ test("ProjectPreviewGenerator_ModalValidatesPropertiesTreesAndOrdering", () => {
 
 test("ProjectPreviewGenerator_FileUploadMatchesCallerAuthorizedVolumePythonFixture", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/file-upload-app.py",
+    "./fixtures/contracts/generated/file-upload-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

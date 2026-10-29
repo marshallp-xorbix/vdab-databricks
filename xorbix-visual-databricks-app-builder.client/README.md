@@ -42,4 +42,4 @@ The general `npm run lint` command also scans retained SaaS-reference pages and 
 - Keep workspace hosts, user tokens, App secrets, and Lakebase credentials out of client code and browser storage.
 - No new dependency is permitted without the security, license, maintenance, scope, and deployment-impact review and explicit approval in [AGENTS.md](../AGENTS.md).
 
-Workspace setup and deployment are documented in [databricks-app/DEPLOYMENT.md](../databricks-app/DEPLOYMENT.md). Databricks scopes, Marketplace installation, and generated Streamlit execution require the manual checks in [the transition checklist](../.documentation/databricks-app-transition/manual-workspace-testing.md).
+Product setup and deployment are documented in [databricks-app/docs](../databricks-app/docs/README.md). The standalone App's HTTP routes and authorization requirements are listed in its [API reference](../databricks-app/docs/api-reference.md).

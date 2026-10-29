@@ -198,7 +198,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
 // Externally-sourced secrets — JwtConfiguration--SecretKey, ConnectionStrings--PostgreSql, Stripe--SecretKey,
 // Stripe--WebhookSecret, DatabricksAi--AccessToken, GeoLite--AccountId, GeoLite--LicenseKey — are seeded
 // out-of-band by secrets.bicep (run manually; values never committed). See
-// .documentation/deployment/4-deploy-bicep.md. The secrets below are DERIVED from resources this template
+// The secrets below are derived from resources this legacy SaaS template
 // creates, so they are managed here.
 
 // Store Application Insights Connection String in Key Vault

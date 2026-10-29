@@ -22,7 +22,7 @@ import { createFileUpload, createDataWindow, createEditableDataWindow, createEdi
 test("ProjectPreviewGenerator_ExpanderChildrenMatchOrderedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/expander-app.py",
+    "./fixtures/contracts/generated/expander-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -120,7 +120,7 @@ test("ProjectPreviewGenerator_RejectsInvalidExpanderShapeAndTree", () => {
 test("ProjectPreviewGenerator_ColumnsChildrenMatchOrderedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/columns-app.py",
+    "./fixtures/contracts/generated/columns-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -241,7 +241,7 @@ test("ProjectPreviewGenerator_RejectsInvalidColumnsShapeAndTree", () => {
 test("ProjectPreviewGenerator_RowsChildrenMatchOrderedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/rows-app.py",
+    "./fixtures/contracts/generated/rows-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -354,7 +354,7 @@ test("ProjectPreviewGenerator_RejectsInvalidRowsShapeAndTree", () => {
 test("ProjectPreviewGenerator_TabsChildrenMatchOrderedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/tabs-app.py",
+    "./fixtures/contracts/generated/tabs-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

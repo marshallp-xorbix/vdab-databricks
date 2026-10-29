@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 
 const GENERATED_FIXTURE_DIRECTORY = new URL(
-  "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/",
+  "./fixtures/contracts/generated/",
   import.meta.url,
 );
 

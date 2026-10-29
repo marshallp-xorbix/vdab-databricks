@@ -38,7 +38,7 @@ param privacyPolicyVersionDate = '2026-03-16'
 param allowedOrigins = 'http://localhost:5173;https://localhost:5173;https://xorbix-vdab-stg.azurewebsites.net'
 
 // Secrets (JWT signing key, Postgres connection string, Stripe keys, Databricks token, GeoLite) are seeded
-// out-of-band via secrets.bicep and are NOT set in this file — see .documentation/deployment/4-deploy-bicep.md.
+// Legacy SaaS infrastructure; not part of the standalone Databricks App deployment.
 
 // Azure Communication Service (Email) — managed domain only for staging.
 param deployCommunicationService = true

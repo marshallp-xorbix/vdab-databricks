@@ -1,10 +1,8 @@
 # VDAB TypeScript and Databricks Apps Architecture
 
-**Status:** Active architecture for VDAB's approved standalone Databricks App transition.  
+**Status:** Active architecture for the standalone VDAB Databricks App.
 **Last updated:** 2026-10-16.  
-**Decision record:** [ADR 0002](../adr/0002-vdab-node-databricks-app.md).
-
-This standard applies to all new VDAB backend code and to replacement code during the in-place conversion. The existing .NET architecture document remains a historical reference for the legacy implementation only. Do not add SaaS features or extend legacy .NET services as a shortcut around the transition.
+This standard applies to VDAB backend code. The existing .NET architecture document is a historical reference for the legacy implementation only. Do not add SaaS features or extend legacy .NET services.
 
 ## Runtime and boundaries
 
@@ -81,4 +79,4 @@ Generated apps remain Python/Streamlit. Generate reproducible, inspectable sourc
 
 ## Legacy .NET boundary
 
-The current .NET/Aspire/EF code remains source material only while replacement slices are developed. Existing .NET-specific instructions in `AGENTS.md` and `dotnet-react-architecture.md` apply only to legacy code that must be inspected or temporarily maintained during the transition. Do not add new product behavior there. Delete each legacy source group only after its Node replacement and parity tests pass, as required by the retirement manifest.
+The .NET/Aspire/EF code is retained for historical source tracing and is not part of the active product. Existing .NET-specific instructions in `AGENTS.md` and `dotnet-react-architecture.md` apply only when maintaining that source. Do not add new product behavior there. Remove legacy source only when the replacement behavior is verified and no active runtime depends on it.

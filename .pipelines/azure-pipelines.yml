@@ -21,7 +21,7 @@
 # for that reference deployment. The standalone Databricks artifact is published separately and is not deployed here.
 #
 # main is the production record + hotfix base (updated on release), NOT a build trigger. See
-# .documentation/deployment/1-overview.md and 5-pipeline-setup.md.
+# Retained legacy SaaS pipeline; not used for the standalone Databricks App.
 # =====================================================================================
 
 trigger:

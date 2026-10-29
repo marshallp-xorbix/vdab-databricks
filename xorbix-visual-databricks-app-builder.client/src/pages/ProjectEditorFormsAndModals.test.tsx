@@ -44,8 +44,17 @@ describe("ProjectEditorPage", () => {
     await user.click(screen.getByRole("button", { name: "Select Form: form1" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalled());
-    const savedInput = replaceProjectComponentsMock.mock.calls[0]?.[0];
+    await waitFor(() =>
+      expect(
+        replaceProjectComponentsMock.mock.calls.some(
+          ([input]) => input.components.length === 3,
+        ),
+      ).toBe(true),
+    );
+    const savedInput = replaceProjectComponentsMock.mock.calls
+      .map(([input]) => input)
+      .reverse()
+      .find((input) => input.components.length === 3);
     expect(savedInput?.components).toHaveLength(3);
     expect(savedInput?.components[0]).toMatchObject({
       type: "Form",

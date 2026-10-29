@@ -33,7 +33,7 @@ test("GenieChatSave_NormalizesDefaultsAndMatchesViewerAuthorizedFixture", async 
 
   const source = generate(component);
   const fixture = await readFile(new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/genie-chat-app.py",
+    "./fixtures/contracts/generated/genie-chat-app.py",
     import.meta.url,
   ), "utf8");
   assert.equal(source, fixture);

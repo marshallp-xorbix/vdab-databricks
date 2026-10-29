@@ -19,7 +19,7 @@ param appServicePlanCapacity = 1
 param appServiceAlwaysOn = false
 
 // Secrets (Postgres connection string, JWT signing key, Stripe keys, Databricks token, GeoLite) are seeded
-// out-of-band via secrets.bicep and are NOT set in this file — see .documentation/deployment/4-deploy-bicep.md.
+// Legacy SaaS infrastructure; not part of the standalone Databricks App deployment.
 
 // JWT Configuration
 param jwtIssuer = 'https://xorbix-vdab-dev.azurewebsites.net'

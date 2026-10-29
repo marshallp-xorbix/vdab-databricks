@@ -69,7 +69,7 @@ test("ProjectPreviewGenerator_RejectsInvalidTabsAndChildLayouts", () => {
 
 test("ProjectPreviewGenerator_FormMatchesAcceptedPythonFixture", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/form-app.py",
+    "./fixtures/contracts/generated/form-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -173,7 +173,7 @@ test("ProjectPreviewGenerator_FormUsesValidEmptyFormAndRejectsInvalidChildren", 
 
 test("ProjectPreviewGenerator_ModalMatchesAcceptedPythonFixtureWithNestedLayout", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/modal-app.py",
+    "./fixtures/contracts/generated/modal-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

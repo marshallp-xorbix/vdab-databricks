@@ -22,7 +22,7 @@ import { createFileUpload, createDataWindow, createEditableDataWindow, createEdi
 test("ProjectPreviewGenerator_CheckboxMatchesAcceptedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/checkbox-app.py",
+    "./fixtures/contracts/generated/checkbox-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -35,7 +35,7 @@ test("ProjectPreviewGenerator_CheckboxMatchesAcceptedPythonFixture", async () =>
 test("ProjectPreviewGenerator_ToggleMatchesAcceptedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/toggle-app.py",
+    "./fixtures/contracts/generated/toggle-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -48,7 +48,7 @@ test("ProjectPreviewGenerator_ToggleMatchesAcceptedPythonFixture", async () => {
 test("ProjectPreviewGenerator_DropdownsMatchAcceptedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/dropdown-app.py",
+    "./fixtures/contracts/generated/dropdown-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -77,7 +77,7 @@ test("ProjectPreviewGenerator_DropdownsMatchAcceptedPythonFixture", async () => 
 test("ProjectPreviewGenerator_DatePickerMatchesAcceptedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/datepicker-app.py",
+    "./fixtures/contracts/generated/datepicker-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -90,7 +90,7 @@ test("ProjectPreviewGenerator_DatePickerMatchesAcceptedPythonFixture", async () 
 test("ProjectPreviewGenerator_TimePickerMatchesAcceptedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/timepicker-app.py",
+    "./fixtures/contracts/generated/timepicker-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -175,7 +175,7 @@ test("ProjectPreviewGenerator_EscapesDateAndTimePickerText", () => {
 test("ProjectPreviewGenerator_SlidersMatchAcceptedScalarAndRangePythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/slider-app.py",
+    "./fixtures/contracts/generated/slider-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -266,7 +266,7 @@ test("ProjectPreviewGenerator_EscapesSliderTextAndNumbers", () => {
 test("ProjectPreviewGenerator_LabelMatchesEscapedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/label-app.py",
+    "./fixtures/contracts/generated/label-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

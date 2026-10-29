@@ -46,7 +46,7 @@ const tableBinding = {
 
 test("BarChartPreview_MatchesAcceptedPythonFixture", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/bar-chart-app.py",
+    "./fixtures/contracts/generated/bar-chart-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

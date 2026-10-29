@@ -37,7 +37,7 @@ const columns = [
 
 test("SpiralStoryPreview_MatchesFixtureAndViewerAuthorizedJourneyQuery", async () => {
   const fixture = await readFile(new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/spiral-story-app.py",
+    "./fixtures/contracts/generated/spiral-story-app.py",
     import.meta.url,
   ), "utf8");
   const python = generate(createSpiralStory());

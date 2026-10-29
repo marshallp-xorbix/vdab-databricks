@@ -29,7 +29,7 @@ const tableBinding = createBinding([
 
 test("LineChartPreview_MatchesAcceptedPythonFixture", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/line-chart-app.py",
+    "./fixtures/contracts/generated/line-chart-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

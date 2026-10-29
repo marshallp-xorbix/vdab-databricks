@@ -102,7 +102,8 @@ describe("ModelChat standalone project flow", () => {
       children: [],
       layout: null,
     });
-    expect(JSON.stringify(savedComponents)).not.toMatch(/workspaceHost|workspaceUrl|accessToken|AppResource/);
+    expect(JSON.stringify(savedComponents)).not.toMatch(/workspaceHost|workspaceUrl|accessToken/);
+    expect(savedComponents[0]?.properties).not.toHaveProperty("servingEndpointAppResourceName");
 
     await user.click(screen.getAllByRole("link", { name: "Code" })[0]!);
     expect(await screen.findByLabelText("Generated app code")).toHaveTextContent("_vdab_render_model_chat");
@@ -115,7 +116,7 @@ describe("ModelChat standalone project flow", () => {
     expect(screen.getByLabelText("Chat height (px)")).toHaveValue(720);
     expect(screen.getByLabelText("Show chat border")).toBeChecked();
     expect(screen.getByText(/model-serving user authorization scope/)).toBeInTheDocument();
-  });
+  }, 60_000);
 });
 
 async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {

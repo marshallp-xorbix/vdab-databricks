@@ -52,7 +52,7 @@ test("ProjectPreviewGenerator_TextInputMatchesAcceptedPythonFixture", async () =
   const generator = new ProjectPreviewGenerator();
   const document = createDocument([createTextInput()]);
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/textinput-app.py",
+    "./fixtures/contracts/generated/textinput-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -75,7 +75,7 @@ test("ProjectPreviewGenerator_TextInputMatchesAcceptedPythonFixture", async () =
 test("ProjectPreviewGenerator_ButtonMatchesAcceptedPythonFixture", async () => {
   const generator = new ProjectPreviewGenerator();
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/button-app.py",
+    "./fixtures/contracts/generated/button-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

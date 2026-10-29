@@ -46,7 +46,7 @@ If a secondary reference or canonical standards document is missing when you rea
 - Durable builder state: customer-owned Lakebase Autoscaling PostgreSQL bound to each VDAB installation
 - Generated applications: Python + Streamlit
 - Architecture: Node HTTP boundary → application services → repositories → Lakebase, with isolated workspace API and code-generation adapters
-- Former .NET/Aspire/EF implementation: temporary parity reference only; retire each source group after its replacement passes the plan's parity checks
+- Former .NET/Aspire/EF implementation: historical source reference only; retire a source group after replacement behavior is covered by tests and the legacy group has no active runtime imports
 
 ## Repository Layout
 
@@ -59,9 +59,8 @@ databricks-app/                                        # Node App source and sel
   .build/                                              # Generated deployment package; ignored by Git
 xorbix-visual-databricks-app-builder.client/           # Existing React frontend source; bundled into databricks-app/.build/public
 scripts/                                               # Cross-platform packaging and repository maintenance tools
-.documentation/databricks-app-transition/              # Ordered plan, contracts, parity, evidence, and durable handoff
-Xorbix-Visual-Databricks-App-Builder.*                 # Legacy .NET source, temporary parity reference until step 8 retires it
-.documentation/                                       # Standards, patterns, plans, references
+.documentation/standards/                              # Repository coding and architecture standards
+Xorbix-Visual-Databricks-App-Builder.*                 # Retained legacy .NET source, not part of the active app
 ```
 
 ## Name Mapping
@@ -77,7 +76,7 @@ These mappings describe the legacy .NET source only. They are not the active arc
 | `Company.Project.ServiceDefaults`          | `.ServiceDefaults` | Shared telemetry / health-check helpers                                               |
 | `Company.Project.AppHost`                  | `.AppHost`         | Aspire orchestration                                                                  |
 
-During transition, entities remain in legacy `.Models` for source tracing. The Node backend's shared request/response contracts live in TypeScript and are not referenced by the retired C# layers.
+Entities remain in legacy `.Models` for source tracing. The Node backend's shared request/response contracts live in TypeScript and are not referenced by the legacy C# layers.
 
 ---
 
@@ -215,7 +214,7 @@ These rules apply only to existing .NET code that must be inspected or temporari
 - **Prettier** formats on save.
 - **Models vs. types:** Models are for data (live in `src/models` as interface + class). Types are for code (live in `src/types`, or inline in the component when single-use). See full table under [Frontend conventions](#project-specific-frontend-conventions).
 
-Backend types and API contracts use the active Node rules above and the versioned transition contracts. Do not use C# `I`-prefixed interface conventions for TypeScript types unless the interface mirrors a backend interface contract.
+Backend types and API contracts use the active Node rules above and the versioned API contracts. Do not use C# `I`-prefixed interface conventions for TypeScript types unless the interface mirrors a backend interface contract.
 
 ## React
 
@@ -288,7 +287,7 @@ UI and API models representing the same entity share a name and stay as close in
 - **C#:** XML doc comments on public members. Full text on interfaces; `<inheritdoc/>` on implementations.
 - **TypeScript:** JSDoc on exported functions and complex types.
 - **Python:** Google-style docstrings on public functions, classes, modules.
-- **ADRs** for significant architectural decisions, in `.documentation/adr/`.
+- **ADRs** for significant architectural decisions may be maintained outside this product repository when needed.
 
 ---
 
@@ -388,7 +387,7 @@ Never short-circuit a layer. A controller calling a repository, a service inject
 
 ## Environments
 
-The previous Azure development URL belongs to the legacy SaaS deployment. A Databricks development workspace and installed VDAB URL are not yet verified; see `.documentation/databricks-app-transition/progress-and-handoff.md`.
+The previous Azure development URL belongs to the legacy SaaS deployment. Use the current installed Databricks App and workspace configuration for development and deployment.
 
 ## Build, Test, and Run
 
@@ -414,7 +413,7 @@ npm run start:packaged
 
 Deploy the generated `.build` directory only, following `databricks-app/DEPLOYMENT.md`.
 
-Legacy runtime commands below are for temporary parity-reference maintenance only. They do not start or package the standalone Databricks App.
+Legacy runtime commands below apply only to existing .NET source. They do not start or package the standalone Databricks App.
 
 ```bash
 # Legacy .NET/Aspire parity reference
@@ -430,7 +429,7 @@ npm run dev
 
 ## Known Deviations
 
-These differences describe the legacy .NET source and must not be reproduced in the Node backend. Do not spend transition scope "correcting" legacy architecture except when needed to replace a feature safely.
+These differences describe the legacy .NET source and must not be reproduced in the Node backend. Avoid changing legacy architecture except when required to maintain or safely remove existing source.
 
 - **Project names** use legacy `.Models` / `.DataAccess` instead of `.Contracts` / `.Infrastructure`. See [Name Mapping](#name-mapping).
 - **No `src/` parent folder.** Projects live at the repo root. New projects follow the same convention.
@@ -440,7 +439,7 @@ These differences describe the legacy .NET source and must not be reproduced in 
 
 ## Agent-Specific Notes
 
-- **Full vertical slice.** For active Node work, implement the contract, Lakebase/workspace adapter, service, HTTP route, client API/query hook/UI, tests, docs, and local/Databricks evidence as one slice. See [Node architecture](.documentation/standards/node-databricks-app-architecture.md), the transition plan, and [frontend patterns](.documentation/standards/frontend-patterns.md). The legacy C# vertical-slice rules apply only when maintaining legacy source.
+- **Full vertical slice.** For active Node work, implement the contract, Lakebase/workspace adapter, service, HTTP route, client API/query hook/UI, tests, product docs, and local verification as one slice. See [Node architecture](.documentation/standards/node-databricks-app-architecture.md) and [frontend patterns](.documentation/standards/frontend-patterns.md). The legacy C# vertical-slice rules apply only when maintaining legacy source.
 - **Deployment boundary.** Build and deploy only `databricks-app/.build`; never deploy the repository root while legacy SaaS/.NET source remains. The artifact contains its own runtime configuration, production manifest/lockfile, Node sources, and built `public/` assets.
 - **Layer violations are blocking.** Stop and propose the Node-conforming structure rather than skipping a boundary.
 - **New third-party dependencies** require the [Dependency Approval](#dependency-approval) evaluation. Surface the proposal — do not add unilaterally.

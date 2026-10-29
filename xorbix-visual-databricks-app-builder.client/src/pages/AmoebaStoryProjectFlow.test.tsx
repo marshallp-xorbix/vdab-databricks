@@ -182,9 +182,10 @@ describe("AmoebaStory standalone project flow", () => {
 
     firstEditor.unmount();
     await renderProjectEditorPage({ selectFirstComponent: true });
-    fireEvent.doubleClick(await screen.findByText("Main Page", { exact: true }));
     await user.click(await screen.findByRole("button", { name: "Select Amoeba Story: amoebaStory1" }));
     expect(await screen.findByLabelText("Title")).toHaveValue("Regional portfolio");
+    expect(screen.queryByText("BINDINGS", { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText("FIELD MAPPINGS", { exact: true })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Entity ID column")).toHaveValue("entity_id");
     expect(screen.getByLabelText("Time filter column")).toHaveValue("period");
     expect(screen.getByLabelText("Risk score column")).toHaveValue("risk");

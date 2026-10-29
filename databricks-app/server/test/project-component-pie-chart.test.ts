@@ -29,7 +29,7 @@ const tableBinding = createBinding([
 
 test("PieChartPreview_MatchesAcceptedPythonFixture", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/pie-chart-app.py",
+    "./fixtures/contracts/generated/pie-chart-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");
@@ -41,7 +41,7 @@ test("PieChartPreview_MatchesAcceptedPythonFixture", async () => {
 
 test("DonutChartPreview_MatchesAcceptedPythonFixtureAndUsesLegacyHole", async () => {
   const fixturePath = new URL(
-    "../../../.documentation/databricks-app-transition/contracts/fixtures/generated/donut-chart-app.py",
+    "./fixtures/contracts/generated/donut-chart-app.py",
     import.meta.url,
   );
   const expectedPython = await readFile(fixturePath, "utf8");

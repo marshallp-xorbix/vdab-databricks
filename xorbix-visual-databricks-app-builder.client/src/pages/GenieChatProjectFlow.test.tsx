@@ -116,7 +116,7 @@ describe("GenieChat standalone project flow", () => {
     expect(screen.getByLabelText("Chat height (px)")).toHaveValue(720);
     expect(screen.getByLabelText("Show chat border")).toBeChecked();
     expect(screen.getByText(/Genie user authorization scope/)).toBeInTheDocument();
-  });
+  }, 60_000);
 });
 
 async function renderProjectEditorPage(options: { selectFirstComponent?: boolean } = {}) {

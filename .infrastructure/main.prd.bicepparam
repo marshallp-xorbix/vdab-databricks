@@ -43,11 +43,11 @@ param privacyPolicyVersionDate = '2026-03-16'
 param allowedOrigins = 'https://app.vdab.ai;https://app.vdab.io;https://xorbix-vdab-prd.azurewebsites.net'
 
 // Secrets (JWT signing key, Postgres connection string, Stripe keys, Databricks token, GeoLite) are seeded
-// out-of-band via secrets.bicep and are NOT set in this file — see .documentation/deployment/4-deploy-bicep.md.
+// Legacy SaaS infrastructure; not part of the standalone Databricks App deployment.
 
 // Azure Communication Service (Email) — disabled until a verified production sending domain is ready.
 // Flip to true (and configure customEmailDomain) when production email is provisioned. See
-// .documentation/deployment/4-deploy-bicep.md and .infrastructure/communication-service-setup.md.
+// Legacy SaaS communication service configuration; not used by the standalone Databricks App.
 param deployCommunicationService = true
 param useCustomEmailDomain = true
 param customEmailDomain = 'xorbix.com'
