@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   CallerIdentity,
+  ProjectDeploymentSettings,
   ProjectDeploymentSourceFile,
   ProjectDeploymentStatus,
   ProjectDeploymentSummary,
@@ -23,6 +24,7 @@ import type {
 } from "../src/workspace-app-deployment-client.ts";
 
 export interface HarnessOptions {
+  deploymentSettings?: ProjectDeploymentSettings;
   callerRole?: string;
   appSpaceName?: string | null;
   requirements?: {
@@ -36,7 +38,7 @@ export function createHarness(options: HarnessOptions = {}) {
   const repository = new MemoryDeploymentRepository();
   const workspace = new MemoryWorkspaceAppsClient(options.appSpaceName ?? null);
   const projectService = {
-    getProject: async () => ({ callerRole: options.callerRole ?? "owner" }),
+    getProject: async () => ({ callerRole: options.callerRole ?? "owner", deploymentSettings: options.deploymentSettings }),
   } as unknown as ProjectService;
   const previewService = {
     generateDeploymentSource: async () => ({

@@ -5,6 +5,7 @@ export const MAX_CHILD_APP_SECRET_RESOURCES = 100;
 export const CHILD_APP_SECRET_RESOURCE_DESCRIPTION =
   "VDAB secret read binding";
 export const CHILD_APP_SECRET_ENVIRONMENT_PREFIX = "VDAB_SECRET_";
+export const WORKSPACE_CHAT_ENDPOINT_TASK = "llm/v1/chat";
 
 /** Identity established at the Databricks App proxy boundary. */
 export interface CallerIdentity {
@@ -25,11 +26,19 @@ export interface ProjectSummary {
   name: string;
   description: string | null;
   theme?: Record<string, unknown> | null;
+  deploymentSettings?: ProjectDeploymentSettings | null;
   version: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
   callerRole: "owner" | "editor" | "viewer" | "installationAdmin";
+}
+
+/** Install-local child-App target and parent folder for generated source snapshots. */
+export interface ProjectDeploymentSettings {
+  mode: "createNew" | "linkExisting";
+  appName: string;
+  workspacePath: string | null;
 }
 
 /** A collaborator granted project-level editor access. */
@@ -46,6 +55,7 @@ export const PROJECT_COLLABORATOR_DIRECTORY_UNAVAILABLE_CODE =
 
 /** Safe summary of one App visible in the installed workspace. */
 export interface WorkspaceAppSummary {
+  url?: string | null;
   name: string;
   description: string | null;
   appState: string | null;
@@ -249,6 +259,7 @@ export interface WorkspaceGenieSpacesPage {
 
 /** Serving endpoint summary visible to the acting user in this workspace. */
 export interface WorkspaceServingEndpointResource {
+  task?: string;
   name: string;
   readiness: "ready" | "not-ready" | "unknown";
   permissionLevel: "CAN_VIEW" | "CAN_QUERY" | "CAN_MANAGE" | null;

@@ -1,3 +1,5 @@
+import type { IProjectDeploymentSettings } from "./ProjectDeploymentSettings";
+
 export type ProjectRole = "owner" | "editor" | "viewer" | "installationAdmin";
 
 export interface IProject {
@@ -5,6 +7,7 @@ export interface IProject {
   name: string;
   description: string | null;
   theme?: Record<string, unknown> | null;
+  deploymentSettings?: IProjectDeploymentSettings | null;
   version: number;
   createdBy: string;
   createdAt: string;
@@ -17,6 +20,7 @@ export class Project implements IProject {
   name: string;
   description: string | null;
   theme?: Record<string, unknown> | null;
+  deploymentSettings?: IProjectDeploymentSettings | null;
   version: number;
   createdBy: string;
   createdAt: string;
@@ -28,6 +32,7 @@ export class Project implements IProject {
     this.name = source.name ?? "";
     this.description = source.description ?? null;
     this.theme = source.theme ?? null;
+    this.deploymentSettings = source.deploymentSettings ?? null;
     this.version = source.version ?? 1;
     this.createdBy = source.createdBy ?? "";
     this.createdAt = source.createdAt ?? "";

@@ -86,6 +86,7 @@ export class LocalTestProjectRepository
       updatedAt: new Date().toISOString(),
       callerRole: "owner",
       workspaceId: input.workspaceId,
+      deploymentSettings: structuredClone(input.deploymentSettings ?? null),
     };
 
     this.projects.set(project.id, project);
@@ -234,6 +235,7 @@ export class LocalTestProjectRepository
 
     project.name = metadata.name;
     project.description = metadata.description;
+    if (metadata.deploymentSettings !== undefined) project.deploymentSettings = structuredClone(metadata.deploymentSettings);
     if (metadata.theme !== undefined) {
       this.projectThemes.set(projectId, structuredClone(metadata.theme));
     }

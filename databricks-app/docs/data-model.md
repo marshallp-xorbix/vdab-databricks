@@ -29,6 +29,7 @@ The former builder persisted one `App` record and related `AppComponent` records
 | `App.OwnerId` | `vdab_projects.created_by` | Databricks user identifier replaces SaaS account identity. |
 | `App.Version` | `vdab_projects.version` | Optimistic concurrency for project aggregate writes. |
 | `App.Theme` | `vdab_projects.theme` JSONB | Retains per-app theme. |
+| `App.WorkspacePath`, Databricks target choice | `vdab_projects.deployment_settings` JSONB | Saves the install-local App name/mode and optional source parent folder. Generated attempts remain isolated beneath that folder; portable exports require target reselection. |
 | `App.WorkflowDefinition` | `vdab_project_workflows` | Workflow definitions remain project-owned and have stable keys/order. |
 | `App.CustomModulesCode` | `vdab_project_custom_modules` | Module source remains project-owned and versioned. |
 | `AppComponent.CodeName`, `Description` | `vdab_project_components.code_name`, `description` | Preserves user naming/description. |

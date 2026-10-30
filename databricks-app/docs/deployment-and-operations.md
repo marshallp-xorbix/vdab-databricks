@@ -15,10 +15,14 @@ WORKSPACE_USER="you@example.com"
 PROFILE="your-databricks-profile"
 WORKSPACE_SOURCE="/Workspace/Users/${WORKSPACE_USER}/.vdab/builder/${APP_NAME}"
 
-databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE"
+databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE" --full \
+  --include 'app.yaml' --include 'package*.json' --include '*.md' \
+  --include 'public/**' --include 'server/**'
 databricks apps deploy "$APP_NAME" --source-code-path "$WORKSPACE_SOURCE" --mode SNAPSHOT --profile "$PROFILE"
 databricks apps get "$APP_NAME" --profile "$PROFILE"
 ```
+
+The explicit include patterns are required because `.build/` is Git-ignored; otherwise the CLI can report a successful sync while skipping the package. Check the sync output for uploaded package files before deploying.
 
 Use the same profile, App name, and source folder on every update. Do not make a new dated folder for each build. Databricks keeps deployment snapshots under its managed App deployment area; the workspace source folder should contain only the current package source. Never delete the `postgres` Lakebase resource, customer database, child Apps, or their data as part of a builder source update. See the [Databricks deployment guide](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/deploy) for additional deployment options.
 

@@ -14,6 +14,7 @@ export const LAKEBASE_MIGRATION_FILES = [
   "005_project_portability.sql",
   "006_project_deployments.sql",
   "007_deployment_app_resources.sql",
+  "008_project_deployment_settings.sql",
 ] as const;
 const MIGRATION_RETRY_DELAYS_MS = [1_000, 2_000, 4_000] as const;
 

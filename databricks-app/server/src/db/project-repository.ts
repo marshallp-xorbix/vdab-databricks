@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { ProjectCollaborator, ProjectSummary } from "../contracts.ts";
+import type { ProjectCollaborator, ProjectSummary, ProjectDeploymentSettings } from "../contracts.ts";
+import { readProjectDeploymentSettings } from "../project-deployment-settings.ts";
 import { ApplicationError } from "../application-error.ts";
 import { PostgresProjectCollaboratorRepository } from "./project-collaborator-repository.ts";
 import { insertAuditEvent } from "./project-repository-audit.ts";
@@ -18,6 +19,7 @@ export interface ProjectActor {
 
 /** Values required to create an install-local project. */
 export interface NewProject {
+  deploymentSettings?: ProjectDeploymentSettings | null;
   workspaceId: string;
   actorId: string;
   name: string;
@@ -27,6 +29,7 @@ export interface NewProject {
 
 /** Editable metadata accepted from an authorized project member. */
 export interface ProjectMetadata {
+  deploymentSettings?: ProjectDeploymentSettings | null;
   name: string;
   description: string | null;
   theme?: Record<string, unknown> | null;
@@ -75,6 +78,7 @@ export interface ProjectRepository {
 }
 
 interface ProjectRow extends Record<string, unknown> {
+  deployment_settings?: unknown;
   id: string;
   name: string;
   description: string | null;
@@ -114,15 +118,16 @@ export class PostgresProjectRepository implements ProjectRepository {
       await client.query("BEGIN");
       const result = await client.query<ProjectRow>(
         `INSERT INTO vdab_projects
-          (id, workspace_id, name, description, created_by)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, name, description, theme, version, created_by, created_at, updated_at`,
+          (id, workspace_id, name, description, created_by, deployment_settings)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+         RETURNING id, name, description, theme, deployment_settings, version, created_by, created_at, updated_at`,
         [
           projectId,
           input.workspaceId,
           input.name,
           input.description,
           input.actorId,
+          input.deploymentSettings ? JSON.stringify(input.deploymentSettings) : null,
         ],
       );
       const row = requireRow(result.rows[0]);
@@ -156,7 +161,7 @@ export class PostgresProjectRepository implements ProjectRepository {
 
   async listProjects(actor: ProjectActor): Promise<ProjectSummary[]> {
     const result = await this.pool.query<ProjectRow>(
-      `SELECT p.id, p.name, p.description, p.theme, p.version, p.created_by,
+      `SELECT p.id, p.name, p.description, p.theme, p.deployment_settings, p.version, p.created_by,
               p.created_at, p.updated_at,
               CASE WHEN p.created_by = $1 THEN 'owner'
                    WHEN $3 THEN 'installationAdmin'
@@ -194,7 +199,7 @@ export class PostgresProjectRepository implements ProjectRepository {
     actor: ProjectActor,
   ): Promise<ProjectSummary | null> {
     const result = await this.pool.query<ProjectRow>(
-      `SELECT p.id, p.name, p.description, p.theme, p.version, p.created_by,
+      `SELECT p.id, p.name, p.description, p.theme, p.deployment_settings, p.version, p.created_by,
               p.created_at, p.updated_at,
               CASE WHEN p.created_by = $1 THEN 'owner'
                    WHEN $4 THEN 'installationAdmin'
@@ -242,6 +247,7 @@ export class PostgresProjectRepository implements ProjectRepository {
         `UPDATE vdab_projects AS p
          SET name = $5, description = $6,
              theme = CASE WHEN $8 THEN $9::jsonb ELSE p.theme END,
+             deployment_settings = CASE WHEN $10 THEN $11::jsonb ELSE p.deployment_settings END,
              version = p.version + 1, updated_at = now()
          WHERE p.id = $1 AND p.workspace_id = $2 AND p.deleted_at IS NULL
            AND p.version = $3
@@ -249,7 +255,7 @@ export class PostgresProjectRepository implements ProjectRepository {
              SELECT 1 FROM vdab_project_collaborators AS c
              WHERE c.project_id = p.id AND c.user_id = $4 AND c.role = 'editor'
            ) OR $7)
-         RETURNING p.id, p.name, p.description, p.theme, p.version, p.created_by,
+         RETURNING p.id, p.name, p.description, p.theme, p.deployment_settings, p.version, p.created_by,
                    p.created_at, p.updated_at,
                    CASE WHEN p.created_by = $4 THEN 'owner'
                         WHEN $7 THEN 'installationAdmin'
@@ -264,6 +270,8 @@ export class PostgresProjectRepository implements ProjectRepository {
           actor.isInstallationAdmin,
           metadata.theme !== undefined,
           metadata.theme === undefined ? null : JSON.stringify(metadata.theme),
+          metadata.deploymentSettings !== undefined,
+          metadata.deploymentSettings ? JSON.stringify(metadata.deploymentSettings) : null,
         ],
       );
       const row = updateResult.rows[0];
@@ -425,6 +433,7 @@ function toProjectSummary(
     name: row.name,
     description: row.description,
     ...(row.theme === undefined ? {} : { theme: readNullableJsonObject(row.theme) }),
+    ...(row.deployment_settings === undefined ? {} : { deploymentSettings: readProjectDeploymentSettings(row.deployment_settings) }),
     version: Number(row.version),
     createdBy: row.created_by,
     createdAt: toIsoString(row.created_at),

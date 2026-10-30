@@ -38,7 +38,7 @@ function StandaloneAppLayout() {
   const projectQuery = useProject(isBuilderRoute ? appId : undefined);
 
   return (
-    <div className="flex min-h-svh flex-col bg-background text-foreground">
+    <div className={`flex flex-col bg-background text-foreground ${isBuilderRoute ? "h-svh overflow-hidden" : "min-h-svh"}`}>
       <a
         href="#page-content"
         className="sr-only z-50 rounded-md bg-background p-3 text-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
@@ -153,7 +153,7 @@ function StandaloneAppLayout() {
             appId={isBuilderRoute ? appId : undefined}
             activeBuilderSection={activeBuilderSection}
           />
-          <div id="page-content" tabIndex={-1} className="min-h-0 flex-1">
+          <div id="page-content" tabIndex={-1} className={`min-h-0 flex-1 ${isBuilderRoute ? "overflow-hidden" : ""}`}>
             <Outlet />
           </div>
         </div>

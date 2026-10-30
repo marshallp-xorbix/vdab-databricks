@@ -2,6 +2,18 @@ import { ESLint } from "eslint";
 import { resolve } from "node:path";
 
 const standaloneFiles = [
+  "src/hooks/useProjectAppStatus.ts",
+  "src/utils/projectDateFormatting.ts",
+  "src/components/ProjectManagementProjectCard.test.tsx",
+  "src/components/ProjectEditorToolbar.tsx",
+  "src/components/ProjectEditorSettingsSection.tsx",
+  "src/components/ProjectDeploymentSettingsEditor.tsx",
+  "src/hooks/useAiBuilderConversation.ts",
+  "src/hooks/useProjectWorkflowNavigation.ts",
+  "src/utils/projectEditorSettings.ts",
+  "src/utils/aiBuilderDraftSnapshot.ts",
+  "src/models/ProjectDeploymentSettings.ts",
+  "src/pages/ProjectDeploymentSettingsFlow.test.tsx",
   "src/api/projectCollaboratorsApi.ts",
   "src/api/projectCollaboratorsApi.test.ts",
   "src/hooks/useProjectCollaborators.ts",
@@ -248,6 +260,8 @@ const standaloneFiles = [
   "src/api/workspaceSessionApi.test.ts",
   "src/hooks/useWorkspaceSession.ts",
   "src/models/WorkspaceSession.ts",
+  "src/utils/workspaceAppStatus.ts",
+  "src/utils/workspaceAppStatus.test.ts",
   "src/layouts/StandaloneAppLayout.tsx",
   "src/layouts/StandaloneAppLayout.test.tsx",
   "src/pages/WorkspaceSetupPage.tsx",

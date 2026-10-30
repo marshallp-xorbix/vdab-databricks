@@ -13,9 +13,6 @@ export function parseWorkspaceAppResponse(value: unknown): WorkspaceAppDetails {
   if (!isRecord(value) || typeof value.name !== "string") {
     throw invalidDatabricksResponse();
   }
-  if (!Object.hasOwn(value, "space")) {
-    throw invalidDatabricksResponse();
-  }
   return {
     appId: typeof value.id === "string" ? value.id : null,
     name: value.name,
@@ -32,6 +29,7 @@ export function parseWorkspaceAppResponse(value: unknown): WorkspaceAppDetails {
       value.active_deployment,
       "deployment_id",
     ),
+    activeDeploymentState: readNestedState(readNestedValue(value.active_deployment, "status")),
     sourceCodePath:
       readNestedString(value.active_deployment, "source_code_path") ??
       (typeof value.default_source_code_path === "string"
@@ -47,7 +45,7 @@ export function parseWorkspaceAppResponse(value: unknown): WorkspaceAppDetails {
 }
 
 function readAppSpaceName(value: unknown): string | null {
-  if (value === null || value === "") return null;
+  if (value === undefined || value === null || value === "") return null;
   if (
     typeof value !== "string" ||
     !/^[a-z0-9][a-z0-9-]{0,28}[a-z0-9]$/.test(value)

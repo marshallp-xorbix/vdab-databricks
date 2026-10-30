@@ -1,4 +1,31 @@
 import { ApplicationError } from "./application-error.ts";
+import {
+  MAX_WORKSPACE_JSON_RESPONSE_BYTES,
+  readBoundedJsonResponse,
+} from "./bounded-json-response.ts";
+
+/** Reads only a machine error code, excluding upstream messages and resource values. */
+export async function readDatabricksErrorCode(
+  response: Response,
+): Promise<string> {
+  try {
+    const value: unknown = await readBoundedJsonResponse(
+      response,
+      MAX_WORKSPACE_JSON_RESPONSE_BYTES,
+    );
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      "error_code" in value &&
+      typeof value.error_code === "string" &&
+      /^[A-Z_]{1,80}$/.test(value.error_code)
+    )
+      return value.error_code;
+  } catch {
+    // Malformed error bodies remain a sanitized request failure.
+  }
+  return "UNKNOWN";
+}
 
 /** Returns a stable conflict when a workspace App name already exists. */
 export function appNameConflict(): ApplicationError {

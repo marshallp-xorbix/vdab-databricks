@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { readWorkflowTool } from "../utils/projectEditorSettings";
 import { useSearchParams } from "react-router-dom";
 import WorkflowBuilderView from "./AppBuilderComponents/AppCanvas/WorkflowBuilderView";
 import { Button } from "./ui/button";
@@ -41,7 +42,7 @@ interface IProjectWorkflowEditorProps {
 }
 
 /** Hosts the retained visual workflow editor on standalone project contracts. */
-export function ProjectWorkflowEditor({
+function ProjectWorkflowEditor({
   projectId,
   version,
   components,
@@ -60,6 +61,9 @@ export function ProjectWorkflowEditor({
   onCustomModulesSourceChange,
 }: Readonly<IProjectWorkflowEditorProps>) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const focusedWorkflow = searchParams.get("workflowFocus");
+  const focusedAction = searchParams.get("actionFocus");
+  const focusRequest = useMemo(() => focusedWorkflow ? { workflowCodeName: focusedWorkflow, ...(focusedAction ? { nodeId: focusedAction } : {}) } : null, [focusedWorkflow, focusedAction]);
   const [activeTool, setActiveTool] = useState<"workflow" | "ai">(
     () => readWorkflowTool(searchParams.get("tool")),
   );
@@ -144,6 +148,13 @@ export function ProjectWorkflowEditor({
           className="h-full min-w-0 border-0 p-0"
         >
           <WorkflowBuilderView
+            focusRequest={focusRequest}
+            onFocusHandled={() => setSearchParams((current) => {
+              const next = new URLSearchParams(current);
+              next.delete("workflowFocus");
+              next.delete("actionFocus");
+              return next;
+            }, { replace: true })}
             components={editorComponents}
             workflowDefinition={editorWorkflow}
             customModulesCode={customModulesSource}
@@ -219,7 +230,4 @@ export function ProjectWorkflowEditor({
   );
 }
 
-function readWorkflowTool(value: string | null): "workflow" | "ai" {
-  if (value === "ai") return value;
-  return "workflow";
-}
+export default ProjectWorkflowEditor;

@@ -12,6 +12,7 @@ import {
 } from "../models/WorkspaceGenieSpace";
 import {
   WorkspaceServingEndpointsPage,
+  type IWorkspaceServingEndpoint,
   type IWorkspaceServingEndpointsPage,
 } from "../models/WorkspaceServingEndpoint";
 
@@ -212,7 +213,7 @@ function parseWorkspaceServingEndpointsPage(
     throw new Error("The workspace returned an invalid serving endpoint response.");
   }
 
-  const items = value.items.map((endpoint) => {
+  const items = value.items.map((endpoint): IWorkspaceServingEndpoint => {
     if (
       !isRecord(endpoint) ||
       typeof endpoint.name !== "string" ||
@@ -231,6 +232,7 @@ function parseWorkspaceServingEndpointsPage(
       name: endpoint.name,
       readiness: endpoint.readiness,
       permissionLevel: endpoint.permissionLevel,
+      ...(typeof endpoint.task === "string" ? { task: endpoint.task } : {}),
     };
   });
 

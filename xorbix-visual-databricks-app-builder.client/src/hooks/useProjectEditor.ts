@@ -11,6 +11,7 @@ import { useUpdateProject } from "./useUpdateProject";
 import { useProjectComponentsAutosave } from "./useProjectComponentsAutosave";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
+import type { IProjectDeploymentSettings } from "../models/ProjectDeploymentSettings";
 
 type ProjectEditorSection =
   | "components"
@@ -34,6 +35,8 @@ export function useProjectEditor() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [theme, setTheme] = useState<Record<string, unknown>>({});
+  const [deploymentSettings, setDeploymentSettings] =
+    useState<IProjectDeploymentSettings | null>(null);
   const [components, setComponents] = useState<IProjectComponent[]>([]);
   const [hasLoadedComponents, setHasLoadedComponents] = useState(false);
   const [workflow, setWorkflow] = useState<IProjectWorkflowDefinition>({
@@ -47,6 +50,7 @@ export function useProjectEditor() {
     );
   const [hasOpenedWorkflows, setHasOpenedWorkflows] = useState(false);
   const [isCustomModulesDirty, setCustomModulesDirty] = useState(false);
+  const [isCanvasSaving, setCanvasSaving] = useState(false);
   const project = projectQuery.data;
   const componentsDocument = componentsQuery.data;
   const workflowDocument = workflowQuery.data;
@@ -61,10 +65,17 @@ export function useProjectEditor() {
   const isThemeDirty = Boolean(
     project && JSON.stringify(theme) !== JSON.stringify(project.theme ?? {}),
   );
+  const isDeploymentSettingsDirty = Boolean(
+    project &&
+    JSON.stringify(deploymentSettings) !==
+      JSON.stringify(project.deploymentSettings ?? null),
+  );
   const isMetadataDirty = Boolean(
     project &&
-    (name !== project.name || normalizedDescription !== project.description ||
-      isThemeDirty),
+    (name !== project.name ||
+      normalizedDescription !== project.description ||
+      isThemeDirty ||
+      isDeploymentSettingsDirty),
   );
   const isComponentsDirty = Boolean(
     componentsDocument &&
@@ -96,6 +107,7 @@ export function useProjectEditor() {
       setName(project.name);
       setDescription(project.description ?? "");
       setTheme(project.theme ?? {});
+      setDeploymentSettings(project.deploymentSettings ?? null);
     }
   }, [project]);
 
@@ -146,6 +158,7 @@ export function useProjectEditor() {
         name,
         description: normalizedDescription,
         ...(isThemeDirty ? { theme } : {}),
+        ...(isDeploymentSettingsDirty ? { deploymentSettings } : {}),
         version: project.version,
       });
     } catch {
@@ -160,6 +173,7 @@ export function useProjectEditor() {
       setName(refreshedProject.data.name);
       setDescription(refreshedProject.data.description ?? "");
       setTheme(refreshedProject.data.theme ?? {});
+      setDeploymentSettings(refreshedProject.data.deploymentSettings ?? null);
     }
   }
 
@@ -183,6 +197,56 @@ export function useProjectEditor() {
       });
     } catch {
       // The mutation state renders the safe API error below.
+    }
+  }
+
+  async function handleSaveCanvas(): Promise<void> {
+    if (
+      !project ||
+      !componentsDocument ||
+      (isWorkflowDirty && !workflowDocument) ||
+      !canEdit ||
+      isCustomModulesDirty ||
+      isCanvasSaving
+    )
+      return;
+    setCanvasSaving(true);
+    try {
+      let version = isMetadataDirty
+        ? project.version
+        : isComponentsDirty
+          ? componentsDocument.version
+          : (workflowDocument?.version ?? project.version);
+      if (isMetadataDirty) {
+        const savedProject = await updateProjectMutation.mutateAsync({
+          id: project.id,
+          name,
+          description: normalizedDescription,
+          ...(isThemeDirty ? { theme } : {}),
+          version,
+          ...(isDeploymentSettingsDirty ? { deploymentSettings } : {}),
+        });
+        version = savedProject.version;
+      }
+      if (isComponentsDirty) {
+        const savedComponents = await replaceComponentsMutation.mutateAsync({
+          projectId: project.id,
+          version,
+          components,
+        });
+        version = savedComponents.version;
+      }
+      if (isWorkflowDirty) {
+        await replaceWorkflowMutation.mutateAsync({
+          projectId: project.id,
+          version,
+          workflow,
+        });
+      }
+    } catch {
+      // Each mutation retains its error and unsaved drafts for an explicit retry.
+    } finally {
+      setCanvasSaving(false);
     }
   }
 
@@ -262,6 +326,7 @@ export function useProjectEditor() {
       !isMetadataDirty &&
       !isWorkflowDirty &&
       !isCustomModulesDirty &&
+      !isCanvasSaving &&
       !updateProjectMutation.isPending &&
       !replaceWorkflowMutation.isPending,
     ),
@@ -285,6 +350,8 @@ export function useProjectEditor() {
     setDescription,
     theme,
     setTheme,
+    deploymentSettings,
+    setDeploymentSettings,
     components,
     workflow,
     setWorkflow,
@@ -292,6 +359,7 @@ export function useProjectEditor() {
     hasLoadedWorkflow,
     hasOpenedWorkflows,
     isCustomModulesDirty,
+    isCanvasSaving,
     setCustomModulesDirty,
     project,
     componentsDocument,
@@ -307,6 +375,7 @@ export function useProjectEditor() {
     handleSave,
     handleReloadMetadata,
     handleSaveComponents,
+    handleSaveCanvas,
     handlePreview,
     handleReloadComponents,
     handleSaveWorkflow,

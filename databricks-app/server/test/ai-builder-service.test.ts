@@ -93,6 +93,11 @@ test("AiBuilderService_RejectsViewersAndUnqueryableEndpointsBeforeModelCall", as
   assert.equal(invokeCount, 0);
 });
 
+test("AiBuilderService_EmbeddingEndpoint_RejectsBeforeModelInvocation", async () => {
+  const service = createService({ endpoint: { name: "customer-model", task: "llm/v1/embeddings", readiness: "ready", permissionLevel: "CAN_QUERY" } });
+  await assert.rejects(service.prepare(CALLER, "request-1", "project-1", createRequest()), (error: unknown) => isApplicationError(error, 422));
+});
+
 test("AiBuilderService_RejectsStaleProjectBeforeContactingEndpoint", async () => {
   let endpointListCount = 0;
   const workspaceResources = {

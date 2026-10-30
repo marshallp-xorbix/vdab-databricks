@@ -1,5 +1,6 @@
 import { ApplicationError } from "./application-error.ts";
 export { normalizeWorkspaceHost } from "./workspace-host.ts";
+export { validateDeploymentSourcePath } from "./deployment-source-validation.ts";
 
 const APP_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,28}[a-z0-9]$/;
 const SUPPORTED_API_USER_SCOPES = [
@@ -31,22 +32,6 @@ const SUPPORTED_USER_API_SCOPES = new Set([
   ...SUPPORTED_APP_SPACE_USER_SCOPES,
   ...SUPPORTED_SDK_USER_SCOPES.map((scope) => `${scope}:read`),
 ]);
-
-/** Validates that generated source is stored in VDAB's per-user deployment area. */
-export function validateDeploymentSourcePath(sourceCodePath: string): void {
-  if (
-    !sourceCodePath.startsWith("/Workspace/Users/") ||
-    !sourceCodePath.includes("/.vdab/deployments/") ||
-    sourceCodePath.split("/").some((part) => part === "..")
-  ) {
-    throw new ApplicationError(
-      400,
-      "invalid_deployment_source_path",
-      "Invalid deployment source path",
-      "Generated app source must be stored in VDAB's controlled per-user deployment folder.",
-    );
-  }
-}
 
 /** Validates the name used for a Databricks App or App Space. */
 export function validateAppName(appName: string): void {

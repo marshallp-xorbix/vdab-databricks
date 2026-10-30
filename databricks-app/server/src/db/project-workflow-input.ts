@@ -81,7 +81,7 @@ function readWorkflow(value: unknown): ProjectWorkflow {
 function readNode(value: unknown): ProjectWorkflowNode {
   const node = requireRecord(value, "workflow action");
   assertExactKeys(node, ["id", "actionType", "schemaVersion", "params"], "workflow action");
-  const id = requireIdentifier(node.id, "action ID", 160);
+  const id = requireResourceKey(node.id, "action ID");
 
   if (!isActionType(node.actionType) || node.schemaVersion !== 1) {
     throw invalidWorkflow("Workflow actions must use a supported action type and schema version 1.");
@@ -132,7 +132,7 @@ function validateActionParams(
       const statement = requireRecord(params.statement, "SQL statement reference");
       assertExactKeys(statement, ["sourceActionType", "nodeId"], "SQL statement reference");
       if (statement.sourceActionType !== "buildSql") throw invalidWorkflow("SQL execution must reference a BuildSql action.");
-      requireIdentifier(statement.nodeId, "SQL builder action ID", 160);
+      requireResourceKey(statement.nodeId, "SQL builder action ID");
       return;
     }
     case "setBinding": {
@@ -140,7 +140,7 @@ function validateActionParams(
       const source = requireRecord(params.source, "binding source");
       assertExactKeys(source, ["sourceActionType", "nodeId", "outputKey"], "binding source");
       if (source.sourceActionType !== "runSql" || source.outputKey !== "rows") throw invalidWorkflow("A binding must consume rows from a RunSql action.");
-      requireIdentifier(source.nodeId, "SQL execution action ID", 160);
+      requireResourceKey(source.nodeId, "SQL execution action ID");
       const target = requireRecord(params.target, "binding target");
       assertExactKeys(target, ["componentKey", "bindingType"], "binding target");
       requireResourceKey(target.componentKey, "binding target component key");
@@ -373,8 +373,8 @@ function validatePlaceholder(value: unknown): void {
 function readEdge(value: unknown): ProjectWorkflow["edges"][number] {
   const edge = requireRecord(value, "workflow route");
   assertExactKeys(edge, ["fromNodeId", "toNodeId", "route"], "workflow route");
-  const fromNodeId = requireIdentifier(edge.fromNodeId, "route source action ID", 160);
-  const toNodeId = requireIdentifier(edge.toNodeId, "route target action ID", 160);
+  const fromNodeId = requireResourceKey(edge.fromNodeId, "route source action ID");
+  const toNodeId = requireResourceKey(edge.toNodeId, "route target action ID");
   if (!isOneOf(edge.route, PROJECT_WORKFLOW_ROUTES)) throw invalidWorkflow("Workflow route is invalid.");
   return { fromNodeId, toNodeId, route: edge.route };
 }

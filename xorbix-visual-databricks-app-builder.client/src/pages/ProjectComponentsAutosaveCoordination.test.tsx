@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+  getProjectMock,
+  project,
   getProjectComponentsMock,
   getProjectWorkflowMock,
   replaceProjectComponentsMock,
@@ -12,6 +14,8 @@ import {
   workflowDocument,
 } from "./ProjectEditorPage.test-support";
 import { PROJECT_COMPONENTS_AUTOSAVE_DELAY_MS } from "../hooks/useProjectComponentsAutosave";
+import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
+import type { IProjectComponent } from "../models/ProjectComponents";
 
 vi.mock("../components/AppBuilderComponents/AppCanvas/MainFlowView", () => ({
   default: ({
@@ -32,9 +36,61 @@ afterEach(resetProjectEditorTestState);
 beforeEach(initializeProjectEditorTestState);
 
 describe("ProjectEditorPage component autosave coordination", () => {
-  it("waits for a dirty workflow before autosaving and then resumes", async () => {
+  it("CanvasSave_WorkflowUnavailable_SavesIndependentComponentEdits", async () => {
     const user = userEvent.setup();
-    const initialComponents = [
+    getProjectWorkflowMock.mockRejectedValue(new Error("Workflows temporarily unavailable"));
+    replaceProjectComponentsMock.mockImplementation(async (input) => ({ projectId: input.projectId, version: input.version + 1, components: input.components }));
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Button" }));
+    const label = screen.getByRole("textbox", { name: "Label" });
+    fireEvent.change(label, { target: { value: "Latest button label" } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(replaceProjectComponentsMock).toHaveBeenCalledOnce());
+    expect(replaceProjectComponentsMock.mock.calls[0]?.[0].components[0]?.properties.label).toBe("Latest button label");
+    expect(replaceProjectWorkflowMock).not.toHaveBeenCalled();
+  });
+  it("CanvasSave_NewButtonWithOnClick_PersistsComponentBeforeItsWorkflow", async () => {
+    const user = userEvent.setup();
+    let sharedVersion = 1;
+    let savedComponents: IProjectComponent[] = [];
+    let savedWorkflow = workflowDocument.workflow;
+    getProjectMock.mockImplementation(async () => ({ ...project, version: sharedVersion }));
+    getProjectComponentsMock.mockImplementation(async () => ({ projectId: project.id, version: sharedVersion, components: savedComponents }));
+    getProjectWorkflowMock.mockImplementation(async () => ({ ...workflowDocument, version: sharedVersion, workflow: savedWorkflow }));
+    replaceProjectComponentsMock.mockImplementation(async (input) => {
+      expect(input.version).toBe(sharedVersion);
+      savedComponents = input.components;
+      sharedVersion += 1;
+      return { projectId: project.id, version: sharedVersion, components: savedComponents };
+    });
+    replaceProjectWorkflowMock.mockImplementation(async (input) => {
+      expect(input.version).toBe(sharedVersion);
+      expect(savedComponents.some((component) => component.key === input.workflow.workflows[0]?.trigger.componentKey)).toBe(true);
+      savedWorkflow = input.workflow;
+      sharedVersion += 1;
+      return { projectId: project.id, version: sharedVersion, workflow: savedWorkflow };
+    });
+
+    await renderProjectEditorPage();
+    await user.click(await screen.findByRole("button", { name: "Add Button" }));
+    await user.click(await screen.findByRole("button", { name: "+ Add Workflow" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Action" }), "TriggerToast");
+    expect(screen.getByRole("combobox", { name: "Trigger Event" })).toHaveValue("onClick");
+    await user.type(screen.getByPlaceholderText("Workflow complete"), "Parity workflow ran");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(replaceProjectWorkflowMock).toHaveBeenCalledOnce());
+    expect(replaceProjectComponentsMock).toHaveBeenCalledOnce();
+    expect(replaceProjectComponentsMock.mock.calls[0]?.[0].version).toBe(1);
+    expect(replaceProjectWorkflowMock.mock.calls[0]?.[0].version).toBe(2);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeDisabled());
+    await user.click(screen.getByRole("button", { name: "Edit in Workflow Builder" }));
+    expect(await screen.findByRole("link", { name: "Workflow" })).toHaveAttribute("aria-current", "page");
+    expect(await within(screen.getByRole("region", { name: "Workflows" })).findByDisplayValue("Parity workflow ran")).toBeInTheDocument();
+  }, 10_000);
+  it("CanvasSave_DirtyComponentsAndWorkflow_SavesBothWithoutLeavingCanvas", async () => {
+    const user = userEvent.setup();
+    const initialComponents: IProjectComponent[] = [
       {
         key: "primary-button",
         type: "Button",
@@ -54,6 +110,7 @@ describe("ProjectEditorPage component autosave coordination", () => {
       },
     ];
     let sharedVersion = 1;
+    getProjectMock.mockImplementation(async () => ({ ...project, version: sharedVersion }));
     let savedComponents = initialComponents;
     let savedWorkflow = workflowDocument.workflow;
     getProjectComponentsMock.mockImplementation(async () => ({
@@ -105,13 +162,12 @@ describe("ProjectEditorPage component autosave coordination", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     await new Promise((resolve) => {
       window.setTimeout(resolve, PROJECT_COMPONENTS_AUTOSAVE_DELAY_MS + 100);
     });
     expect(replaceProjectComponentsMock).not.toHaveBeenCalled();
 
-    await user.click(await screen.findByRole("link", { name: "Workflow" }));
     await user.click(
       await screen.findByRole("button", { name: "Save" }),
     );
@@ -126,7 +182,7 @@ describe("ProjectEditorPage component autosave coordination", () => {
     );
 
     expect(replaceProjectComponentsMock.mock.calls[0]?.[0]).toMatchObject({
-      version: 2,
+      version: 1,
       components: [
         { key: "primary-button", type: "Button" },
         { type: "Button", codeName: "button1" },
@@ -134,9 +190,9 @@ describe("ProjectEditorPage component autosave coordination", () => {
     });
   }, 10_000);
 
-  it("confirms component removal and saves workflow cleanup before autosaving", async () => {
+  it("CanvasSave_ComponentRemoval_SavesComponentAndWorkflowCleanup", async () => {
     const user = userEvent.setup();
-    const initialComponents = [
+    const initialComponents: IProjectComponent[] = [
       {
         key: "save-button",
         type: "Button",
@@ -150,7 +206,7 @@ describe("ProjectEditorPage component autosave coordination", () => {
         layout: null,
       },
     ];
-    const initialWorkflow = {
+    const initialWorkflow: IProjectWorkflowDefinition = {
       version: 1 as const,
       workflows: [
         {
@@ -162,6 +218,7 @@ describe("ProjectEditorPage component autosave coordination", () => {
       ],
     };
     let sharedVersion = 1;
+    getProjectMock.mockImplementation(async () => ({ ...project, version: sharedVersion }));
     let savedComponents = initialComponents;
     let savedWorkflow = initialWorkflow;
     getProjectComponentsMock.mockImplementation(async () => ({
@@ -220,8 +277,7 @@ describe("ProjectEditorPage component autosave coordination", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save" }),
-    ).toBeDisabled();
-    await user.click(await screen.findByRole("link", { name: "Workflow" }));
+    ).toBeEnabled();
     await user.click(
       await screen.findByRole("button", { name: "Save" }),
     );
@@ -236,9 +292,10 @@ describe("ProjectEditorPage component autosave coordination", () => {
       { timeout: 3_000 },
     );
     expect(replaceProjectComponentsMock.mock.calls[0]?.[0]).toMatchObject({
-      version: 2,
+      version: 1,
       components: [],
     });
+    expect(replaceProjectWorkflowMock.mock.calls[0]?.[0].version).toBe(2);
   }, 12_000);
 
   it("reorders root components with accessible move controls", async () => {

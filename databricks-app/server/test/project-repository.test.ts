@@ -27,6 +27,7 @@ test("ProjectRepository_CreateProjectCommitsOwnerAndAuditAtomically", async () =
     "Revenue",
     null,
     "creator-1",
+    null,
   ]);
   assert.match(
     database.statements[2]?.text ?? "",
@@ -150,6 +151,8 @@ test("ProjectRepository_UpdateIsWorkspaceAndAclScopedAndAuditedInOneTransaction"
     "Updated revenue",
     "Updated description",
     false,
+    false,
+    null,
     false,
     null,
   ]);

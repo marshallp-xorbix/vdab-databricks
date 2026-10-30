@@ -5,6 +5,7 @@ import type {
 } from "../contracts.ts";
 import { PROJECT_COLLABORATOR_DIRECTORY_UNAVAILABLE_CODE } from "../contracts.ts";
 import { ApplicationError } from "../application-error.ts";
+import { readProjectDeploymentSettings } from "../project-deployment-settings.ts";
 import type { ProjectActor, ProjectRepository } from "./project-repository.ts";
 import type { ProjectMetadata } from "./project-repository.ts";
 
@@ -44,6 +45,7 @@ export class ProjectService {
       actorId: caller.userId,
       name: projectInput.name,
       description: projectInput.description,
+      deploymentSettings: readProjectDeploymentSettings((body as Record<string, unknown>).deploymentSettings),
       requestId,
     });
   }
@@ -212,7 +214,7 @@ function readProjectInput(value: unknown): {
 } {
   if (
     !isRecord(value) ||
-    hasUnexpectedProperties(value, ["name", "description"])
+    hasUnexpectedProperties(value, ["name", "description", "deploymentSettings"])
   ) {
     throw invalidProjectInput();
   }
@@ -229,7 +231,7 @@ function readProjectInput(value: unknown): {
 function readProjectMetadata(value: unknown): ProjectMetadata {
   if (
     !isRecord(value) ||
-    hasUnexpectedProperties(value, ["name", "description", "version", "theme"]) ||
+    hasUnexpectedProperties(value, ["name", "description", "version", "theme", "deploymentSettings"]) ||
     !Number.isSafeInteger(value.version) ||
     (value.version as number) < 1
   ) {
@@ -245,6 +247,7 @@ function readProjectMetadata(value: unknown): ProjectMetadata {
     ...projectInput,
     expectedVersion: value.version as number,
     ...(Object.hasOwn(value, "theme") ? { theme: readProjectTheme(value.theme) } : {}),
+    ...(Object.hasOwn(value, "deploymentSettings") ? { deploymentSettings: readProjectDeploymentSettings(value.deploymentSettings) } : {}),
   };
 }
 

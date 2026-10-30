@@ -6,6 +6,8 @@ import type {
 } from "./contracts.ts";
 import { MAX_APPS_PER_WORKSPACE } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
+import { createWorkspaceAppsClient } from "./workspace-apps-client.ts";
+import { waitForWorkspaceAppCompute } from "./workspace-app-compute.ts";
 import {
   MAX_WORKSPACE_JSON_RESPONSE_BYTES,
   discardHttpResponseBody,
@@ -18,6 +20,7 @@ import {
   invalidDatabricksResponse,
   invalidDeploymentId,
   invalidSourceBundle,
+  readDatabricksErrorCode,
 } from "./workspace-app-deployment-client-errors.ts";
 import {
   normalizeWorkspaceHost,
@@ -48,6 +51,7 @@ export interface WorkspaceAppDetails {
   computeState: string | null;
   appUrl: string | null;
   activeDeploymentId: string | null;
+  activeDeploymentState?: string | null;
   sourceCodePath: string | null;
   usesGitSource: boolean;
   userApiScopes: string[];
@@ -313,14 +317,19 @@ async function uploadSource(
   fetchImplementation: typeof fetch,
 ): Promise<void> {
   validateGeneratedSource(sourceCodePath, files);
-  const directoryResponse = await callDatabricks(
-    caller,
-    new URL(WORKSPACE_MKDIRS_PATH, host),
-    "POST",
-    { path: sourceCodePath },
-    fetchImplementation,
-  );
-  await discardHttpResponseBody(directoryResponse);
+  const directories = new Set([sourceCodePath, ...files
+    .filter(file => file.path.includes("/"))
+    .map(file => `${sourceCodePath}/${file.path.slice(0, file.path.lastIndexOf("/"))}`)]);
+  for (const path of directories) {
+    const directoryResponse = await callDatabricks(
+      caller,
+      new URL(WORKSPACE_MKDIRS_PATH, host),
+      "POST",
+      { path },
+      fetchImplementation,
+    );
+    await discardHttpResponseBody(directoryResponse);
+  }
 
   for (const file of files) {
     const endpoint = new URL(WORKSPACE_IMPORT_PATH, host);
@@ -349,6 +358,15 @@ async function createDeployment(
 ): Promise<WorkspaceAppDeploymentStatus> {
   validateAppName(appName);
   validateDeploymentSourcePath(sourceCodePath);
+  const lifecycleClient = createWorkspaceAppsClient(host, fetchImplementation);
+  await waitForWorkspaceAppCompute(
+    async () => {
+      const app = await getApp(caller, appName, host, fetchImplementation);
+      if (!app) throw invalidDatabricksResponse();
+      return app;
+    },
+    () => lifecycleClient.startApp(caller, appName),
+  );
   const response = await callDatabricks(
     caller,
     new URL(`${APPS_PATH}/${encodeURIComponent(appName)}/deployments`, host),
@@ -425,7 +443,7 @@ async function callDatabricks(
   if (response.ok || allowedStatusCodes.includes(response.status)) {
     return response;
   }
-  await discardHttpResponseBody(response);
+  const upstreamCode = await readDatabricksErrorCode(response);
   if (response.status === 401) {
     throw new ApplicationError(
       401,
@@ -454,7 +472,7 @@ async function callDatabricks(
     502,
     "databricks_deployment_request_failed",
     "Databricks request failed",
-    "The child App operation failed in the installed workspace. Check workspace policy and try again.",
+    `The child App operation failed (HTTP ${response.status}, ${upstreamCode}, ${endpoint.pathname.endsWith("/deployments") ? "deployment submission" : "workspace operation"}). Check workspace policy and try again.`,
   );
 }
 

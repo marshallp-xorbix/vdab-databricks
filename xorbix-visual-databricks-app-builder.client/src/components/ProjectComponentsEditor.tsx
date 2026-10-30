@@ -4,9 +4,9 @@ import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import MainFlowView from "./AppBuilderComponents/AppCanvas/MainFlowView";
 import BuilderLeftPanel from "./AppBuilderComponents/AppBuilderPanels/BuilderLeftPanel";
 import type {
-  IComponentDefinition,
   IProjectComponent,
 } from "../models/ProjectComponents";
+import type { IComponentDefinition } from "../models/ComponentRegistry";
 import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
 import { useProjectComponentEditor } from "../hooks/useProjectComponentEditor";
 import { toWorkflowBuilderDefinition } from "../utils/projectWorkflowContractAdapter";
@@ -25,6 +25,7 @@ import { getStreamlitThemeDefaults } from "./AppBuilderComponents/AppSettingsTab
 import type { ComponentDragData } from "../types/dnd";
 import { readComponentDragData } from "../utils/dndPayload";
 import { nestedLayoutFirstCollisionDetection } from "../utils/componentDragCollision";
+import { useProjectWorkflowNavigation } from "../hooks/useProjectWorkflowNavigation";
 
 interface IProjectComponentsEditorProps {
   components: IProjectComponent[];
@@ -58,6 +59,7 @@ function ProjectComponentsEditor({
     onWorkflowChange,
   });
   const { theme: productTheme } = useTheme();
+  const jumpToWorkflow = useProjectWorkflowNavigation();
   const [activeDragData, setActiveDragData] = useState<ComponentDragData | null>(null);
   const resolvedTheme = useMemo(
     () => ({ ...getStreamlitThemeDefaults(productTheme), ...theme }),
@@ -189,6 +191,7 @@ function ProjectComponentsEditor({
               onUpdateBindings={canvasEditor.updateCanvasBindings}
               workflowDefinition={canvasWorkflow}
               onWorkflowDefinitionChange={canvasEditor.updateCanvasWorkflow}
+              onJumpToWorkflowAction={jumpToWorkflow}
               onCloseProperties={() => editor.selectComponent(null)}
               projectComponentEditor={projectComponentEditor}
               projectComponentTreeActions={projectComponentTreeActions}
@@ -258,6 +261,7 @@ function ProjectComponentsEditor({
               onUpdateBindings={canvasEditor.updateCanvasBindings}
               workflowDefinition={canvasWorkflow}
               onWorkflowDefinitionChange={canvasEditor.updateCanvasWorkflow}
+              onJumpToWorkflowAction={jumpToWorkflow}
               onCloseProperties={() => editor.selectComponent(null)}
               projectComponentEditor={projectComponentEditor}
               projectComponentTreeActions={projectComponentTreeActions}

@@ -5,6 +5,7 @@ import type {
 } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
 import { normalizeWorkspaceHost } from "./workspace-host.ts";
+import { readWorkspaceAppUrl } from "./workspace-app-url.ts";
 import {
   MAX_WORKSPACE_JSON_RESPONSE_BYTES,
   discardHttpResponseBody,
@@ -38,6 +39,7 @@ interface DatabricksAppListResponse {
 }
 
 interface DatabricksAppRecord {
+  url?: unknown;
   name?: unknown;
   description?: unknown;
   app_status?: {
@@ -138,7 +140,7 @@ async function requestWorkspaceApp(
 
   try {
     const value = await readBoundedJsonResponse(response, MAX_WORKSPACE_JSON_RESPONSE_BYTES);
-    if (!isDatabricksAppRecord(value) || !isWorkspaceAppState(value)) {
+    if (!isDatabricksAppRecord(value) || value.name !== appName || !isWorkspaceAppState(value)) {
       throw new Error("Invalid App response.");
     }
     return toWorkspaceAppSummary(value);
@@ -335,6 +337,7 @@ function isDatabricksAppRecord(value: unknown): value is DatabricksAppRecord {
 
 function toWorkspaceAppSummary(app: DatabricksAppRecord): WorkspaceAppSummary {
   return {
+    ...(app.url === undefined ? {} : { url: readWorkspaceAppUrl(app.name as string, app.url) }),
     name: app.name as string,
     description: typeof app.description === "string" ? app.description : null,
     appState:

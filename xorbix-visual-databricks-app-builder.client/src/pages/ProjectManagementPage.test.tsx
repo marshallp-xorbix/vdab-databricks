@@ -120,6 +120,7 @@ describe("ProjectManagementPage", () => {
     expect(createProjectMock.mock.calls[0]?.[0]).toEqual({
       name: "Revenue dashboard",
       description: "Finance team",
+      deploymentSettings: { mode: "createNew", appName: "revenue-dashboard", workspacePath: null },
     });
     expect(
       await screen.findByRole("heading", { name: "Project editor route" }),

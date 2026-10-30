@@ -1,6 +1,7 @@
 export type AuthenticationMode = "databricks" | "local-test";
 
 export interface IWorkspaceAppSummary {
+  url?: string | null;
   name: string;
   description: string | null;
   appState: string | null;
@@ -8,6 +9,7 @@ export interface IWorkspaceAppSummary {
 }
 
 export class WorkspaceAppSummary implements IWorkspaceAppSummary {
+  url?: string | null;
   name: string;
   description: string | null;
   appState: string | null;
@@ -15,6 +17,7 @@ export class WorkspaceAppSummary implements IWorkspaceAppSummary {
 
   constructor(source: Partial<IWorkspaceAppSummary> = {}) {
     this.name = source.name ?? "";
+    this.url = source.url;
     this.description = source.description ?? null;
     this.appState = source.appState ?? null;
     this.computeState = source.computeState ?? null;

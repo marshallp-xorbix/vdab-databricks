@@ -218,6 +218,7 @@ const endpoints: IWorkspaceServingEndpoint[] = [
   { name: "visible-only-model", readiness: "ready", permissionLevel: "CAN_VIEW" },
   { name: "builder-model", readiness: "ready", permissionLevel: "CAN_QUERY" },
   { name: "manageable-model", readiness: "ready", permissionLevel: "CAN_MANAGE" },
+  { name: "embedding-model", task: "llm/v1/embeddings", readiness: "ready", permissionLevel: "CAN_QUERY" },
 ];
 
 const proposal: IAiBuilderProposal = {

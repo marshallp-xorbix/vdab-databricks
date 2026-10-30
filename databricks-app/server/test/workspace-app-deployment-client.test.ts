@@ -3,6 +3,7 @@ import test from "node:test";
 import { ApplicationError } from "../src/application-error.ts";
 import { MAX_WORKSPACE_JSON_RESPONSE_BYTES } from "../src/bounded-json-response.ts";
 import { createWorkspaceAppDeploymentClient } from "../src/workspace-app-deployment-client.ts";
+import { waitForWorkspaceAppCompute } from "../src/workspace-app-compute.ts";
 import {
   CALLER,
   createClientHarness,
@@ -102,8 +103,15 @@ test("WorkspaceAppDeploymentClient_GetInstalledAppSpace_ReturnsNullForDefaultWor
   assert.equal(await harness.client.getInstalledAppSpace(CALLER), null);
 });
 
-test("WorkspaceAppDeploymentClient_GetInstalledAppSpace_RejectsMissingSpaceMetadata", async () => {
+test("WorkspaceAppDeploymentClient_GetInstalledAppSpace_ReturnsNullForOmittedOptionalSpace", async () => {
   const harness = createClientHarness([jsonResponse({ name: "vdab-app" })]);
+
+  assert.equal(await harness.client.getInstalledAppSpace(CALLER), null);
+  assert.equal(harness.calls.length, 1);
+});
+
+test("WorkspaceAppDeploymentClient_GetInstalledAppSpace_RejectsMalformedSpace", async () => {
+  const harness = createClientHarness([jsonResponse({ name: "vdab-app", space: { name: "team-apps" } })]);
 
   await assert.rejects(
     harness.client.getInstalledAppSpace(CALLER),
@@ -284,8 +292,23 @@ test("WorkspaceAppDeploymentClient_UploadSource_RejectsSecretsBeforeWorkspaceMut
   assert.equal(harness.calls.length, 0);
 });
 
+test("WorkspaceAppDeploymentClient_UploadSource_CreatesNestedDirectoriesBeforeImports", async () => {
+  const files = [
+    { path: "app.py", content: "import streamlit as st" },
+    { path: ".streamlit/config.toml", content: "[theme]" },
+    { path: "modules/nested/helper.py", content: "VALUE = 1" },
+  ];
+  const harness = createClientHarness(Array.from({ length: 6 }, () => jsonResponse({})));
+  await harness.client.uploadSource(CALLER, SOURCE_PATH, files);
+  const requests = harness.calls.map(call => ({ path: new URL(call.url).pathname, body: JSON.parse(String(call.init.body)) as { path: string } }));
+  assert.deepEqual(requests.slice(0, 3).map(request => request.body.path), [SOURCE_PATH, `${SOURCE_PATH}/.streamlit`, `${SOURCE_PATH}/modules/nested`]);
+  assert.ok(requests.slice(0, 3).every(request => request.path === "/api/2.0/workspace/mkdirs"));
+  assert.ok(requests.slice(3).every(request => request.path === "/api/2.0/workspace/import"));
+});
+
 test("WorkspaceAppDeploymentClient_CreateDeployment_UsesImmutableSnapshotAndMapsStatus", async () => {
   const harness = createClientHarness([
+    jsonResponse({ name: "child-app", compute_status: { state: "ACTIVE" }, app_status: { state: "UNAVAILABLE" } }),
     jsonResponse({
       deployment_id: "01ef0bda89f21f08a8351f41e4a9b948",
       status: { state: "IN_PROGRESS" },
@@ -297,7 +320,7 @@ test("WorkspaceAppDeploymentClient_CreateDeployment_UsesImmutableSnapshotAndMaps
     "child-app",
     SOURCE_PATH,
   );
-  const requestBody = JSON.parse(String(harness.calls[0]?.init.body)) as Record<
+  const requestBody = JSON.parse(String(harness.calls[1]?.init.body)) as Record<
     string,
     unknown
   >;
@@ -310,6 +333,76 @@ test("WorkspaceAppDeploymentClient_CreateDeployment_UsesImmutableSnapshotAndMaps
     source_code_path: SOURCE_PATH,
     mode: "SNAPSHOT",
   });
+});
+
+test("WorkspaceAppDeploymentClient_CreateDeployment_StartsStoppedComputeBeforeSubmit", async () => {
+  const harness = createClientHarness([
+    jsonResponse({ name: "child-app", compute_status: { state: "STOPPED" }, app_status: { state: "UNAVAILABLE" } }),
+    jsonResponse({ name: "child-app", compute_status: { state: "ACTIVE" }, app_status: { state: "UNAVAILABLE" } }),
+    jsonResponse({ name: "child-app", compute_status: { state: "ACTIVE" }, app_status: { state: "UNAVAILABLE" } }),
+    jsonResponse({ deployment_id: "deployment-123", status: { state: "IN_PROGRESS" } }),
+  ]);
+  await harness.client.createDeployment(CALLER, "child-app", SOURCE_PATH);
+  assert.deepEqual(harness.calls.map(call => [new URL(call.url).pathname, call.init.method]), [
+    ["/api/2.0/apps/child-app", "GET"],
+    ["/api/2.0/apps/child-app/start", "POST"],
+    ["/api/2.0/apps/child-app", "GET"],
+    ["/api/2.0/apps/child-app/deployments", "POST"],
+  ]);
+});
+
+test("WaitForWorkspaceAppCompute_Provisioning_WaitsWithoutStartingAgain", async () => {
+  let reads = 0;
+  await waitForWorkspaceAppCompute(
+    async () => ({ computeState: ++reads === 1 ? "STARTING" : "ACTIVE" }),
+    async () => { assert.fail("Provisioning compute must not receive another start request."); },
+    { timeoutMs: 1000, pollIntervalMs: 0 },
+  );
+  assert.equal(reads, 2);
+});
+
+test("WaitForWorkspaceAppCompute_Timeout_ReturnsRetryableSavedSourceFailure", async () => {
+  await assert.rejects(
+    waitForWorkspaceAppCompute(async () => ({ computeState: "STARTING" }), async () => ({ computeState: "ACTIVE" }), { timeoutMs: 0, pollIntervalMs: 0 }),
+    (error: unknown) => error instanceof ApplicationError && error.code === "child_app_compute_starting",
+  );
+});
+
+test("WaitForWorkspaceAppCompute_AutomaticRestartDeployment_WaitsUntilItCompletes", async () => {
+  let reads = 0;
+  await waitForWorkspaceAppCompute(
+    async () => ({ computeState: "ACTIVE", activeDeploymentState: ++reads === 1 ? "IN_PROGRESS" : "SUCCEEDED" }),
+    async () => { assert.fail("Active compute must not be restarted."); },
+    { timeoutMs: 1000, pollIntervalMs: 0 },
+  );
+  assert.equal(reads, 2);
+});
+
+test("WaitForWorkspaceAppCompute_RestartDeploymentAppearsAfterActive_WaitsThroughGap", async () => {
+  for (const previousDeploymentId of [null, "previous-deployment"]) {
+  let reads = 0;
+  let starts = 0;
+  await waitForWorkspaceAppCompute(
+    async () => {
+      reads += 1;
+      return { computeState: reads === 1 ? "STOPPED" : "ACTIVE", sourceCodePath: SOURCE_PATH, activeDeploymentId: reads < 3 ? previousDeploymentId : "restart-deployment", activeDeploymentState: reads < 3 ? previousDeploymentId ? "SUCCEEDED" : null : reads === 3 ? "IN_PROGRESS" : "SUCCEEDED" };
+    },
+    async () => { starts += 1; return { computeState: "ACTIVE" }; },
+    { timeoutMs: 1000, pollIntervalMs: 0 },
+  );
+  assert.equal(reads, 4);
+  assert.equal(starts, 1);
+  }
+});
+
+test("WaitForWorkspaceAppCompute_StartDenied_PreservesDenialWithoutRetry", async () => {
+  const denial = new ApplicationError(403, "databricks_apps_access_denied", "Denied", "Denied");
+  let starts = 0;
+  await assert.rejects(waitForWorkspaceAppCompute(
+    async () => ({ computeState: "STOPPED" }),
+    async () => { starts += 1; throw denial; },
+  ), error => error === denial);
+  assert.equal(starts, 1);
 });
 
 test("WorkspaceAppDeploymentClient_GetDeployment_RejectsUnknownStatus", async () => {
@@ -374,6 +467,13 @@ test("WorkspaceAppDeploymentClient_MapsResourceExhaustionWithoutBlindRetry", asy
       error.code === "databricks_resource_exhausted",
   );
   assert.equal(harness.calls.length, 1);
+});
+
+test("WorkspaceAppDeploymentClient_UpstreamFailure_ReportsMachineCodeWithoutMessage", async () => {
+  const harness = createClientHarness([new Response(JSON.stringify({ error_code: "INVALID_PARAMETER_VALUE", message: "private-workspace-content-must-not-leak" }), { status: 400 })]);
+  await assert.rejects(harness.client.countApps(CALLER), (error: unknown) =>
+    error instanceof ApplicationError && error.message.includes("HTTP 400, INVALID_PARAMETER_VALUE") && !error.message.includes("private-workspace-content"),
+  );
 });
 
 test("WorkspaceAppDeploymentClient_RejectsNonHttpsWorkspaceHost", () => {

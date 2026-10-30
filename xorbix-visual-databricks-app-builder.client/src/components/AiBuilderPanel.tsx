@@ -1,21 +1,15 @@
-import { useRef, useState } from "react";
 import { SquarePen, X } from "lucide-react";
 import type {
   IAiBuilderConversationMessage,
   IAiBuilderProposal,
-  IAiBuilderResult,
 } from "../models/AiBuilder";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
 import type { IWorkspaceServingEndpoint } from "../models/WorkspaceServingEndpoint";
-import { useAiBuilder } from "../hooks/useAiBuilder";
+import { useAiBuilderConversation } from "../hooks/useAiBuilderConversation";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-
-interface IConversationEntry extends IAiBuilderConversationMessage {
-  id: number;
-}
 
 interface IAiBuilderPanelProps {
   projectId: string;
@@ -27,10 +21,11 @@ interface IAiBuilderPanelProps {
   initialHistory?: IAiBuilderConversationMessage[];
   isDisabled?: boolean;
   onClose?: () => void;
-  onApplyProposal: (proposal: IAiBuilderProposal, version: number) => void | Promise<void>;
+  onApplyProposal: (
+    proposal: IAiBuilderProposal,
+    version: number,
+  ) => void | Promise<void>;
 }
-
-const MAX_HISTORY_MESSAGES = 20;
 
 /** Accessible AI chat for suggesting edits to the current project draft. */
 function AiBuilderPanel({
@@ -45,152 +40,37 @@ function AiBuilderPanel({
   onClose,
   onApplyProposal,
 }: Readonly<IAiBuilderPanelProps>) {
-  const availableEndpoints = endpoints.filter(
-    (endpoint) =>
-      endpoint.readiness === "ready" &&
-      (endpoint.permissionLevel === "CAN_QUERY" || endpoint.permissionLevel === "CAN_MANAGE"),
-  );
-  const [selectedEndpointName, setSelectedEndpointName] = useState("");
-  const endpointName = availableEndpoints.some(
-    (endpoint) => endpoint.name === selectedEndpointName,
-  )
-    ? selectedEndpointName
-    : availableEndpoints[0]?.name ?? "";
-  const [prompt, setPrompt] = useState("");
-  const [messages, setMessages] = useState<IConversationEntry[]>(() =>
-    initialHistory.map((message, index) => ({ ...message, id: index })),
-  );
-  const [progressMessage, setProgressMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [latestResult, setLatestResult] = useState<IAiBuilderResult | null>(null);
-  const [latestResultSnapshotKey, setLatestResultSnapshotKey] = useState<string | null>(null);
-  const [appliedVersion, setAppliedVersion] = useState<number | null>(null);
-  const [isApplying, setIsApplying] = useState(false);
-  const [applyError, setApplyError] = useState<string | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const nextMessageIdRef = useRef(initialHistory.length);
-  const aiBuilderMutation = useAiBuilder();
-  const isPending = aiBuilderMutation.isPending;
-
-  const isEndpointAvailable = availableEndpoints.some((endpoint) => endpoint.name === endpointName);
-  const canSubmit =
-    !isDisabled &&
-    !isPending &&
-    isEndpointAvailable &&
-    prompt.trim().length > 0;
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmedPrompt = prompt.trim();
-    if (!canSubmit || !trimmedPrompt) return;
-
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    setErrorMessage(null);
-    setApplyError(null);
-    setProgressMessage("Starting AI Builder…");
-    setLatestResult(null);
-    setLatestResultSnapshotKey(null);
-    setAppliedVersion(null);
-    const requestSnapshotKey = createDraftSnapshotKey(
-      version,
-      components,
-      workflow,
-      customModulesSource,
-    );
-
-    try {
-      const result = await aiBuilderMutation.mutateAsync({
-        projectId,
-        request: {
-          version,
-          endpointName,
-          prompt: trimmedPrompt,
-          history: messages
-            .slice(-MAX_HISTORY_MESSAGES)
-            .map(({ role, content }) => ({ role, content })),
-          components,
-          workflow,
-          customModulesSource,
-        },
-        onProgress: setProgressMessage,
-        signal: abortController.signal,
-      });
-      setLatestResult(result);
-      setLatestResultSnapshotKey(requestSnapshotKey);
-      setProgressMessage("");
-      setPrompt("");
-      const userMessageId = nextMessageIdRef.current;
-      nextMessageIdRef.current += 2;
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        { id: userMessageId, role: "user", content: trimmedPrompt },
-        { id: userMessageId + 1, role: "assistant", content: result.assistantMessage },
-      ]);
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        setProgressMessage("Request cancelled.");
-      } else {
-        setProgressMessage("");
-        setErrorMessage(
-          error instanceof Error ? error.message : "AI Builder could not complete the request.",
-        );
-      }
-    } finally {
-      if (abortControllerRef.current === abortController) {
-        abortControllerRef.current = null;
-      }
-    }
-  }
-
-  function handleCancel() {
-    abortControllerRef.current?.abort();
-  }
-
-  async function handleApplyProposal() {
-    const result = latestResult;
-    if (!result?.proposal || isApplying || isDisabled) return;
-    if (result.version !== version) {
-      setApplyError("The project changed after this suggestion. Request a new suggestion before applying it.");
-      return;
-    }
-    const currentSnapshotKey = createDraftSnapshotKey(
-      version,
-      components,
-      workflow,
-      customModulesSource,
-    );
-    if (latestResultSnapshotKey !== currentSnapshotKey) {
-      setApplyError("The editable project changed after this suggestion. Request a new suggestion before applying it.");
-      return;
-    }
-
-    setIsApplying(true);
-    setApplyError(null);
-    try {
-      await onApplyProposal(result.proposal, result.version);
-      setAppliedVersion(result.version);
-    } catch (error) {
-      setApplyError(
-        error instanceof Error ? error.message : "The proposal could not be applied to the project draft.",
-      );
-    } finally {
-      setIsApplying(false);
-    }
-  }
-
-  function handleNewConversation() {
-    if (isPending || isApplying) return;
-    setMessages([]);
-    setPrompt("");
-    setProgressMessage("");
-    setErrorMessage(null);
-    setLatestResult(null);
-    setLatestResultSnapshotKey(null);
-    setAppliedVersion(null);
-    setApplyError(null);
-    nextMessageIdRef.current = 0;
-  }
+  const {
+    availableEndpoints,
+    endpointName,
+    setSelectedEndpointName,
+    prompt,
+    setPrompt,
+    messages,
+    progressMessage,
+    errorMessage,
+    latestResult,
+    appliedVersion,
+    isApplying,
+    applyError,
+    isPending,
+    canSubmit,
+    isEndpointAvailable,
+    handleSubmit,
+    handleCancel,
+    handleApplyProposal,
+    handleNewConversation,
+  } = useAiBuilderConversation({
+    projectId,
+    version,
+    endpoints,
+    components,
+    workflow,
+    customModulesSource,
+    initialHistory,
+    isDisabled,
+    onApplyProposal,
+  });
 
   return (
     <section
@@ -199,19 +79,27 @@ function AiBuilderPanel({
     >
       <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-muted px-4 py-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 id="ai-builder-heading" className="text-sm font-semibold">AI Builder</h2>
-          <label htmlFor="ai-builder-endpoint" className="sr-only">Serving endpoint</label>
+          <h2 id="ai-builder-heading" className="text-sm font-semibold">
+            AI Builder
+          </h2>
+          <label htmlFor="ai-builder-endpoint" className="sr-only">
+            Serving endpoint
+          </label>
           <select
             id="ai-builder-endpoint"
             name="endpointName"
             className="h-7 max-w-64 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={endpointName}
-            disabled={isDisabled || isPending || availableEndpoints.length === 0}
+            disabled={
+              isDisabled || isPending || availableEndpoints.length === 0
+            }
             onChange={(event) => setSelectedEndpointName(event.target.value)}
           >
             <option value="">Select a ready endpoint with query access</option>
             {availableEndpoints.map((endpoint) => (
-              <option key={endpoint.name} value={endpoint.name}>{endpoint.name}</option>
+              <option key={endpoint.name} value={endpoint.name}>
+                {endpoint.name}
+              </option>
             ))}
           </select>
         </div>
@@ -242,18 +130,29 @@ function AiBuilderPanel({
         </div>
       </header>
 
-      <ol aria-label="AI Builder conversation" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto bg-card px-3 py-3">
+      <ol
+        aria-label="AI Builder conversation"
+        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto bg-card px-3 py-3"
+      >
         {messages.length === 0 ? (
           <li className="text-xs text-muted-foreground">
-            Describe the app you want to build and the AI will suggest changes for your canvas.
+            Describe the app you want to build and the AI will suggest changes
+            for your canvas.
           </li>
-        ) : messages.map((message) => (
-          <li key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-snug ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-              <p className="whitespace-pre-wrap">{message.content}</p>
-            </div>
-          </li>
-        ))}
+        ) : (
+          messages.map((message) => (
+            <li
+              key={message.id}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-snug ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
+              >
+                <p className="whitespace-pre-wrap">{message.content}</p>
+              </div>
+            </li>
+          ))
+        )}
       </ol>
 
       {availableEndpoints.length === 0 && (
@@ -263,15 +162,28 @@ function AiBuilderPanel({
       )}
 
       {progressMessage && (
-        <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-sm text-muted-foreground"
+        >
           {progressMessage}
         </p>
       )}
-      {errorMessage && <p role="alert" className="text-sm text-destructive">{errorMessage}</p>}
+      {errorMessage && (
+        <p role="alert" className="text-sm text-destructive">
+          {errorMessage}
+        </p>
+      )}
 
-      <form className="shrink-0 border-t border-border bg-muted p-3" onSubmit={(event) => void handleSubmit(event)}>
+      <form
+        className="shrink-0 border-t border-border bg-muted p-3"
+        onSubmit={(event) => void handleSubmit(event)}
+      >
         <div className="grid gap-2">
-          <Label htmlFor="ai-builder-prompt" className="sr-only">What would you like to change?</Label>
+          <Label htmlFor="ai-builder-prompt" className="sr-only">
+            What would you like to change?
+          </Label>
           <Textarea
             id="ai-builder-prompt"
             name="prompt"
@@ -291,7 +203,12 @@ function AiBuilderPanel({
           />
         </div>
         <div className="mt-2 flex justify-end gap-2">
-          <Button type="submit" size="sm" aria-label="Generate suggestion" disabled={!canSubmit}>
+          <Button
+            type="submit"
+            size="sm"
+            aria-label="Generate suggestion"
+            disabled={!canSubmit}
+          >
             {isPending ? "Generating…" : "Send"}
           </Button>
           {isPending && (
@@ -305,33 +222,32 @@ function AiBuilderPanel({
       {latestResult?.proposal && (
         <div className="grid gap-2 rounded-md border border-border p-3">
           <p className="text-sm">A project proposal is ready for review.</p>
-          {applyError && <p role="alert" className="text-sm text-destructive">{applyError}</p>}
+          {applyError && (
+            <p role="alert" className="text-sm text-destructive">
+              {applyError}
+            </p>
+          )}
           <div>
             <Button
               type="button"
-              disabled={isDisabled || isApplying || appliedVersion === latestResult.version}
+              disabled={
+                isDisabled ||
+                isApplying ||
+                appliedVersion === latestResult.version
+              }
               onClick={() => void handleApplyProposal()}
             >
               {appliedVersion === latestResult.version
                 ? "Applied to draft"
                 : isApplying
-                ? "Applying…"
-                : "Apply proposal to draft"}
+                  ? "Applying…"
+                  : "Apply proposal to draft"}
             </Button>
           </div>
         </div>
       )}
     </section>
   );
-}
-
-function createDraftSnapshotKey(
-  version: number,
-  components: IProjectComponent[],
-  workflow: IProjectWorkflowDefinition,
-  customModulesSource: string,
-): string {
-  return JSON.stringify({ version, components, workflow, customModulesSource });
 }
 
 export default AiBuilderPanel;

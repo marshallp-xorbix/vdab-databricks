@@ -7,6 +7,15 @@ import type { CallerIdentity } from "../src/contracts.ts";
 const WORKSPACE_HOST = "https://dbc-example.cloud.databricks.com";
 const FORWARDED_TOKEN = "caller-token-never-return-this";
 
+test("WorkspaceAppsClient_RuntimeUrl_ReturnsOnlyTheRequestedDatabricksApp", async () => {
+  const validUrl = "https://orders-dashboard-123.aws.databricksapps.com";
+  const createClient = (url: string) => createWorkspaceAppsClient(WORKSPACE_HOST, async () => Response.json({ name: "orders-dashboard", url, app_status: { state: "RUNNING" }, compute_status: { state: "ACTIVE" } }));
+  assert.equal((await createClient(validUrl).getApp(createTestCaller(), "orders-dashboard")).url, validUrl);
+  for (const url of ["javascript:alert(1)", "https://evil.example", "https://other-app-123.aws.databricksapps.com", "https://orders-dashboard-123.aws.databricksapps.com.evil.example", `${validUrl}/?token=secret`, `https://user:secret@orders-dashboard-123.aws.databricksapps.com`]) {
+    await assert.rejects(createClient(url).getApp(createTestCaller(), "orders-dashboard"), { code: "databricks_invalid_response", status: 502 });
+  }
+});
+
 test("WorkspaceAppsClient_ListsCallerVisibleApps_UsingPinnedWorkspaceAndUserToken", async () => {
   let requestedUrl = "";
   let authorizationHeader: string | null = null;

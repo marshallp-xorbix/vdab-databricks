@@ -36,6 +36,18 @@ test(
 
     try {
       await runLakebaseMigrations(adaptPool(pool));
+      const settingsRepository = new PostgresProjectRepository(adaptPool(pool));
+      const deploymentSettings = { mode: "createNew" as const, appName: "parity-demo", workspacePath: "/Workspace/Shared/parity-demo" };
+      const settingsProject = await settingsRepository.createProject({
+        workspaceId: "settings-workspace", actorId: "settings-owner", name: "Deployment settings", description: null,
+        deploymentSettings, requestId: "settings-create",
+      });
+      const settingsActor = { workspaceId: "settings-workspace", userId: "settings-owner", isInstallationAdmin: false, requestId: "settings-reopen" };
+      assert.deepEqual((await settingsRepository.getProject(settingsProject.id, settingsActor))?.deploymentSettings, deploymentSettings);
+      const changedSettings = { ...deploymentSettings, workspacePath: "/Workspace/Shared/changed-folder" };
+      await settingsRepository.updateProject(settingsProject.id, { name: settingsProject.name, description: null, expectedVersion: settingsProject.version, deploymentSettings: changedSettings }, settingsActor);
+      assert.deepEqual((await settingsRepository.getProject(settingsProject.id, settingsActor))?.deploymentSettings, changedSettings);
+      assert.equal(await settingsRepository.getProject(settingsProject.id, { ...settingsActor, userId: "unrelated-user" }), null);
       const projectId = "c2b4ebc7-a404-48a5-a705-66e1a8a46dcb";
       await pool.query(
         `INSERT INTO vdab_projects (id, workspace_id, name, created_by)
@@ -339,6 +351,7 @@ test(
           "005_project_portability",
           "006_project_deployments",
           "007_deployment_app_resources",
+        "008_project_deployment_settings",
         ],
       );
 

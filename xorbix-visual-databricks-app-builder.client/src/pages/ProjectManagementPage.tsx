@@ -49,6 +49,7 @@ function ProjectManagementPage({
     const createdProject = await createProjectMutation.mutateAsync({
       name,
       description,
+      deploymentSettings: { ...target, workspacePath: null },
     });
     const query = new URLSearchParams({
       section: "settings",

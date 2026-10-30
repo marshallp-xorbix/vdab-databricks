@@ -58,7 +58,9 @@ WORKSPACE_USER="you@example.com"
 PROFILE="your-databricks-profile"
 WORKSPACE_SOURCE="/Workspace/Users/${WORKSPACE_USER}/.vdab/builder/${APP_NAME}"
 
-databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE"
+databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE" --full \
+  --include 'app.yaml' --include 'package*.json' --include '*.md' \
+  --include 'public/**' --include 'server/**'
 databricks apps deploy "$APP_NAME" --source-code-path "$WORKSPACE_SOURCE" --mode SNAPSHOT --profile "$PROFILE"
 databricks apps get "$APP_NAME" --profile "$PROFILE"
 ```
@@ -86,7 +88,9 @@ WORKSPACE_USER="you@example.com"
 PROFILE="your-databricks-profile"
 WORKSPACE_SOURCE="/Workspace/Users/${WORKSPACE_USER}/.vdab/builder/${APP_NAME}"
 
-databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE"
+databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE" --full \
+  --include 'app.yaml' --include 'package*.json' --include '*.md' \
+  --include 'public/**' --include 'server/**'
 databricks apps deploy "$APP_NAME" --source-code-path "$WORKSPACE_SOURCE" --mode SNAPSHOT --profile "$PROFILE"
 databricks apps get "$APP_NAME" --profile "$PROFILE"
 ```
@@ -111,7 +115,7 @@ The builder's **Apps** are saved VDAB projects. They are not Databricks Apps unt
 2. Select **Create New App** (or **Create Your First App** if the project list is empty).
 3. Confirm the installed workspace. VDAB is pinned to this workspace; the wizard does not connect to another workspace.
 4. Choose whether the project will create a new child Databricks App or link an existing App, then enter the VDAB project name and optional description and select or name the child App target.
-5. VDAB creates the project in the Lakebase database bound to this installation and opens its editor with the chosen target preselected. The target is actually linked when you deploy from the project.
+5. VDAB creates the project in the Lakebase database bound to this installation and opens its editor with the chosen target preselected. The target choice is saved with the project and restored when you reopen it. The target is actually linked when you deploy from the project.
 6. Use the editor navigation to move among **Canvas**, **Workflow**, **Code**, and **Settings**.
 
 If this is the first time the workspace is being used, visit **Workspace setup** and run its diagnostic before configuring workspace-backed components. User consent and permission are checked when individual workspace features are used.
@@ -121,9 +125,9 @@ If this is the first time the workspace is being used, visit **Workspace setup**
 1. In **Canvas**, add controls, layout, data, chart, or story components from the component catalog. Select a component to edit its properties and data bindings.
 2. Connect components to resources in the installed workspace using the available pickers. The signed-in user needs permission to discover and use the selected resource. Resource names and IDs identify workspace assets; do not enter credentials into project fields.
 3. Open **Workflow** to define a workflow, its trigger, and actions such as SQL operations, Jobs, bindings, or custom/prebuilt modules. Configure only the actions the app needs and resolve validation messages as you go.
-4. Open **Settings → App Details** to edit project metadata, **App Theme** to adjust the appearance, and **Permissions** to manage VDAB project collaborators. Collaborator access to a VDAB project does not grant Databricks permissions on its resources.
-5. Optionally select **Prompt** to use AI Builder. Choose an accessible customer-configured Databricks model endpoint when prompted. Review the proposed changes before applying and save the project afterward. Endpoint permissions and inference costs are controlled by the workspace.
-6. Select **Save** after edits. Check for unsaved changes before leaving a section; deployment uses only the saved project version.
+4. Open **Settings → App Details** to edit project metadata, the saved Databricks App target, and its **Workspace path**. Generated snapshots are placed under `<workspacePath>/.vdab/deployments/<projectId>/<attemptId>`; leaving the path blank uses your default VDAB folder. Use **App Theme** to adjust appearance and **Permissions** to manage project collaborators. Collaborator access does not grant Databricks permissions on its resources.
+5. Optionally select **Prompt** to use AI Builder. Choose a ready chat endpoint with query access and function-calling support. Known embedding and completion endpoints are excluded. Review the proposed changes before applying and save the project afterward. Endpoint permissions and inference costs are controlled by the workspace.
+6. Select **Save** after edits. Canvas Save persists component properties and their inline workflows together in version order, including workflows attached to newly added buttons. **Edit in Workflow Builder** opens the selected workflow action. Check for unsaved changes before leaving a section; deployment uses only the saved project version.
 
 ### Preview and inspect generated code
 
@@ -139,7 +143,7 @@ If this is the first time the workspace is being used, visit **Workspace setup**
 4. Choose **Create a new App** and enter a unique workspace App name (2–30 lowercase letters, numbers, or hyphens), or choose **Link an existing App** and select an App you are allowed to update. The create/link choice from the project wizard is preselected here.
 5. Review the target App and required resources. If linking an existing App, enable the explicit confirmation that its current source will be replaced.
 6. Add any required workspace secret-resource bindings if the project needs them. Secret values are managed in Databricks and are not stored in the VDAB project.
-7. Select **Create and deploy App** or **Link and deploy App**. Wait for the deployment attempt to appear in the project deployment history, then open the App in the Databricks workspace and verify its running state and behavior.
+7. Select **Create and deploy App** or **Link and deploy App**. Wait for the deployment attempt to appear in the project deployment history, then select **Open app** in the toolbar to run it. The Apps dashboard reports the child App's current status; its **Open** action launches the runtime, **Edit** opens the builder, and **Deploy** opens deployment settings.
 
 Databricks checks your own permissions for App creation, source upload, and resources. For App Spaces, workspace policy may also require `CAN CREATE APP`. The child App has its own App identity, resource bindings, source access, and lifecycle. Generated code never receives the VDAB builder's Lakebase credentials, forwarded user token, or App privileges.
 

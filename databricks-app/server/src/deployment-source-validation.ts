@@ -1,5 +1,6 @@
 import type { CallerIdentity, ProjectDeploymentSourceFile } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
+import { readProjectWorkspacePath } from "./project-deployment-settings.ts";
 
 const MAX_SOURCE_FILE_BYTES = 7_000_000;
 const MAX_SOURCE_TOTAL_BYTES = 25_000_000;
@@ -14,7 +15,15 @@ export function createDeploymentSourcePath(
   caller: CallerIdentity,
   projectId: string,
   deploymentId: string,
+  workspacePath?: string | null,
 ): string {
+  if (workspacePath) {
+    const basePath = readProjectWorkspacePath(workspacePath);
+    if (!/^[0-9a-f-]{36}$/i.test(projectId) || !/^[0-9a-f-]{36}$/i.test(deploymentId)) throw invalidSourceBundle();
+    const path = `${basePath}/.vdab/deployments/${projectId}/${deploymentId}`;
+    validateDeploymentSourcePath(path);
+    return path;
+  }
   const userName = caller.email ?? caller.preferredUsername;
   if (!userName || !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/.test(userName)) {
     throw new ApplicationError(
@@ -66,11 +75,13 @@ export function validateGeneratedSource(
   }
 }
 
-function validateDeploymentSourcePath(sourceCodePath: string): void {
+/** Restricts snapshots to a controlled deployment subfolder in the workspace. */
+export function validateDeploymentSourcePath(sourceCodePath: string): void {
   if (
-    !sourceCodePath.startsWith("/Workspace/Users/") ||
+    !sourceCodePath.startsWith("/Workspace/") ||
     !sourceCodePath.includes("/.vdab/deployments/") ||
-    sourceCodePath.split("/").some((part) => part === "..")
+    sourceCodePath.split("/").slice(1).some((part) => !part || part === "." || part === "..") ||
+    /[\\\u0000-\u001f\u007f?#%]/.test(sourceCodePath)
   ) {
     throw new ApplicationError(
       400,

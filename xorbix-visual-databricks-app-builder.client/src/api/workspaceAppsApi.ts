@@ -84,11 +84,24 @@ async function requestWorkspaceApp(
     throw new Error("The workspace returned an invalid App response.");
   }
   return new WorkspaceAppSummary({
+    url: readRuntimeUrl(value.name, value.url),
     name: value.name,
     description: value.description,
     appState: value.appState,
     computeState: value.computeState,
   });
+}
+
+function readRuntimeUrl(appName: string, value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "string") {
+    try {
+      const url = new URL(value);
+      if (url.protocol === "https:" && !url.username && !url.password && !url.port && !url.search && !url.hash && url.pathname === "/" &&
+        url.hostname.startsWith(`${appName}-`) && url.hostname.endsWith(".databricksapps.com")) return url.origin;
+    } catch { /* Fall through to the invalid-contract error. */ }
+  }
+  throw new Error("The workspace returned an invalid App runtime URL.");
 }
 
 function parseWorkspaceAppsPage(value: unknown): IWorkspaceAppsPage {
@@ -127,6 +140,7 @@ function parseWorkspaceAppSummary(value: unknown): IWorkspaceAppSummary {
   }
 
   return new WorkspaceAppSummary({
+    url: readRuntimeUrl(value.name, value.url),
     name: value.name,
     description: value.description,
     appState: value.appState,

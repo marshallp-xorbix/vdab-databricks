@@ -1,5 +1,5 @@
 import { Button } from "./ui/button";
-import { ProjectWorkflowEditor } from "./ProjectWorkflowEditor";
+import ProjectWorkflowEditor from "./ProjectWorkflowEditor";
 import type { useProjectEditor } from "../hooks/useProjectEditor";
 
 type ProjectEditorState = ReturnType<typeof useProjectEditor>;

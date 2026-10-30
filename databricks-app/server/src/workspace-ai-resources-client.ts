@@ -165,7 +165,9 @@ function readWorkspaceServingEndpoint(
     value.permission_level === "CAN_MANAGE"
       ? value.permission_level
       : null;
-  return { name: value.name, readiness, permissionLevel };
+  if (value.task !== undefined && (typeof value.task !== "string" || value.task.length > 128 || /[\u0000-\u001f]/.test(value.task))) throw invalidWorkspaceResourceResponse();
+  return { name: value.name, readiness, permissionLevel,
+    ...(typeof value.task === "string" ? { task: value.task } : {}) };
 }
 
 function readNextPageToken(value: unknown): string | null {

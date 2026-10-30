@@ -101,6 +101,13 @@ test("ProjectDeploymentService_MissingInstalledAppSpace_BlocksBeforeWorkspaceMut
   assert.equal(harness.workspace.submittedPaths.length, 0);
 });
 
+test("ProjectDeploymentService_ConfiguredWorkspaceFolder_UploadsAndDeploysThatSnapshot", async () => {
+  const harness = createHarness({ deploymentSettings: { mode: "createNew", appName: "project-child", workspacePath: "/Workspace/Shared/parity-demo" } });
+  const result = await harness.service.deploy(CALLER, "request-folder", PROJECT_ID, { mode: "createNew", appName: "project-child", confirmOverwrite: false });
+  assert.ok(result.sourceCodePath?.startsWith(`/Workspace/Shared/parity-demo/.vdab/deployments/${PROJECT_ID}/`));
+  assert.equal(harness.workspace.submittedPaths[0], result.sourceCodePath);
+});
+
 test("ProjectDeploymentService_LinkExisting_RequiresExplicitReplacementAndRejectsGitSource", async () => {
   const harness = createHarness();
   harness.workspace.apps.set(

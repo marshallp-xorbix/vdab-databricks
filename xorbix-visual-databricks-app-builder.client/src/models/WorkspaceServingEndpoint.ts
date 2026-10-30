@@ -1,9 +1,11 @@
 import type { AuthenticationMode } from "./WorkspaceResource";
+export const WORKSPACE_CHAT_ENDPOINT_TASK = "llm/v1/chat";
 
 export type WorkspaceServingEndpointReadiness = "ready" | "not-ready" | "unknown";
 export type WorkspaceServingEndpointPermission = "CAN_VIEW" | "CAN_QUERY" | "CAN_MANAGE";
 
 export interface IWorkspaceServingEndpoint {
+  task?: string;
   name: string;
   readiness: WorkspaceServingEndpointReadiness;
   permissionLevel: WorkspaceServingEndpointPermission | null;
@@ -15,12 +17,14 @@ export interface IWorkspaceServingEndpointsPage {
 }
 
 export class WorkspaceServingEndpoint implements IWorkspaceServingEndpoint {
+  task?: string;
   name: string;
   readiness: WorkspaceServingEndpointReadiness;
   permissionLevel: WorkspaceServingEndpointPermission | null;
 
   constructor(source: Partial<IWorkspaceServingEndpoint> = {}) {
     this.name = source.name ?? "";
+    this.task = source.task;
     this.readiness = source.readiness ?? "unknown";
     this.permissionLevel = source.permissionLevel ?? null;
   }

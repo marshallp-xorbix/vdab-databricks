@@ -8,6 +8,7 @@ import { AI_BUILDER_TOOL_NAME } from "./ai-builder-tool.ts";
 import type { AiBuilderResourceContextService } from "./ai-builder-resource-context.ts";
 import type { ComponentRegistryService } from "./component-registry/component-registry-service.ts";
 import type { CallerIdentity, WorkspaceServingEndpointResource } from "./contracts.ts";
+import { WORKSPACE_CHAT_ENDPOINT_TASK } from "./contracts.ts";
 import type { ProjectService } from "./db/project-service.ts";
 import type { ProjectComponentsService } from "./db/project-components-service.ts";
 import type { ProjectWorkflowService } from "./db/project-workflow-service.ts";
@@ -104,6 +105,9 @@ export class AiBuilderService {
     }
     const endpoints = await this.workspaceResources.listServingEndpoints(caller);
     const endpoint = endpoints.items.find((item) => item.name === endpointName);
+    if (endpoint?.task !== undefined && endpoint.task !== WORKSPACE_CHAT_ENDPOINT_TASK) {
+      throw new ApplicationError(422, "ai_endpoint_chat_required", "Choose a chat endpoint", "AI Builder needs a chat-completion endpoint with function calling; embedding and completion endpoints cannot build project edits.");
+    }
     if (!endpoint || endpoint.readiness !== "ready" ||
         (endpoint.permissionLevel !== "CAN_QUERY" && endpoint.permissionLevel !== "CAN_MANAGE")) {
       throw new ApplicationError(403, "ai_endpoint_not_queryable", "Model endpoint unavailable", "Select a ready serving endpoint that the signed-in user can query in this workspace.");

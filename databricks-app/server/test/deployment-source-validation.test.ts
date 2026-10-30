@@ -117,3 +117,12 @@ test("DeploymentSourceValidation_CreatesCallerOwnedStableFolder", () => {
       error.code === "deployment_source_identity_unavailable",
   );
 });
+
+test("DeploymentSourceValidation_ConfiguredFolder_IsolatesProjectAndAttemptSnapshots", () => {
+  const projectId = "11111111-1111-4111-8111-111111111111";
+  const deploymentId = "22222222-2222-4222-8222-222222222222";
+  const path = createDeploymentSourcePath(CALLER, projectId, deploymentId, "/Workspace/Shared/parity-demo/");
+  assert.equal(path, `/Workspace/Shared/parity-demo/.vdab/deployments/${projectId}/${deploymentId}`);
+  assert.doesNotThrow(() => validateGeneratedSource(path, [{ path: "app.py", content: "print('ok')" }]));
+  assert.throws(() => createDeploymentSourcePath(CALLER, projectId, deploymentId, "/Workspace/Shared/../other"));
+});

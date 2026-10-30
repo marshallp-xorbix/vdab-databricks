@@ -2,6 +2,7 @@ import { Circle, Loader2, Play, Square } from "lucide-react";
 import { useWorkspaceAppLifecycle } from "../hooks/useWorkspaceAppLifecycle";
 import { toast } from "./ui/use-toast";
 import { Button } from "./ui/button";
+import { readWorkspaceAppStatus } from "../utils/workspaceAppStatus";
 
 interface IProjectAppLifecycleControlsProps {
   appName: string | undefined;
@@ -15,8 +16,10 @@ function ProjectAppLifecycleControls({
 }: Readonly<IProjectAppLifecycleControlsProps>) {
   const { appQuery, actionMutation } = useWorkspaceAppLifecycle(appName);
   const app = appQuery.data;
-  const isActive = app?.computeState === "ACTIVE" || app?.appState === "RUNNING";
-  const isStopped = app?.computeState === "STOPPED" || app?.appState === "UNAVAILABLE";
+  const isActive =
+    app?.computeState === "ACTIVE" || app?.appState === "RUNNING";
+  const isStopped =
+    app?.computeState === "STOPPED" || app?.appState === "UNAVAILABLE";
   const isTransitioning =
     app?.computeState === "STARTING" ||
     app?.computeState === "STOPPING" ||
@@ -27,13 +30,7 @@ function ProjectAppLifecycleControls({
     ? "Not deployed"
     : appQuery.isError
       ? "Status unavailable"
-      : isActive
-        ? "Running"
-        : isStopped
-          ? "Offline"
-          : isTransitioning
-            ? app?.computeState ?? app?.appState ?? "Starting"
-            : "Checking";
+      : readWorkspaceAppStatus(app);
 
   async function handleAction() {
     try {
@@ -41,7 +38,10 @@ function ProjectAppLifecycleControls({
     } catch (error) {
       toast({
         title: "App action failed",
-        description: error instanceof Error ? error.message : "Unable to update the child App.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Unable to update the child App.",
         variant: "destructive",
       });
     }
@@ -58,6 +58,13 @@ function ProjectAppLifecycleControls({
 
   return (
     <div className="flex items-center gap-2 border-l border-[var(--builder-chrome-border)] pl-2">
+      {app?.url && (
+        <Button type="button" variant="outline" size="sm" asChild>
+          <a href={app.url} target="_blank" rel="noopener noreferrer">
+            Open app
+          </a>
+        </Button>
+      )}
       <Button
         type="button"
         variant="ghost"

@@ -13,6 +13,7 @@ import {
 } from "../models/ProjectPortability";
 
 const PROJECTS_PATH = "/api/v1/projects";
+import { ProjectDeploymentSettings, type IProjectDeploymentSettings } from "../models/ProjectDeploymentSettings";
 
 /** Lists projects visible to the current user in the installed workspace. */
 export async function listProjects(
@@ -33,6 +34,7 @@ export async function listProjects(
 
 /** Creates a project in the workspace hosting VDAB. */
 export async function createProject(input: {
+  deploymentSettings?: IProjectDeploymentSettings;
   name: string;
   description: string | null;
 }): Promise<IProject> {
@@ -73,6 +75,7 @@ export async function getProject(
 
 /** Saves editable project metadata using optimistic version checking. */
 export async function updateProject(input: {
+  deploymentSettings?: IProjectDeploymentSettings | null;
   id: string;
   name: string;
   description: string | null;
@@ -91,6 +94,7 @@ export async function updateProject(input: {
       description: input.description,
       version: input.version,
       ...(input.theme === undefined ? {} : { theme: input.theme }),
+      ...(input.deploymentSettings === undefined ? {} : { deploymentSettings: input.deploymentSettings }),
     }),
   });
 
@@ -175,12 +179,22 @@ function parseProject(value: unknown): IProject {
     name: value.name,
     description: value.description,
     ...(isTheme(value.theme) ? { theme: value.theme } : {}),
+    deploymentSettings: parseDeploymentSettings(value.deploymentSettings),
     version: value.version as number,
     createdBy: value.createdBy,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     callerRole: value.callerRole,
   });
+}
+
+function parseDeploymentSettings(value: unknown): IProjectDeploymentSettings | null {
+  if (value === undefined || value === null) return null;
+  if (!isRecord(value) || (value.mode !== "createNew" && value.mode !== "linkExisting") ||
+    typeof value.appName !== "string" || !isNullableString(value.workspacePath)) {
+    throw new Error("The project service returned invalid deployment settings.");
+  }
+  return new ProjectDeploymentSettings({ mode: value.mode, appName: value.appName, workspacePath: value.workspacePath });
 }
 
 function isTheme(value: unknown): value is Record<string, unknown> | null {

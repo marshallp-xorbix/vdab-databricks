@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ApplicationError } from "../src/application-error.ts";
-import { validateUserApiScopes } from "../src/workspace-app-deployment-validation.ts";
+import { validateDeploymentSourcePath, validateUserApiScopes } from "../src/workspace-app-deployment-validation.ts";
+
+test("ValidateDeploymentSourcePath_AcceptsConfiguredWorkspaceFolderAndRejectsTraversal", () => {
+  validateDeploymentSourcePath("/Workspace/Shared/parity-app/.vdab/deployments/project/deployment");
+  for (const path of ["/Workspace/Shared/parity-app", "/Workspace/Shared/../.vdab/deployments/project/deployment", "/Workspace/Shared/app/.vdab/deployments/project?x/deployment"]) {
+    assert.throws(() => validateDeploymentSourcePath(path), ApplicationError);
+  }
+});
 
 const DOCUMENTED_API_SCOPES = [
   "ai-functions",

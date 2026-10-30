@@ -231,6 +231,7 @@ export class ProjectDeploymentService {
       caller,
       projectId,
       randomUUID(),
+      project.deploymentSettings?.workspacePath,
     );
     validateGeneratedSource(sourcePathProbe, sourceFiles);
     const createMarker =
@@ -261,6 +262,7 @@ export class ProjectDeploymentService {
       record,
       createMarker,
       appSpaceName,
+      project.deploymentSettings?.workspacePath,
     );
   }
 
@@ -381,6 +383,7 @@ export class ProjectDeploymentService {
       record,
       childApp?.createMarker ?? null,
       appSpaceName,
+      project.deploymentSettings?.workspacePath,
     );
   }
 
@@ -392,11 +395,13 @@ export class ProjectDeploymentService {
     record: ProjectDeploymentRecord,
     createMarker: string | null,
     appSpaceName: string | null,
+    workspacePath?: string | null,
   ): Promise<ProjectDeploymentSummary> {
     const sourceCodePath = createDeploymentSourcePath(
       caller,
       projectId,
       record.id,
+      workspacePath,
     );
     validateGeneratedSource(sourceCodePath, record.sourceFiles);
     let savedRecord = await this.repository.updateDeployment(

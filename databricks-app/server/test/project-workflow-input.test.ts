@@ -63,6 +63,31 @@ test("ProjectWorkflowInput_AcceptsAllAgreedActionContracts_AndPreservesPortableK
   assert.doesNotMatch(JSON.stringify(input.workflow), /workspaceConnectionId|workspaceHost|accessToken/i);
 });
 
+test("ProjectWorkflowInput_DigitPrefixedUuidActions_PreservesGraphAndDataReferences", () => {
+  const request = structuredClone(validInput);
+  const workflow = request.workflow.workflows[0]!;
+  const replacements = new Map(workflow.nodes.map((node, index) => [node.id, `${index}1111111-1111-4111-8111-111111111111`]));
+  for (const node of workflow.nodes) node.id = replacements.get(node.id)!;
+  for (const edge of workflow.edges) {
+    edge.fromNodeId = replacements.get(edge.fromNodeId)!;
+    edge.toNodeId = replacements.get(edge.toNodeId)!;
+  }
+  (workflow.nodes[4]!.params.statement as Record<string, unknown>).nodeId = workflow.nodes[3]!.id;
+  (workflow.nodes[5]!.params.source as Record<string, unknown>).nodeId = workflow.nodes[4]!.id;
+  const parsed = readProjectWorkflowInput(request).workflow.workflows[0]!;
+  assert.equal(parsed.nodes[0]?.id, "01111111-1111-4111-8111-111111111111");
+  assert.equal(parsed.edges[0]?.fromNodeId, parsed.nodes[0]?.id);
+  assert.equal(parsed.edges[0]?.toNodeId, parsed.nodes[1]?.id);
+});
+
+test("ProjectWorkflowInput_ActionIdentifiers_RejectsUnsafeCharacters", () => {
+  for (const id of ["", "../action", "action;exec", "action with spaces", "https://foreign.example"]) {
+    const request = structuredClone(validInput);
+    request.workflow.workflows[0]!.nodes[0]!.id = id;
+    assertInvalidWorkflow(request);
+  }
+});
+
 test("ProjectWorkflowInput_RejectsWorkspaceAuthorityAndUnknownNestedFields", () => {
   const request = structuredClone(validInput);
   const firstWorkflow = request.workflow.workflows[0]!;

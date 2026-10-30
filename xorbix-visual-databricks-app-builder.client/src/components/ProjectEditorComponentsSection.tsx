@@ -23,6 +23,7 @@ interface IProjectEditorComponentsSectionProps {
     | "isComponentsDirty"
     | "isWorkflowDirty"
     | "isCustomModulesDirty"
+    | "isCanvasSaving"
     | "componentsDocument"
     | "canEdit"
     | "handleComponentsChange"
@@ -63,6 +64,11 @@ function ProjectEditorComponentsSection({
           Automatic save failed. {saveError instanceof Error
             ? saveError.message
             : "Use Save to retry."}
+        </p>
+      )}
+      {canEdit && replaceWorkflowMutation.isError && (
+        <p role="alert" className="px-3 py-2 text-sm text-destructive">
+          Workflow save failed. {replaceWorkflowMutation.error instanceof Error ? replaceWorkflowMutation.error.message : "Use Save to retry."}
         </p>
       )}
       {canEdit && isComponentsDirty && !replaceComponentsMutation.isError && (
@@ -108,7 +114,7 @@ function ProjectEditorComponentsSection({
           definitions={registryQuery.data?.components ?? []}
           theme={editor.theme as Record<string, string>}
           isDisabled={
-            !canEdit ||
+            !canEdit || editor.isCanvasSaving ||
             isMetadataDirty ||
             replaceComponentsMutation.isPending ||
             replaceWorkflowMutation.isPending ||
