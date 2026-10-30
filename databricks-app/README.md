@@ -21,6 +21,8 @@ Open `http://localhost:8000/`. Local test identity is development-only and never
 
 ## Deploy and update
 
+For a new installation, follow the [complete installation and verification guide](docs/installation.md). It includes the PostgreSQL schema grants and per-user OAuth consent checks required in addition to App resource bindings and configured scopes.
+
 The sandbox builder uses the same app and source folder for every update:
 
 - Databricks App: `vdab-builder-sandbox`

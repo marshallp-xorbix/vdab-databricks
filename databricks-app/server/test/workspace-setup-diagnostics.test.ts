@@ -97,6 +97,29 @@ test("WorkspaceSetupDiagnosticsClient_ReportsMissingConsentWithoutExposingUpstre
   assert.match(result.message, /Grant consent in Databricks/);
 });
 
+for (const scenario of [
+  { name: "RecognizesCurrentConsentResponse", consent: { user_consented_scopes: ["apps", "sql"] }, status: "verified", missingScopes: [] },
+  { name: "ReportsAppsMissingFromCurrentConsent", consent: { user_consented_scopes: ["sql"] }, status: "missing-scopes", missingScopes: ["apps"] },
+  { name: "RejectsMalformedCurrentConsentWithoutLegacyFallback", consent: { user_consented_scopes: [123], scopes: ["apps", "sql"] }, status: "unavailable", missingScopes: [] },
+]) {
+  test(`WorkspaceSetupDiagnosticsClient_${scenario.name}`, async () => {
+    let callNumber = 0;
+    const client = createWorkspaceSetupDiagnosticsClient(WORKSPACE_HOST, "vdab-builder", async () => {
+      callNumber += 1;
+      return callNumber === 1
+        ? Response.json({ oauth2_app_client_id: "oauth-client-id", user_api_scopes: ["apps", "sql"], effective_user_api_scopes: ["apps", "sql"] })
+        : Response.json(scenario.consent);
+    });
+
+    const result = await client.getAuthorizationDiagnostics(makeCaller());
+
+    assert.equal(result.status, scenario.status);
+    assert.deepEqual(result.missingScopes, scenario.missingScopes);
+    assert.equal(callNumber, 2);
+    assert.doesNotMatch(JSON.stringify(result), new RegExp(FORWARDED_TOKEN));
+  });
+}
+
 test("WorkspaceSetupDiagnosticsClient_FailsClosedWhenAppsScopeIsDenied", async () => {
   let callCount = 0;
   const client = createWorkspaceSetupDiagnosticsClient(

@@ -28,7 +28,9 @@ Use the same profile, App name, and source folder on every update. Do not make a
 
 ## First install
 
-Create the Databricks App and bind the customer-owned Lakebase Autoscaling resource before deploying. Configure only approved user API scopes and explicit resource bindings in the workspace. VDAB does not create the Lakebase project/database, SQL warehouse, child Apps, model endpoints, Jobs, or Unity Catalog assets. Use the installed workspace's provisioning and permission workflows, then deploy `.build/` and check app status, logs, migration completion, consent, and a representative project save/reopen.
+Use the canonical [installation and verification guide](installation.md). It contains the complete ordered setup, exact execution locations, PowerShell commands, company values, PostgreSQL schema grants, scope-update JSON, and per-user consent checks. The database resource must be bound and its schema permissions approved before first deployment.
+
+For PostgreSQL 42501, follow [schema grants](installation.md#4-grant-postgresql-schema-access-before-first-startup). For the Apps-list authorization error, compare effective scopes with the actual user’s consent in [step 8](installation.md#8-verify-each-users-consent-and-start-a-fresh-app-session). A successful CLI list is not proof that an existing App browser session has the same authorization.
 
 ## Health and troubleshooting
 

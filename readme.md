@@ -17,6 +17,7 @@ For development-only packaged startup, set `VDAB_AUTH_MODE=local-test`, `VDAB_LO
 
 ## Documentation
 
+- [Complete installation and verification guide](databricks-app/docs/installation.md) — machine setup, database grants, scopes, per-user consent, and deployment
 - [Product and engineering documentation](databricks-app/docs/README.md)
 - [Deployment and operations](databricks-app/docs/deployment-and-operations.md)
 - [Repository rules](AGENTS.md)

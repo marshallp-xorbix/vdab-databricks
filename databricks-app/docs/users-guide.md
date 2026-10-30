@@ -1,109 +1,18 @@
 # VDAB user guide
 
-This guide takes you from the source repository to a running VDAB builder in a Databricks workspace, then through creating and deploying a generated Streamlit app.
-
-VDAB itself is a Node.js Databricks App. The apps you create with it are separate Python/Streamlit Databricks Apps. Builder projects and deployment history are stored in the Lakebase database bound to VDAB.
+This guide covers using the standalone Node/React VDAB builder and deploying generated Python/Streamlit applications. Builder projects and deployment history persist in the installation’s Lakebase database.
 
 ## 1. Install VDAB in a Databricks workspace
 
-### Prerequisites
+Follow the complete [installation and verification guide](installation.md) in order. It specifies where to run every command and SQL query, machine prerequisites, generic and company-specific values, App creation, Lakebase schema grants, user scopes, browser consent, package upload, deployment, and acceptance checks.
 
-- Node.js 22.16 or later and npm.
-- The Databricks CLI installed and authenticated to the target workspace.
-- A customer-owned Lakebase Autoscaling database for a first-time installation. The person adding the Lakebase resource needs permission to manage its Lakebase project.
-- Permission to deploy the VDAB App and, later, permission to create or update child Apps.
-
-Install VDAB once in each workspace where you want to use it. Choose a stable Databricks App name and workspace source folder for this installation. Keep using both when you update it.
-
-### Prepare the workspace
-
-1. Create or select a customer-owned Lakebase Autoscaling project, branch, and database for this VDAB installation.
-2. In the Databricks workspace, create a custom App for VDAB. Record its App name; you will use it for deployment and updates.
-3. In the App's **Resources** settings, add the Lakebase database with **Can connect and create** permission. Use the default resource key `postgres`; `app.yaml` reads the resource as `LAKEBASE_ENDPOINT`.
-4. Configure the Apps API scopes approved for your workspace and the VDAB features you plan to use. The signed-in user's permissions and OAuth consent are checked when workspace features are used.
-
-VDAB does not create Lakebase, SQL warehouses, model endpoints, Unity Catalog assets, Jobs, or child Apps for you. Each VDAB installation starts with a new, empty application schema in the bound Lakebase database.
-
-### Authenticate the Databricks CLI
-
-Check your CLI profiles and select the one for the intended workspace:
-
-```sh
-databricks auth profiles -o text
-```
-
-If needed, sign in to that workspace with `databricks auth login --host <workspace-url>` and choose a profile name. Use that profile explicitly in the commands below. See [Databricks CLI authentication](https://docs.databricks.com/aws/en/dev-tools/cli/authentication).
-
-### Build and deploy the first version
-
-From the repository root in a terminal using a POSIX-style shell (such as Bash, Git Bash, or WSL), install dependencies if this is the first build on this machine, then build and smoke-check the deployment package:
-
-```sh
-cd databricks-app
-npm run install:all # first build on this machine only
-npm run build
-npm run smoke
-cd ..
-```
-
-`npm run build` typechecks the server, runs its automated tests, builds the React client, and assembles the self-contained deployment package at `databricks-app/.build/`. `npm run smoke` checks that assembled package locally. The repository root and the legacy .NET projects are not the app source and must not be deployed.
-
-This workflow deploys the generated package from a Databricks workspace folder. If the workspace enforces Git-only App deployments, ask its administrator for the approved way to build and deploy this repository's `.build` artifact; deploying the repository root directly does not include the required built client and runtime package.
-
-Set the deployment values for your installation and sync the built package to a stable workspace folder. Replace the example values, then run:
-
-```sh
-APP_NAME="your-vdab-app"
-WORKSPACE_USER="you@example.com"
-PROFILE="your-databricks-profile"
-WORKSPACE_SOURCE="/Workspace/Users/${WORKSPACE_USER}/.vdab/builder/${APP_NAME}"
-
-databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE" --full \
-  --include 'app.yaml' --include 'package*.json' --include '*.md' \
-  --include 'public/**' --include 'server/**'
-databricks apps deploy "$APP_NAME" --source-code-path "$WORKSPACE_SOURCE" --mode SNAPSHOT --profile "$PROFILE"
-databricks apps get "$APP_NAME" --profile "$PROFILE"
-```
-
-After deployment succeeds, open the App and go to **Workspace setup**. Select **Check workspace setup** and resolve any Lakebase configuration or scope/consent issues with the workspace administrator. Create a small project, save it, reload it, and confirm it remains available. This checks that project state persists in the bound database.
-
-Databricks Apps resource permissions and user OAuth scopes serve different purposes. VDAB uses the signed-in user's authorization for user-triggered workspace operations; a denied request is not retried with the builder App identity. Add only the scopes approved for the features you intend to use. See the [Databricks Lakebase App resource guide](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/lakebase) and VDAB's [identity and security guide](identity-and-security.md).
-
-Do not use local-test authentication for a deployed App.
+Do not skip the separate checks for configured/effective App scopes and each user’s `user_consented_scopes`. If an App has `apps` configured but still cannot list Apps, begin with [consent and fresh-session verification](installation.md#8-verify-each-users-consent-and-start-a-fresh-app-session). The CLI and the browser use different tokens.
 
 ## 2. Update or redeploy VDAB
 
-When the VDAB repository changes, rebuild the package and deploy it to the same App from the same workspace source folder. Do not create a new folder for each build; Databricks retains deployment snapshots for the App.
+Use [the update sequence](installation.md#11-update-an-existing-installation), preserving the same App, stable source folder, and Lakebase binding. A source update deploys only `databricks-app/.build/`; it does not recreate the App or move its database. Users must grant new consent when the approved scope set changes.
 
-From the repository root:
-
-```sh
-cd databricks-app
-npm run build
-npm run smoke
-cd ..
-
-APP_NAME="your-vdab-app"
-WORKSPACE_USER="you@example.com"
-PROFILE="your-databricks-profile"
-WORKSPACE_SOURCE="/Workspace/Users/${WORKSPACE_USER}/.vdab/builder/${APP_NAME}"
-
-databricks sync databricks-app/.build "$WORKSPACE_SOURCE" --profile "$PROFILE" --full \
-  --include 'app.yaml' --include 'package*.json' --include '*.md' \
-  --include 'public/**' --include 'server/**'
-databricks apps deploy "$APP_NAME" --source-code-path "$WORKSPACE_SOURCE" --mode SNAPSHOT --profile "$PROFILE"
-databricks apps get "$APP_NAME" --profile "$PROFILE"
-```
-
-Confirm the deployment succeeded and the App is running. You can also select the App in Databricks Apps, choose **Deploy**, and deploy from the same workspace source folder after syncing the new package. Open VDAB and check **Workspace setup** and the App logs if startup or resource access fails. Keep the same Lakebase binding during source updates so project data remains attached to this installation. A source rollback does not roll back database state; see [deployment and operations](deployment-and-operations.md) before recovering data or uninstalling.
-
-### Verify and troubleshoot the builder deployment
-
-- In the Databricks App details page, confirm deployment succeeded and the app is running. Open the app URL and inspect its logs if it does not start.
-- On **Workspace setup**, check the installed workspace session, Lakebase inputs, default SQL warehouse configuration, and authorization scope/consent diagnostics.
-- If Lakebase is incomplete, confirm the App has the intended `postgres` database resource and `Can connect and create` permission. Do not copy credentials into source or share them in logs.
-- If a workspace resource picker is empty or an operation is denied, check the signed-in user's access and app-scope consent. An App resource binding by itself does not grant the user access to that resource.
-- A successful local build or smoke run does not verify live Databricks permissions, resource bindings, or generated child-App execution.
+See [deployment and operations](deployment-and-operations.md) for rollback, backups, recovery, and uninstall.
 
 ## 3. Create a Databricks app with VDAB
 

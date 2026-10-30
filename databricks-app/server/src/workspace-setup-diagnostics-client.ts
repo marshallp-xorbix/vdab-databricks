@@ -13,6 +13,7 @@ interface DatabricksAppAuthorizationResponse {
 }
 
 interface DatabricksConsentResponse {
+  user_consented_scopes?: unknown;
   scopes?: unknown;
   scope?: unknown;
 }
@@ -230,6 +231,10 @@ function readConsentScopes(
 ): string[] | null {
   if (!response) {
     return null;
+  }
+
+  if (Object.hasOwn(response, "user_consented_scopes")) {
+    return readStringArray(response.user_consented_scopes);
   }
 
   const scopes = readStringArray(response.scopes);
