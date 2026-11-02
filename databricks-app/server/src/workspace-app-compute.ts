@@ -17,20 +17,20 @@ interface AppComputeState {
 }
 
 interface ComputeWaitOptions {
-  timeoutMs: number;
-  pollIntervalMs: number;
+  timeoutMs?: number;
+  pollIntervalMs?: number;
+  submitFirstDeploymentWhileStarting?: boolean;
 }
 
-/** Starts stopped child compute and waits before submitting a deployment. */
+/** Waits for existing child compute before redeploying a saved App. */
 export async function waitForWorkspaceAppCompute(
   readApp: () => Promise<AppComputeState>,
   startApp: () => Promise<AppComputeState>,
-  options: ComputeWaitOptions = {
-    timeoutMs: COMPUTE_START_TIMEOUT_MS,
-    pollIntervalMs: COMPUTE_POLL_INTERVAL_MS,
-  },
+  options: ComputeWaitOptions = {},
 ): Promise<void> {
-  const deadline = Date.now() + options.timeoutMs;
+  const timeoutMs = options.timeoutMs ?? COMPUTE_START_TIMEOUT_MS;
+  const pollIntervalMs = options.pollIntervalMs ?? COMPUTE_POLL_INTERVAL_MS;
+  const deadline = Date.now() + timeoutMs;
   let app = await readApp();
   const previousDeploymentId = app.activeDeploymentId;
   const requiresRestartDeployment = Boolean(
@@ -39,7 +39,12 @@ export async function waitForWorkspaceAppCompute(
   );
   let hasRequestedStart = false;
   while (
-    !isReadyForDeployment(app, requiresRestartDeployment, previousDeploymentId)
+    !isReadyForDeployment(
+      app,
+      requiresRestartDeployment,
+      previousDeploymentId,
+      options.submitFirstDeploymentWhileStarting ?? false,
+    )
   ) {
     if (app.computeState === "STOPPED" && !hasRequestedStart) {
       hasRequestedStart = true;
@@ -68,7 +73,7 @@ export async function waitForWorkspaceAppCompute(
       );
     }
     await setTimeout(
-      Math.min(options.pollIntervalMs, Math.max(0, deadline - Date.now())),
+      Math.min(pollIntervalMs, Math.max(0, deadline - Date.now())),
     );
     app = await readApp();
   }
@@ -78,7 +83,17 @@ function isReadyForDeployment(
   app: AppComputeState,
   requiresRestartDeployment: boolean,
   previousDeploymentId: string | null | undefined,
+  submitFirstDeploymentWhileStarting: boolean,
 ): boolean {
+  // A new App has no running source yet; its first deployment starts the runtime.
+  if (
+    submitFirstDeploymentWhileStarting &&
+    !app.sourceCodePath &&
+    !app.activeDeploymentId &&
+    !app.activeDeploymentState
+  ) {
+    return true;
+  }
   if (
     app.computeState !== "ACTIVE" ||
     app.activeDeploymentState === "IN_PROGRESS"

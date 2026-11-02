@@ -19,7 +19,7 @@ export function useProjectDeployments(projectId: string | undefined) {
   });
 }
 
-/** Polls an active workspace deployment and mirrors its state into project history. */
+/** Polls pending deployment records until Databricks reports a terminal state. */
 export function useProjectDeployment(
   projectId: string,
   deployment: IProjectDeploymentSummary,
@@ -31,7 +31,7 @@ export function useProjectDeployment(
     initialData: deployment,
     refetchInterval: (query) => {
       const current = query.state.data;
-      return current?.deploymentId && (current.status === "pending" || current.status === "running")
+      return current?.status === "pending" || current?.status === "running"
         ? 3000
         : false;
     },

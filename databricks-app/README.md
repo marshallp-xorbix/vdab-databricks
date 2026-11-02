@@ -4,24 +4,21 @@ VDAB is a standalone Databricks App for designing, previewing, and deploying Pyt
 
 ## Build and run locally
 
-Requirements: Node.js 22.16 or later and npm.
+Requirements: Node.js 22.16 or later and npm. Use a POSIX shell; on Windows, use Git Bash or WSL.
 
-```powershell
+```sh
 cd databricks-app
 npm run install:all
 npm run build
 npm run smoke
-$env:VDAB_AUTH_MODE = "local-test"
-$env:VDAB_LOCAL_USER_ID = "local-editor"
-$env:NODE_ENV = "development"
-npm run start:packaged
+VDAB_AUTH_MODE=local-test VDAB_LOCAL_USER_ID=local-editor NODE_ENV=development npm run start:packaged
 ```
 
-Open `http://localhost:8000/`. Local test identity is development-only and never calls Databricks. `npm run build` typechecks and tests the server, builds the client, and creates the deployment package at `.build/`. `npm run smoke` checks the assembled package and local-only request flows.
+Open `http://localhost:8000/`. Local test identity is development-only and never calls Databricks. `npm run build` typechecks and tests the server, builds the client, and creates the deployment package at `.build/`. `npm run smoke` checks the assembled package and local-only request flows. The repository [README](../readme.md) is the canonical install and usage guide.
 
 ## Deploy and update
 
-For a new installation, follow the [complete installation and verification guide](docs/installation.md). It includes the PostgreSQL schema grants and per-user OAuth consent checks required in addition to App resource bindings and configured scopes.
+Follow the repository [README installation and usage guide](../readme.md) for a new installation, updates, consent troubleshooting, and building/deploying child Apps.
 
 The sandbox builder uses the same app and source folder for every update:
 
@@ -33,7 +30,7 @@ Build first, upload the contents of `.build/` to the same workspace source folde
 
 ## Product documentation
 
-Start at [VDAB documentation](docs/README.md). It covers the product, architecture, browser UI, server, API, persistence, generated applications, security, operations, and development workflow.
+Start at [VDAB documentation](docs/README.md) for product, architecture, browser UI, server, API, persistence, generated applications, security, operations, and development workflow. The repository [README](../readme.md) is the canonical install and user guide.
 
 ## Package contents
 

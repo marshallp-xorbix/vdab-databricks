@@ -28,9 +28,9 @@ Use the same profile, App name, and source folder on every update. Do not make a
 
 ## First install
 
-Use the canonical [installation and verification guide](installation.md). It contains the complete ordered setup, exact execution locations, PowerShell commands, company values, PostgreSQL schema grants, scope-update JSON, and per-user consent checks. The database resource must be bound and its schema permissions approved before first deployment.
+Use the canonical [repository README](../../readme.md) for first-time setup, Unix-style commands, PostgreSQL schema grants, App scopes, and per-user consent. The database resource must be bound and its schema permissions approved before first deployment.
 
-For PostgreSQL 42501, follow [schema grants](installation.md#4-grant-postgresql-schema-access-before-first-startup). For the Apps-list authorization error, compare effective scopes with the actual user’s consent in [step 8](installation.md#8-verify-each-users-consent-and-start-a-fresh-app-session). A successful CLI list is not proof that an existing App browser session has the same authorization.
+For PostgreSQL 42501, follow the Lakebase schema access section in the [README](../../readme.md#3-first-time-builder-setup). For the Apps-list authorization error, compare effective scopes with the actual user’s consent in the [README troubleshooting section](../../readme.md#5-fix-the-apps-list-authorization-error). A successful CLI list is not proof that an existing App browser session has the same authorization.
 
 ## Health and troubleshooting
 

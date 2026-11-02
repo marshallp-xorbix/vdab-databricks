@@ -366,6 +366,7 @@ async function createDeployment(
       return app;
     },
     () => lifecycleClient.startApp(caller, appName),
+    { submitFirstDeploymentWhileStarting: true },
   );
   const response = await callDatabricks(
     caller,

@@ -1,6 +1,6 @@
 # Deployment
 
-Start with the [complete installation and verification guide](docs/installation.md). It includes machine prerequisites, workspace and Lakebase setup, schema grants, approved user scopes, per-user OAuth consent, exact deployment commands, and acceptance checks. It includes values for the company workspace and generic values for other installations.
+Start with the repository [README](../readme.md) for machine prerequisites, workspace and Lakebase setup, schema grants, App scopes, per-user OAuth consent, Unix-style commands, and builder usage. Windows users can run its commands in Git Bash or WSL.
 
 Use [deployment and operations](docs/deployment-and-operations.md) for routine source updates, recovery, backups, and uninstall.
 

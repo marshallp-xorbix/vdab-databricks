@@ -335,11 +335,46 @@ test("WorkspaceAppDeploymentClient_CreateDeployment_UsesImmutableSnapshotAndMaps
   });
 });
 
+test("WorkspaceAppDeploymentClient_CreateDeployment_SubmitsFirstDeploymentWhileComputeStarts", async () => {
+  const harness = createClientHarness([
+    jsonResponse({
+      name: "child-app",
+      compute_status: { state: "STARTING" },
+      app_status: { state: "UNAVAILABLE" },
+    }),
+    jsonResponse({
+      deployment_id: "first-deployment-123",
+      status: { state: "IN_PROGRESS" },
+    }),
+  ]);
+
+  const result = await harness.client.createDeployment(
+    CALLER,
+    "child-app",
+    SOURCE_PATH,
+  );
+
+  assert.deepEqual(result, {
+    deploymentId: "first-deployment-123",
+    state: "running",
+  });
+  assert.deepEqual(
+    harness.calls.map((call) => [
+      new URL(call.url).pathname,
+      call.init.method,
+    ]),
+    [
+      ["/api/2.0/apps/child-app", "GET"],
+      ["/api/2.0/apps/child-app/deployments", "POST"],
+    ],
+  );
+});
+
 test("WorkspaceAppDeploymentClient_CreateDeployment_StartsStoppedComputeBeforeSubmit", async () => {
   const harness = createClientHarness([
-    jsonResponse({ name: "child-app", compute_status: { state: "STOPPED" }, app_status: { state: "UNAVAILABLE" } }),
+    jsonResponse({ name: "child-app", compute_status: { state: "STOPPED" }, app_status: { state: "UNAVAILABLE" }, active_deployment: { deployment_id: "previous-deployment", source_code_path: SOURCE_PATH, status: { state: "SUCCEEDED" } } }),
     jsonResponse({ name: "child-app", compute_status: { state: "ACTIVE" }, app_status: { state: "UNAVAILABLE" } }),
-    jsonResponse({ name: "child-app", compute_status: { state: "ACTIVE" }, app_status: { state: "UNAVAILABLE" } }),
+    jsonResponse({ name: "child-app", compute_status: { state: "ACTIVE" }, app_status: { state: "UNAVAILABLE" }, active_deployment: { deployment_id: "restart-deployment", source_code_path: SOURCE_PATH, status: { state: "SUCCEEDED" } } }),
     jsonResponse({ deployment_id: "deployment-123", status: { state: "IN_PROGRESS" } }),
   ]);
   await harness.client.createDeployment(CALLER, "child-app", SOURCE_PATH);
