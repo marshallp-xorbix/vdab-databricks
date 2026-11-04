@@ -1,1 +1,0 @@
-global using Xorbix_Visual_Databricks_App_Builder.Models;
