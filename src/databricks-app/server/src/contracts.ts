@@ -127,13 +127,53 @@ export interface ProjectDeploymentReadiness {
 export type WorkspaceAppResource =
   | WorkspaceLakebaseAppResource
   | WorkspaceSqlWarehouseAppResource
-  | WorkspaceSecretAppResource;
+  | WorkspaceSecretAppResource
+  | WorkspaceJobAppResource
+  | WorkspaceExperimentAppResource
+  | WorkspaceGenieSpaceAppResource
+  | WorkspaceServingEndpointAppResource
+  | WorkspaceUcSecurableAppResource;
+
+export interface WorkspaceJobAppResource {
+  name: string;
+  description: string;
+  job: { id: string; permission: "CAN_VIEW" | "CAN_MANAGE_RUN" | "CAN_MANAGE" | "IS_OWNER" };
+}
+
+export interface WorkspaceExperimentAppResource {
+  name: string;
+  description: string;
+  experiment: { experiment_id: string; permission: "CAN_READ" | "CAN_EDIT" | "CAN_MANAGE" };
+}
+
+export interface WorkspaceGenieSpaceAppResource {
+  name: string;
+  description: string;
+  genie_space: { name: string; space_id: string; permission: "CAN_VIEW" | "CAN_RUN" | "CAN_EDIT" | "CAN_MANAGE" };
+}
+
+export interface WorkspaceServingEndpointAppResource {
+  name: string;
+  description: string;
+  serving_endpoint: { name: string; permission: "CAN_VIEW" | "CAN_QUERY" | "CAN_MANAGE" };
+}
+
+export interface WorkspaceUcSecurableAppResource {
+  name: string;
+  description: string;
+  uc_securable: {
+    securable_full_name: string;
+    securable_type: "VOLUME" | "TABLE" | "FUNCTION" | "CONNECTION" | "MODEL_SERVICE";
+    permission: "READ_VOLUME" | "WRITE_VOLUME" | "SELECT" | "EXECUTE" | "USE_CONNECTION" | "MODIFY";
+  };
+}
 
 export type WorkspaceLakebaseAppResource =
   | {
       name: string;
       description: string;
       postgres: {
+        branch?: string;
         database: string;
         permission: "CAN_CONNECT_AND_CREATE";
       };

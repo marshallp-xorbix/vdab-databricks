@@ -177,7 +177,7 @@ test("WorkspaceAppDeploymentClient_CountAppsRejectsRepeatedPageToken", async () 
   );
 });
 
-test("WorkspaceAppDeploymentClient_CreateApp_UsesNoComputeAndRequestedScopes", async () => {
+test("WorkspaceAppDeploymentClient_CreateApp_UsesDefaultComputeAndRequestedScopes", async () => {
   const resources = [
     {
       name: "vdab-pg-0123456789abcdef",
@@ -217,10 +217,7 @@ test("WorkspaceAppDeploymentClient_CreateApp_UsesNoComputeAndRequestedScopes", a
   assert.equal(result.appId, "created-app-id");
   assert.equal(result.spaceName, "team-apps");
   assert.deepEqual(result.resources, resources);
-  assert.equal(
-    new URL(request?.url ?? "").searchParams.get("no_compute"),
-    "true",
-  );
+  assert.equal(new URL(request?.url ?? "").searchParams.has("no_compute"), false);
   assert.deepEqual(requestBody, {
     name: "child-app",
     description: "marker",
@@ -335,11 +332,16 @@ test("WorkspaceAppDeploymentClient_CreateDeployment_UsesImmutableSnapshotAndMaps
   });
 });
 
-test("WorkspaceAppDeploymentClient_CreateDeployment_SubmitsFirstDeploymentWhileComputeStarts", async () => {
+test("WorkspaceAppDeploymentClient_CreateDeployment_WaitsForNewAppCompute", async () => {
   const harness = createClientHarness([
     jsonResponse({
       name: "child-app",
       compute_status: { state: "STARTING" },
+      app_status: { state: "UNAVAILABLE" },
+    }),
+    jsonResponse({
+      name: "child-app",
+      compute_status: { state: "ACTIVE" },
       app_status: { state: "UNAVAILABLE" },
     }),
     jsonResponse({
@@ -365,9 +367,28 @@ test("WorkspaceAppDeploymentClient_CreateDeployment_SubmitsFirstDeploymentWhileC
     ]),
     [
       ["/api/2.0/apps/child-app", "GET"],
+      ["/api/2.0/apps/child-app", "GET"],
       ["/api/2.0/apps/child-app/deployments", "POST"],
     ],
   );
+});
+
+test("WorkspaceAppDeploymentClient_CreateDeployment_StartsStoppedNewAppBeforeSubmit", async () => {
+  const harness = createClientHarness([
+    jsonResponse({ name: "child-app", compute_status: { state: "STOPPED" }, app_status: { state: "UNAVAILABLE" } }),
+    jsonResponse({ name: "child-app", compute_status: { state: "STARTING" }, app_status: { state: "UNAVAILABLE" } }),
+    jsonResponse({ name: "child-app", compute_status: { state: "ACTIVE" }, app_status: { state: "UNAVAILABLE" } }),
+    jsonResponse({ deployment_id: "first-deployment-123", status: { state: "IN_PROGRESS" } }),
+  ]);
+
+  await harness.client.createDeployment(CALLER, "child-app", SOURCE_PATH);
+
+  assert.deepEqual(harness.calls.map(call => [new URL(call.url).pathname, call.init.method]), [
+    ["/api/2.0/apps/child-app", "GET"],
+    ["/api/2.0/apps/child-app/start", "POST"],
+    ["/api/2.0/apps/child-app", "GET"],
+    ["/api/2.0/apps/child-app/deployments", "POST"],
+  ]);
 });
 
 test("WorkspaceAppDeploymentClient_CreateDeployment_StartsStoppedComputeBeforeSubmit", async () => {

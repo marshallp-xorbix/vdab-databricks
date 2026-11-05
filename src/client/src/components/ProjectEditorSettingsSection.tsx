@@ -4,6 +4,7 @@ import ProjectMetadataEditor from "./ProjectMetadataEditor";
 import ProjectAccessSettingsSection from "./ProjectAccessSettingsSection";
 import ProjectDeploymentPanel from "./ProjectDeploymentPanel";
 import ProjectDeploymentSettingsEditor from "./ProjectDeploymentSettingsEditor";
+import ProjectResourceSettingsPanel from "./ProjectResourceSettingsPanel";
 import AppThemeTab from "./AppBuilderComponents/AppSettingsTab/AppThemeTab";
 import type { AppThemeColorKey } from "./AppBuilderComponents/AppSettingsTab/themeDefaults";
 import SettingsCard from "./AppBuilderComponents/AppSettingsTab/SettingsCard";
@@ -79,6 +80,7 @@ function ProjectEditorSettingsSection({
             ["details", "App Details"],
             ["theme", "App Theme"],
             ["resources", "Resources"],
+            ["deployment", "Deployment"],
             ["permissions", "Permissions"],
           ].map(([id, label]) => (
             <button
@@ -154,6 +156,9 @@ function ProjectEditorSettingsSection({
             </>
           )}
           {settingsTab === "resources" && (
+            <ProjectResourceSettingsPanel projectId={project.id} canEdit={Boolean(canEdit)} />
+          )}
+          {settingsTab === "deployment" && (
             <ProjectDeploymentPanel
               projectId={project.id}
               canEdit={canEdit}

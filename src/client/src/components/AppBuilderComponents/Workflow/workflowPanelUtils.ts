@@ -18,11 +18,12 @@ export const ROUTE_OPTIONS: WorkflowRoute[] = [...WORKFLOW_ROUTES];
 export const createDefaultWorkflow = (
   componentCodeName = "",
   workflowCodeName = "workflow_1",
+  eventKey = "onClick",
 ): Workflow => ({
   codeName: workflowCodeName,
   trigger: {
     componentCodeName,
-    eventKey: "onClick",
+    eventKey,
   },
   nodes: [],
   edges: [],

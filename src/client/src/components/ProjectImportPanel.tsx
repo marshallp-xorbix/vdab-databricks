@@ -9,30 +9,36 @@ interface IProjectImportPanelProps {
   className?: string;
 }
 
-const MAX_PROJECT_IMPORT_BYTES = 1_048_576;
+const MAX_PROJECT_IMPORT_BYTES = 10_485_760;
 
 /** Imports a portable project and explains which workspace resources need reselection. */
 function ProjectImportPanel({ className }: Readonly<IProjectImportPanelProps>) {
   const importProjectMutation = useImportProject();
   const [importError, setImportError] = useState<string | null>(null);
-  const [importResult, setImportResult] = useState<IProjectImportResult | null>(
-    null,
-  );
+  const [importResults, setImportResults] = useState<IProjectImportResult[]>([]);
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.currentTarget.files?.[0];
     event.currentTarget.value = "";
     if (!selectedFile) return;
     setImportError(null);
-    setImportResult(null);
+    setImportResults([]);
     if (selectedFile.size > MAX_PROJECT_IMPORT_BYTES) {
-      setImportError("Choose a project export smaller than 1 MiB.");
+      setImportError("Choose a project export smaller than 10 MiB.");
       return;
     }
     try {
       const bundle: unknown = JSON.parse(await selectedFile.text());
-      const result = await importProjectMutation.mutateAsync(bundle);
-      setImportResult(result);
+      if (isCollection(bundle)) {
+        if (bundle.projects.length > 100) throw new Error("A collection can contain at most 100 projects.");
+        for (const project of bundle.projects) {
+          const result = await importProjectMutation.mutateAsync(project);
+          setImportResults((current) => [...current, result]);
+        }
+      } else {
+        const result = await importProjectMutation.mutateAsync(bundle);
+        setImportResults([result]);
+      }
     } catch (error) {
       setImportError(
         error instanceof Error
@@ -54,7 +60,7 @@ function ProjectImportPanel({ className }: Readonly<IProjectImportPanelProps>) {
         id="project-import-help"
         className="mt-2 text-sm text-muted-foreground"
       >
-        Choose a VDAB v1 project file. Imported workspace resources and the
+        Choose a VDAB v1 project or collection file. Imported workspace resources and the
         child App must be selected again.
       </p>
       <div className="mt-4 grid gap-2">
@@ -87,8 +93,9 @@ function ProjectImportPanel({ className }: Readonly<IProjectImportPanelProps>) {
           {importError}
         </p>
       )}
-      {importResult && (
+      {importResults.map((importResult) => (
         <div
+          key={importResult.project.id}
           className="mt-4 rounded-md border border-border p-4"
           role="status"
           aria-live="polite"
@@ -126,9 +133,16 @@ function ProjectImportPanel({ className }: Readonly<IProjectImportPanelProps>) {
             <p className="mt-2">No workspace resources need reselection.</p>
           )}
         </div>
-      )}
+      ))}
     </section>
   );
 }
 
 export default ProjectImportPanel;
+
+function isCollection(value: unknown): value is { format: "vdab-project-collection"; schemaVersion: 1; projects: unknown[] } {
+  return typeof value === "object" && value !== null &&
+    "format" in value && value.format === "vdab-project-collection" &&
+    "schemaVersion" in value && value.schemaVersion === 1 &&
+    "projects" in value && Array.isArray(value.projects);
+}

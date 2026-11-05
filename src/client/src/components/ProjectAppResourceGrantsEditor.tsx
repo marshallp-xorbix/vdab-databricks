@@ -7,6 +7,7 @@ import type {
 } from "../models/ProjectDeployments";
 import { useUpdateProjectResourceGrants } from "../hooks/useUpdateProjectResourceGrants";
 import { useWorkspaceSqlWarehouses } from "../hooks/useWorkspaceSqlWarehouses";
+import ProjectAdditionalResourceGrantForm from "./ProjectAdditionalResourceGrantForm";
 
 interface IProjectAppResourceGrantsEditorProps {
   projectId: string;
@@ -46,7 +47,7 @@ function ProjectAppResourceGrantsEditor({
     secretScope.trim().length <= 128 &&
     secretKey.trim().length > 0 &&
     secretKey.trim().length <= 128 &&
-    !/[\u0000-\u001f\u007f]/.test(`${secretScope}${secretKey}`) &&
+    !containsControlCharacter(`${secretScope}${secretKey}`) &&
     !resources.some((resource) => resource.name === resourceName.trim());
   const isDirty = Boolean(
     target && JSON.stringify(resources) !== JSON.stringify(target.appResources),
@@ -82,25 +83,9 @@ function ProjectAppResourceGrantsEditor({
     setSecretPermission("READ");
   }
 
-  function updateSecretPermission(
-    name: string,
-    permission: "READ" | "WRITE" | "MANAGE",
-  ) {
+  function updatePermission(name: string, permission: string) {
     setResources((current) => current.map((resource) =>
-      resource.name === name && "secret" in resource
-        ? { ...resource, secret: { ...resource.secret, permission } }
-        : resource,
-    ));
-  }
-
-  function updateWarehousePermission(
-    name: string,
-    permission: "CAN_USE" | "CAN_MANAGE" | "IS_OWNER",
-  ) {
-    setResources((current) => current.map((resource) =>
-      resource.name === name && "sql_warehouse" in resource
-        ? { ...resource, sql_warehouse: { ...resource.sql_warehouse, permission } }
-        : resource,
+      resource.name === name ? withPermission(resource, permission) : resource,
     ));
   }
 
@@ -161,15 +146,11 @@ function ProjectAppResourceGrantsEditor({
                       <td className="px-3 py-3">{type}</td>
                       <td className="px-3 py-3">{resourceDetails(resource)}</td>
                       <td className="px-3 py-3">
-                        {"secret" in resource ? (
-                          <select aria-label={`Permission for ${resource.name}`} className="h-9 rounded-md border border-input bg-background px-2" value={resource.secret.permission} disabled={!canEdit || required} onChange={(event) => updateSecretPermission(resource.name, event.target.value as "READ" | "WRITE" | "MANAGE")}>
-                            <option value="READ">Read</option><option value="WRITE">Write</option><option value="MANAGE">Manage</option>
+                        {permissionOptions(resource).length > 1 ? (
+                          <select aria-label={`Permission for ${resource.name}`} className="h-9 rounded-md border border-input bg-background px-2" value={resourcePermission(resource)} disabled={!canEdit || required} onChange={(event) => updatePermission(resource.name, event.target.value)}>
+                            {permissionOptions(resource).map((value) => <option key={value} value={value}>{value.replaceAll("_", " ").toLowerCase()}</option>)}
                           </select>
-                        ) : "sql_warehouse" in resource ? (
-                          <select aria-label={`Permission for ${resource.name}`} className="h-9 rounded-md border border-input bg-background px-2" value={resource.sql_warehouse.permission} disabled={!canEdit || required} onChange={(event) => updateWarehousePermission(resource.name, event.target.value as "CAN_USE" | "CAN_MANAGE" | "IS_OWNER")}>
-                            <option value="CAN_USE">Can use</option><option value="CAN_MANAGE">Can manage</option><option value="IS_OWNER">Is owner</option>
-                          </select>
-                        ) : "CAN_CONNECT_AND_CREATE"}
+                        ) : resourcePermission(resource)}
                       </td>
                       <td className="px-3 py-3 text-right">
                         {!required && (
@@ -192,6 +173,12 @@ function ProjectAppResourceGrantsEditor({
             <label className="space-y-1 text-sm"><span>Permission</span><select className="h-10 w-full rounded-md border border-input bg-background px-3" value={secretPermission} onChange={(event) => setSecretPermission(event.target.value as "READ" | "WRITE" | "MANAGE")}><option value="READ">Read</option><option value="WRITE">Write</option><option value="MANAGE">Manage</option></select></label>
             <Button type="button" variant="outline" disabled={!canAddSecret} onClick={addSecret}>Add</Button>
           </fieldset>
+
+          <ProjectAdditionalResourceGrantForm
+            existingNames={resources.map((resource) => resource.name)}
+            disabled={!canEdit}
+            onAdd={(resource) => setResources((current) => [...current, resource])}
+          />
 
           <fieldset disabled={!canEdit} className="grid gap-3 rounded-md border border-border p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <legend className="px-1 text-sm font-medium">Add SQL warehouse grant</legend>
@@ -218,6 +205,11 @@ function resourceType(resource: IWorkspaceAppResource): string {
   if ("postgres" in resource) return "Lakebase Autoscaling";
   if ("database" in resource) return "Lakebase Provisioned";
   if ("sql_warehouse" in resource) return "SQL warehouse";
+  if ("job" in resource) return "Job";
+  if ("experiment" in resource) return "Experiment";
+  if ("genie_space" in resource) return "Genie space";
+  if ("serving_endpoint" in resource) return "Serving endpoint";
+  if ("uc_securable" in resource) return "Unity Catalog securable";
   return "Secret";
 }
 
@@ -225,7 +217,54 @@ function resourceDetails(resource: IWorkspaceAppResource): string {
   if ("postgres" in resource) return resource.postgres.database;
   if ("database" in resource) return `${resource.database.instance_name} / ${resource.database.database_name}`;
   if ("sql_warehouse" in resource) return resource.sql_warehouse.id;
+  if ("job" in resource) return resource.job.id;
+  if ("experiment" in resource) return resource.experiment.experiment_id;
+  if ("genie_space" in resource) return `${resource.genie_space.name} / ${resource.genie_space.space_id}`;
+  if ("serving_endpoint" in resource) return resource.serving_endpoint.name;
+  if ("uc_securable" in resource) return `${resource.uc_securable.securable_type}: ${resource.uc_securable.securable_full_name}`;
   return `${resource.secret.scope} / ${resource.secret.key}`;
+}
+
+function resourcePermission(resource: IWorkspaceAppResource): string {
+  if ("secret" in resource) return resource.secret.permission;
+  if ("sql_warehouse" in resource) return resource.sql_warehouse.permission;
+  if ("postgres" in resource || "database" in resource) return "CAN_CONNECT_AND_CREATE";
+  if ("job" in resource) return resource.job.permission;
+  if ("experiment" in resource) return resource.experiment.permission;
+  if ("genie_space" in resource) return resource.genie_space.permission;
+  if ("serving_endpoint" in resource) return resource.serving_endpoint.permission;
+  if ("uc_securable" in resource) return resource.uc_securable.permission;
+  return "";
+}
+
+function permissionOptions(resource: IWorkspaceAppResource): readonly string[] {
+  if ("secret" in resource) return ["READ", "WRITE", "MANAGE"];
+  if ("sql_warehouse" in resource) return ["CAN_USE", "CAN_MANAGE", "IS_OWNER"];
+  if ("job" in resource) return ["CAN_VIEW", "CAN_MANAGE_RUN", "CAN_MANAGE", "IS_OWNER"];
+  if ("experiment" in resource) return ["CAN_READ", "CAN_EDIT", "CAN_MANAGE"];
+  if ("genie_space" in resource) return ["CAN_VIEW", "CAN_RUN", "CAN_EDIT", "CAN_MANAGE"];
+  if ("serving_endpoint" in resource) return ["CAN_VIEW", "CAN_QUERY", "CAN_MANAGE"];
+  if ("uc_securable" in resource) return ["SELECT", "MODIFY", "READ_VOLUME", "WRITE_VOLUME", "EXECUTE", "USE_CONNECTION"];
+  return ["CAN_CONNECT_AND_CREATE"];
+}
+
+function withPermission(resource: IWorkspaceAppResource, permission: string): IWorkspaceAppResource {
+  if (!permissionOptions(resource).includes(permission)) return resource;
+  if ("secret" in resource) return { ...resource, secret: { ...resource.secret, permission: permission as typeof resource.secret.permission } };
+  if ("sql_warehouse" in resource) return { ...resource, sql_warehouse: { ...resource.sql_warehouse, permission: permission as typeof resource.sql_warehouse.permission } };
+  if ("job" in resource) return { ...resource, job: { ...resource.job, permission: permission as typeof resource.job.permission } };
+  if ("experiment" in resource) return { ...resource, experiment: { ...resource.experiment, permission: permission as typeof resource.experiment.permission } };
+  if ("genie_space" in resource) return { ...resource, genie_space: { ...resource.genie_space, permission: permission as typeof resource.genie_space.permission } };
+  if ("serving_endpoint" in resource) return { ...resource, serving_endpoint: { ...resource.serving_endpoint, permission: permission as typeof resource.serving_endpoint.permission } };
+  if ("uc_securable" in resource) return { ...resource, uc_securable: { ...resource.uc_securable, permission: permission as typeof resource.uc_securable.permission } };
+  return resource;
+}
+
+function containsControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || codePoint === 0x7f;
+  });
 }
 
 function sameResourceBinding(
@@ -249,6 +288,11 @@ function sameResourceBinding(
     return first.database.instance_name === second.database.instance_name &&
       first.database.database_name === second.database.database_name;
   }
+  if ("job" in first && "job" in second) return first.job.id === second.job.id && first.job.permission === second.job.permission;
+  if ("experiment" in first && "experiment" in second) return first.experiment.experiment_id === second.experiment.experiment_id && first.experiment.permission === second.experiment.permission;
+  if ("genie_space" in first && "genie_space" in second) return first.genie_space.space_id === second.genie_space.space_id && first.genie_space.permission === second.genie_space.permission;
+  if ("serving_endpoint" in first && "serving_endpoint" in second) return first.serving_endpoint.name === second.serving_endpoint.name && first.serving_endpoint.permission === second.serving_endpoint.permission;
+  if ("uc_securable" in first && "uc_securable" in second) return first.uc_securable.securable_full_name === second.uc_securable.securable_full_name && first.uc_securable.permission === second.uc_securable.permission;
   return false;
 }
 

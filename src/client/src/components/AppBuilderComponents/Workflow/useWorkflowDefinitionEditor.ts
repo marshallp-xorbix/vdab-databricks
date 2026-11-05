@@ -16,6 +16,7 @@ interface UseWorkflowDefinitionEditorOptions {
   definition: WorkflowDefinition;
   onChange: (nextDefinition: WorkflowDefinition) => void;
   defaultTriggerComponentCodeName?: string;
+  defaultTriggerEventKey?: string;
   onWorkflowRemoved?: (removedWorkflowIndex: number) => void;
   onNodeRemoved?: (nodeId: string) => void;
   onRouteRemoved?: (edgeIndex: number) => void;
@@ -25,6 +26,7 @@ export const useWorkflowDefinitionEditor = ({
   definition,
   onChange,
   defaultTriggerComponentCodeName = "",
+  defaultTriggerEventKey = "onClick",
   onWorkflowRemoved,
   onNodeRemoved,
   onRouteRemoved,
@@ -44,10 +46,11 @@ export const useWorkflowDefinitionEditor = ({
         createDefaultWorkflow(
           defaultTriggerComponentCodeName,
           buildDefaultWorkflowCodeName(definition.workflows),
+          defaultTriggerEventKey,
         ),
       ],
     });
-  }, [defaultTriggerComponentCodeName, definition, onChange]);
+  }, [defaultTriggerComponentCodeName, defaultTriggerEventKey, definition, onChange]);
 
   const addWorkflowForTrigger = useCallback(
     (componentCodeName: string, eventKey: string) => {

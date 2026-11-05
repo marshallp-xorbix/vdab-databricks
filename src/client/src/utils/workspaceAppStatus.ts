@@ -5,7 +5,7 @@ export function readWorkspaceAppStatus(
   app: IWorkspaceAppSummary | undefined,
 ): string {
   const transitions: Record<string, string> = {
-    STARTING: "Starting",
+    STARTING: "Starting compute",
     STOPPING: "Stopping",
     UPDATING: "Updating",
   };

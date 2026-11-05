@@ -53,5 +53,7 @@ function appResourceEnvironmentVariable(
   if ("sql_warehouse" in resource)
     return DEFAULT_SQL_WAREHOUSE_ENVIRONMENT_VARIABLE;
   if ("secret" in resource) return workspaceSecretEnvironmentVariable(resource);
-  return lakebaseResourceEnvironmentVariable(resource);
+  if ("postgres" in resource || "database" in resource)
+    return lakebaseResourceEnvironmentVariable(resource);
+  return `VDAB_RESOURCE_${resource.name.replaceAll("-", "_").toUpperCase()}`;
 }

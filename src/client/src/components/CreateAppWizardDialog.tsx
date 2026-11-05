@@ -45,8 +45,9 @@ export default function CreateAppWizardDialog({
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [targetMode, setTargetMode] = useState<ProjectChildAppMode>("linkExisting");
+  const [targetMode, setTargetMode] = useState<ProjectChildAppMode>("createNew");
   const [appName, setAppName] = useState("");
+  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const appsQuery = useWorkspaceApps(
     open && step === LAST_STEP && targetMode === "linkExisting",
@@ -59,14 +60,16 @@ export default function CreateAppWizardDialog({
     targetMode === "createNew"
       ? APP_NAME_PATTERN.test(appName.trim())
       : apps.some((app) => app.name === appName.trim());
-  const canCreate = name.trim().length > 0 && canCreateTarget && !isCreating;
+  const canCreate = name.trim().length > 0 && canCreateTarget &&
+    (targetMode === "createNew" || confirmOverwrite) && !isCreating;
 
   const resetDialog = useCallback(() => {
     setStep(0);
     setName("");
     setDescription("");
-    setTargetMode("linkExisting");
+    setTargetMode("createNew");
     setAppName("");
+    setConfirmOverwrite(false);
     setIsCreating(false);
   }, []);
 
@@ -107,8 +110,8 @@ export default function CreateAppWizardDialog({
             Create New App
           </DialogTitle>
           <DialogDescription className="pt-1 text-xs text-muted-foreground">
-            Step {step + 1} of {LAST_STEP + 1}. Choose a workspace App target,
-            then name your project.
+            Step {step + 1} of {LAST_STEP + 1}. Choose a Databricks App target in
+            this workspace, then name your project.
           </DialogDescription>
         </DialogHeader>
 
@@ -127,6 +130,7 @@ export default function CreateAppWizardDialog({
                 onValueChange={(value: string) => {
                   setTargetMode(value as ProjectChildAppMode);
                   setAppName("");
+                  setConfirmOverwrite(false);
                 }}
               >
                 <SelectTrigger id="wizard-target-mode" className="mt-2 w-full">
@@ -214,6 +218,10 @@ export default function CreateAppWizardDialog({
                     {appsQuery.isFetchingNextPage ? "Loading more Apps…" : "Load more Apps"}
                   </Button>
                 )}
+                <label className="mt-3 flex items-start gap-2 text-sm">
+                  <input type="checkbox" checked={confirmOverwrite} onChange={(event) => setConfirmOverwrite(event.target.checked)} />
+                  <span>I confirm this project may replace the selected App’s current source when deployed.</span>
+                </label>
               </div>
             )}
             <div className="rounded-lg border border-border bg-muted/30 p-4">
@@ -243,7 +251,7 @@ export default function CreateAppWizardDialog({
             </Button>
           ) : (
             <Button type="button" disabled={!canCreate} onClick={() => void handleCreateProject()}>
-              {isCreating ? "Creating…" : targetMode === "linkExisting" ? "Create and link project" : "Create project"}
+              {isCreating ? "Creating App…" : targetMode === "linkExisting" ? "Create and link App" : "Create App"}
             </Button>
           )}
         </DialogFooter>

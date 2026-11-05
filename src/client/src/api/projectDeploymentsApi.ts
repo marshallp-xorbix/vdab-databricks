@@ -87,6 +87,7 @@ function isWorkspaceAppResource(
     return false;
   if (isRecord(value.postgres) && Object.keys(value).length === 3) {
     return (
+      (value.postgres.branch === undefined || (typeof value.postgres.branch === "string" && /^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}$/.test(value.postgres.branch))) &&
       typeof value.postgres.database === "string" &&
       /^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}\/databases\/[A-Za-z0-9_-]{1,128}$/.test(
         value.postgres.database,
@@ -115,6 +116,11 @@ function isWorkspaceAppResource(
   if (isRecord(value.secret) && Object.keys(value).length === 3) {
     return isWorkspaceSecretAppResource(value);
   }
+  if (isRecord(value.job) && Object.keys(value).length === 3) return typeof value.job.id === "string" && ["CAN_VIEW", "CAN_MANAGE_RUN", "CAN_MANAGE", "IS_OWNER"].includes(String(value.job.permission));
+  if (isRecord(value.experiment) && Object.keys(value).length === 3) return typeof value.experiment.experiment_id === "string" && ["CAN_READ", "CAN_EDIT", "CAN_MANAGE"].includes(String(value.experiment.permission));
+  if (isRecord(value.genie_space) && Object.keys(value).length === 3) return typeof value.genie_space.name === "string" && typeof value.genie_space.space_id === "string" && ["CAN_VIEW", "CAN_RUN", "CAN_EDIT", "CAN_MANAGE"].includes(String(value.genie_space.permission));
+  if (isRecord(value.serving_endpoint) && Object.keys(value).length === 3) return typeof value.serving_endpoint.name === "string" && ["CAN_VIEW", "CAN_QUERY", "CAN_MANAGE"].includes(String(value.serving_endpoint.permission));
+  if (isRecord(value.uc_securable) && Object.keys(value).length === 3) return typeof value.uc_securable.securable_full_name === "string" && ["VOLUME", "TABLE", "FUNCTION", "CONNECTION", "MODEL_SERVICE"].includes(String(value.uc_securable.securable_type)) && ["READ_VOLUME", "WRITE_VOLUME", "SELECT", "EXECUTE", "USE_CONNECTION", "MODIFY"].includes(String(value.uc_securable.permission));
   return false;
 }
 

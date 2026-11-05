@@ -12,7 +12,7 @@ export function formatProjectDate(value: string): string {
 
 /** Narrows the settings query value to an implemented settings tab. */
 export function readSettingsTab(value: string | null): string {
-  return value === "theme" || value === "resources" || value === "permissions"
+  return value === "theme" || value === "resources" || value === "deployment" || value === "permissions"
     ? value
     : "details";
 }

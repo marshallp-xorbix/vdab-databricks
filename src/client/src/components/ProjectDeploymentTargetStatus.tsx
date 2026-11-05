@@ -35,14 +35,16 @@ function ProjectDeploymentTargetStatus({
           </p>
           {target?.appUrl && (
             <p className="flex flex-wrap gap-4 text-sm">
-              <a
-                className="underline underline-offset-4"
-                href={target.appUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open child App
-              </a>
+              {target.appState === "RUNNING" && (
+                <a
+                  className="underline underline-offset-4"
+                  href={target.appUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open child App
+                </a>
+              )}
               <a
                 className="underline underline-offset-4"
                 href={new URL("/logz", target.appUrl).href}

@@ -54,6 +54,9 @@ function validateWorkspaceAppResource(resource: WorkspaceAppResource): void {
   }
   if ("postgres" in resource) {
     if (
+      (resource.postgres.branch !== undefined &&
+        (!/^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}$/.test(resource.postgres.branch) ||
+          !resource.postgres.database.startsWith(`${resource.postgres.branch}/databases/`))) ||
       !/^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}\/databases\/[A-Za-z0-9_-]{1,128}$/.test(
         resource.postgres.database,
       ) ||
@@ -82,6 +85,26 @@ function validateWorkspaceAppResource(resource: WorkspaceAppResource): void {
     ) {
       throw invalidDeploymentResource();
     }
+    return;
+  }
+  if ("job" in resource) {
+    if (!isResourceId(resource.job.id) || !["CAN_VIEW", "CAN_MANAGE_RUN", "CAN_MANAGE", "IS_OWNER"].includes(resource.job.permission)) throw invalidDeploymentResource();
+    return;
+  }
+  if ("experiment" in resource) {
+    if (!isResourceId(resource.experiment.experiment_id) || !["CAN_READ", "CAN_EDIT", "CAN_MANAGE"].includes(resource.experiment.permission)) throw invalidDeploymentResource();
+    return;
+  }
+  if ("genie_space" in resource) {
+    if (!isResourceId(resource.genie_space.space_id) || !isResourceLabel(resource.genie_space.name) || !["CAN_VIEW", "CAN_RUN", "CAN_EDIT", "CAN_MANAGE"].includes(resource.genie_space.permission)) throw invalidDeploymentResource();
+    return;
+  }
+  if ("serving_endpoint" in resource) {
+    if (!isResourceLabel(resource.serving_endpoint.name) || !["CAN_VIEW", "CAN_QUERY", "CAN_MANAGE"].includes(resource.serving_endpoint.permission)) throw invalidDeploymentResource();
+    return;
+  }
+  if ("uc_securable" in resource) {
+    if (!isResourceLabel(resource.uc_securable.securable_full_name) || !["VOLUME", "TABLE", "FUNCTION", "CONNECTION", "MODEL_SERVICE"].includes(resource.uc_securable.securable_type) || !["READ_VOLUME", "WRITE_VOLUME", "SELECT", "EXECUTE", "USE_CONNECTION", "MODIFY"].includes(resource.uc_securable.permission)) throw invalidDeploymentResource();
     return;
   }
   if (
@@ -124,7 +147,20 @@ function sameWorkspaceAppResource(
       existing.database.permission === required.database.permission
     );
   }
+  if ("job" in existing && "job" in required) return existing.job.id === required.job.id && existing.job.permission === required.job.permission;
+  if ("experiment" in existing && "experiment" in required) return existing.experiment.experiment_id === required.experiment.experiment_id && existing.experiment.permission === required.experiment.permission;
+  if ("genie_space" in existing && "genie_space" in required) return existing.genie_space.space_id === required.genie_space.space_id && existing.genie_space.name === required.genie_space.name && existing.genie_space.permission === required.genie_space.permission;
+  if ("serving_endpoint" in existing && "serving_endpoint" in required) return existing.serving_endpoint.name === required.serving_endpoint.name && existing.serving_endpoint.permission === required.serving_endpoint.permission;
+  if ("uc_securable" in existing && "uc_securable" in required) return existing.uc_securable.securable_full_name === required.uc_securable.securable_full_name && existing.uc_securable.securable_type === required.uc_securable.securable_type && existing.uc_securable.permission === required.uc_securable.permission;
   return false;
+}
+
+function isResourceId(value: string): boolean {
+  return /^[A-Za-z0-9_-]{1,128}$/.test(value);
+}
+
+function isResourceLabel(value: string): boolean {
+  return value.length > 0 && value.length <= 255 && value.trim() === value && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
 function isValidSecretIdentifier(value: string): boolean {

@@ -19,7 +19,6 @@ interface AppComputeState {
 interface ComputeWaitOptions {
   timeoutMs?: number;
   pollIntervalMs?: number;
-  submitFirstDeploymentWhileStarting?: boolean;
 }
 
 /** Waits for existing child compute before redeploying a saved App. */
@@ -43,7 +42,6 @@ export async function waitForWorkspaceAppCompute(
       app,
       requiresRestartDeployment,
       previousDeploymentId,
-      options.submitFirstDeploymentWhileStarting ?? false,
     )
   ) {
     if (app.computeState === "STOPPED" && !hasRequestedStart) {
@@ -83,17 +81,7 @@ function isReadyForDeployment(
   app: AppComputeState,
   requiresRestartDeployment: boolean,
   previousDeploymentId: string | null | undefined,
-  submitFirstDeploymentWhileStarting: boolean,
 ): boolean {
-  // A new App has no running source yet; its first deployment starts the runtime.
-  if (
-    submitFirstDeploymentWhileStarting &&
-    !app.sourceCodePath &&
-    !app.activeDeploymentId &&
-    !app.activeDeploymentState
-  ) {
-    return true;
-  }
   if (
     app.computeState !== "ACTIVE" ||
     app.activeDeploymentState === "IN_PROGRESS"

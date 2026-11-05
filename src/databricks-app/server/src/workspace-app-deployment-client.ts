@@ -285,7 +285,6 @@ async function createApp(
   validateAppName(appName);
   if (appSpaceName !== null) validateAppName(appSpaceName);
   const endpoint = new URL(APPS_PATH, host);
-  endpoint.searchParams.set("no_compute", "true");
   const response = await callDatabricks(
     caller,
     endpoint,
@@ -366,7 +365,6 @@ async function createDeployment(
       return app;
     },
     () => lifecycleClient.startApp(caller, appName),
-    { submitFirstDeploymentWhileStarting: true },
   );
   const response = await callDatabricks(
     caller,

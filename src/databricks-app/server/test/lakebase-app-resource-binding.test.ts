@@ -40,6 +40,7 @@ test("LakebaseAppResourceBinding_UsesStableDistinctKeysAndVariables", () => {
   assert.notEqual(otherDatabase.resource.name, first.resource.name);
   assert.notEqual(otherDatabase.environmentVariable, first.environmentVariable);
   assert.match(first.resource.name, /^vdab-pg-[a-f0-9]{16}$/);
+  assert.equal("postgres" in first.resource && first.resource.postgres.branch, "projects/project-one/branches/branch-one");
   assert.match(
     first.environmentVariable,
     /^VDAB_LAKEBASE_ENDPOINT_[A-F0-9]{16}$/,

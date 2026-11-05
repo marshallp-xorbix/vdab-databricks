@@ -82,9 +82,9 @@ function WorkspaceAppsPage({
                   )}
                   <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <dt className="text-muted-foreground">App state</dt>
-                    <dd>{app.appState ?? "Unknown"}</dd>
+                    <dd>{app.appState ?? "Unavailable"}</dd>
                     <dt className="text-muted-foreground">Compute state</dt>
-                    <dd>{app.computeState ?? "Unknown"}</dd>
+                    <dd>{app.computeState ?? "Unavailable"}</dd>
                   </dl>
                 </article>
               </li>

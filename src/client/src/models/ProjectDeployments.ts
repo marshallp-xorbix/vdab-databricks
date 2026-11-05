@@ -92,7 +92,7 @@ export type IWorkspaceLakebaseAppResource =
   | {
       name: string;
       description: string;
-      postgres: { database: string; permission: "CAN_CONNECT_AND_CREATE" };
+      postgres: { branch?: string; database: string; permission: "CAN_CONNECT_AND_CREATE" };
     }
   | {
       name: string;
@@ -132,7 +132,12 @@ export interface IWorkspaceSecretResourceSelection {
 export type IWorkspaceAppResource =
   | IWorkspaceLakebaseAppResource
   | IWorkspaceSqlWarehouseAppResource
-  | IWorkspaceSecretAppResource;
+  | IWorkspaceSecretAppResource
+  | { name: string; description: string; job: { id: string; permission: "CAN_VIEW" | "CAN_MANAGE_RUN" | "CAN_MANAGE" | "IS_OWNER" } }
+  | { name: string; description: string; experiment: { experiment_id: string; permission: "CAN_READ" | "CAN_EDIT" | "CAN_MANAGE" } }
+  | { name: string; description: string; genie_space: { name: string; space_id: string; permission: "CAN_VIEW" | "CAN_RUN" | "CAN_EDIT" | "CAN_MANAGE" } }
+  | { name: string; description: string; serving_endpoint: { name: string; permission: "CAN_VIEW" | "CAN_QUERY" | "CAN_MANAGE" } }
+  | { name: string; description: string; uc_securable: { securable_full_name: string; securable_type: "VOLUME" | "TABLE" | "FUNCTION" | "CONNECTION" | "MODEL_SERVICE"; permission: "READ_VOLUME" | "WRITE_VOLUME" | "SELECT" | "EXECUTE" | "USE_CONNECTION" | "MODIFY" } };
 
 export class ProjectDeploymentReadiness implements IProjectDeploymentReadiness {
   userApiScopes: string[];

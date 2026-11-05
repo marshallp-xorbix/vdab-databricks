@@ -176,6 +176,20 @@ function AiBuilderPanel({
         </p>
       )}
 
+      {latestResult?.proposal && (
+        <div className="shrink-0 space-y-2 border-t border-border bg-card p-3">
+          <p className="text-sm">A project proposal is ready for review.</p>
+          {applyError && <p role="alert" className="text-sm text-destructive">{applyError}</p>}
+          <Button
+            type="button"
+            disabled={isDisabled || isApplying || appliedVersion === latestResult.version}
+            onClick={() => void handleApplyProposal()}
+          >
+            {appliedVersion === latestResult.version ? "Applied to draft" : isApplying ? "Applying…" : "Apply proposal to draft"}
+          </Button>
+        </div>
+      )}
+
       <form
         className="shrink-0 border-t border-border bg-muted p-3"
         onSubmit={(event) => void handleSubmit(event)}
@@ -219,33 +233,6 @@ function AiBuilderPanel({
         </div>
       </form>
 
-      {latestResult?.proposal && (
-        <div className="grid gap-2 rounded-md border border-border p-3">
-          <p className="text-sm">A project proposal is ready for review.</p>
-          {applyError && (
-            <p role="alert" className="text-sm text-destructive">
-              {applyError}
-            </p>
-          )}
-          <div>
-            <Button
-              type="button"
-              disabled={
-                isDisabled ||
-                isApplying ||
-                appliedVersion === latestResult.version
-              }
-              onClick={() => void handleApplyProposal()}
-            >
-              {appliedVersion === latestResult.version
-                ? "Applied to draft"
-                : isApplying
-                  ? "Applying…"
-                  : "Apply proposal to draft"}
-            </Button>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

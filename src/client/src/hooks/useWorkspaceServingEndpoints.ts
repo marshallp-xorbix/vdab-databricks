@@ -6,9 +6,10 @@ export const workspaceServingEndpointKeys = {
 };
 
 /** Loads serving endpoints visible to the current user through the Node boundary. */
-export function useWorkspaceServingEndpoints() {
+export function useWorkspaceServingEndpoints(enabled = true) {
   return useQuery({
     queryKey: workspaceServingEndpointKeys.all,
     queryFn: ({ signal }) => listWorkspaceServingEndpoints(signal),
+    enabled,
   });
 }

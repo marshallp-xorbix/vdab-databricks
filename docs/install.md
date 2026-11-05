@@ -1,6 +1,6 @@
 # Xorbix Visual Databricks App Builder (VDAB)
 
-VDAB is a Marketplace Databricks App for visually designing, previewing, and deploying Python/Streamlit apps in the workspace where it is installed. Builder projects and history live in a customer-owned Lakebase Autoscaling database. A VDAB project becomes a Databricks child App only when you deploy it from the builder.
+VDAB is a Marketplace Databricks App for visually designing, previewing, and deploying Python/Streamlit apps in the workspace where it is installed. Builder projects and history live in a customer-owned Lakebase Autoscaling database. Creating a project with the wizard also submits its initial Databricks child App deployment.
 
 This README is the install, update, and user guide. The engineering references remain in [`docs/`](README.md).
 
@@ -187,7 +187,7 @@ The setup diagnostics page may say it cannot verify consent if the workspace blo
 
 1. Open the running VDAB builder and select **Apps → Create New App**.
 2. Confirm the installed workspace and choose **Create a new App** if you want VDAB to create a new Databricks child App. Use **Link an existing App** only when you intend to replace/manage an existing target.
-3. Enter a project name and a unique child App name (2–30 lowercase letters, numbers, or hyphens). The wizard opens the project editor.
+3. Enter a project name and a unique child App name (2–30 lowercase letters, numbers, or hyphens). The wizard creates the project, submits its initial deployment, and opens the Canvas. If deployment fails, open **Settings → Deployment** to retry.
 4. If this is the first workspace use, run **Workspace setup → Check workspace setup**. Resolve consent and permission issues before using workspace-backed pickers.
 
 ### Design, configure, and save
@@ -196,13 +196,13 @@ The setup diagnostics page may say it cannot verify consent if the workspace blo
 2. In **Workflow**, add a workflow and actions. For a button, select its `onClick` trigger and connect it to the workflow event/action. Save and check validation messages.
 3. Optionally open **AI Builder**, choose a ready chat endpoint you can query (not an embedding endpoint), request components/changes, review and apply the result, then save.
 4. In **Settings → App Details**, set the child App's workspace folder and confirm the saved target. Reopen the project to verify persistence.
-5. In **Settings → Resources**, bind resources needed by the generated child App and resolve readiness issues. The acting user needs permission to use the resources; the child App has its own identity and grants.
+5. In **Settings → Resources**, manage the child App's resource grants. The acting user needs permission to use the resources; the child App has its own identity and grants.
 6. Save before previewing or deploying. Deployment uses the saved project version.
 
 ### Deploy and run the generated child App
 
-1. Select **Deploy** and review readiness, target App, required resources, and source-folder access.
-2. Select **Create and deploy App** for a new child, or **Link and deploy App** for an existing target after confirming its source will be replaced.
+1. Select **Deploy** or **Settings → Deployment** and review readiness, target App, required resources, and source-folder access.
+2. Select **Deploy saved version** after confirming the linked target. Projects imported without a child App can select **Create and deploy App** or **Link and deploy App**.
 3. Wait for a successful deployment in **Deployment history**, then select **Open app**. Exercise the generated controls and the button workflow.
 4. Return to VDAB's Apps dashboard to check the child App status. **Open** launches the runtime, **Edit** reopens the project, and **Deploy** opens deployment settings.
 
@@ -212,7 +212,7 @@ The setup diagnostics page may say it cannot verify consent if the workspace blo
 - **Update a child App:** edit and save its VDAB project, then deploy the saved version for its linked child App. Check deployment history and retry after resolving the reported failure.
 - **Restore child source:** use the project's restore action to redeploy the last successful saved snapshot.
 - **Recover project data:** use Lakebase backups/PITR. A source rollback does not roll back database migrations or project data.
-- **Import/export:** Apps → Import a standalone project accepts a `.vdab.json` bundle. Rebind resources after import; exports contain no credentials or grants.
+- **Import/export:** Apps → Import a standalone project accepts a `.vdab.json` project or collection bundle. **Export all Apps** exports the projects visible to the caller. Rebind resources after import; exports contain no credentials or grants.
 
 ## 7. Local-only development
 

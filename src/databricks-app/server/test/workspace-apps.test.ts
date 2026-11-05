@@ -67,6 +67,23 @@ test("WorkspaceAppsClient_ListsCallerVisibleApps_UsingPinnedWorkspaceAndUserToke
   assert.doesNotMatch(JSON.stringify(result), /caller-token/);
 });
 
+test("WorkspaceAppsClient_ResolvesStatesOmittedByListEndpoint", async () => {
+  const requests: string[] = [];
+  const client = createWorkspaceAppsClient(WORKSPACE_HOST, async (input) => {
+    const path = new URL(input.toString()).pathname;
+    requests.push(path);
+    return Response.json(path === "/api/2.0/apps"
+      ? { apps: [{ name: "orders-dashboard" }] }
+      : { name: "orders-dashboard", app_status: { state: "RUNNING" }, compute_status: { state: "ACTIVE" } });
+  });
+
+  const page = await client.listApps(createTestCaller(), { pageSize: 10, pageToken: null });
+
+  assert.deepEqual(requests, ["/api/2.0/apps", "/api/2.0/apps/orders-dashboard"]);
+  assert.equal(page.items[0]?.appState, "RUNNING");
+  assert.equal(page.items[0]?.computeState, "ACTIVE");
+});
+
 test("WorkspaceAppsClient_ControlsOneAppWithCallerTokenAndPinnedWorkspace", async () => {
   const requests: Array<{ url: string; method: string; authorization: string | null }> = [];
   const workspaceAppsClient = createWorkspaceAppsClient(

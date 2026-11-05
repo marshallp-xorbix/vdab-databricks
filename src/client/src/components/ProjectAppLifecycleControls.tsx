@@ -58,7 +58,7 @@ function ProjectAppLifecycleControls({
 
   return (
     <div className="flex items-center gap-2 border-l border-[var(--builder-chrome-border)] pl-2">
-      {app?.url && (
+      {app?.url && app.appState === "RUNNING" && (
         <Button type="button" variant="outline" size="sm" asChild>
           <a href={app.url} target="_blank" rel="noopener noreferrer">
             Open app

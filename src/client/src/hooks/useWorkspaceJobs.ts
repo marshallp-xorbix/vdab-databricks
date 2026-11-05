@@ -6,9 +6,10 @@ export const workspaceJobKeys = {
 };
 
 /** Loads Jobs visible to the signed-in user through the Node workspace boundary. */
-export function useWorkspaceJobs() {
+export function useWorkspaceJobs(enabled = true) {
   return useQuery({
     queryKey: workspaceJobKeys.all,
     queryFn: ({ signal }) => listWorkspaceJobs(signal),
+    enabled,
   });
 }

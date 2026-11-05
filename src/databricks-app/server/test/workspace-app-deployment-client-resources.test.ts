@@ -13,6 +13,7 @@ test("WorkspaceAppDeploymentClient_CreateApp_SendsMultipleRequiredResources", as
       name: "vdab-pg-0123456789abcdef",
       description: "Lakebase one",
       postgres: {
+        branch: "projects/project-one/branches/branch-one",
         database:
           "projects/project-one/branches/branch-one/databases/database-one",
         permission: "CAN_CONNECT_AND_CREATE" as const,
@@ -122,4 +123,21 @@ test("WorkspaceAppDeploymentClient_CreateApp_RejectsDuplicateResourceKeysBeforeM
   );
 
   assert.equal(harness.calls.length, 0);
+});
+
+test("WorkspaceAppDeploymentClient_RoundTripsAdditionalDatabricksResourceKinds", async () => {
+  const resources = [
+    { name: "job-one", description: "Job", job: { id: "123", permission: "CAN_MANAGE_RUN" as const } },
+    { name: "experiment-one", description: "Experiment", experiment: { experiment_id: "456", permission: "CAN_EDIT" as const } },
+    { name: "genie-one", description: "Genie", genie_space: { name: "Sales", space_id: "abc123", permission: "CAN_RUN" as const } },
+    { name: "serving-one", description: "Serving", serving_endpoint: { name: "model-endpoint", permission: "CAN_QUERY" as const } },
+    { name: "catalog-one", description: "Catalog", uc_securable: { securable_full_name: "main.sales.orders", securable_type: "TABLE" as const, permission: "SELECT" as const } },
+  ];
+  const harness = createClientHarness([jsonResponse({ id: "child-app-id", name: "child-app", space: null, resources })]);
+  const app = await harness.client.createApp(CALLER, "child-app", "marker", [], resources, null);
+  const requestBody = JSON.parse(String(harness.calls[0]?.init.body)) as { resources: unknown[] };
+
+  assert.deepEqual(requestBody.resources, resources);
+  assert.deepEqual(app.resources, resources);
+  assert.equal(app.unsupportedResourceCount, 0);
 });

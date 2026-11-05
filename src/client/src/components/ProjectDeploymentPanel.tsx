@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "./ui/button";
 import ProjectDeploymentHistoryItem from "./ProjectDeploymentHistoryItem";
 import ProjectDeploymentSecretResourcesEditor from "./ProjectDeploymentSecretResourcesEditor";
-import ProjectAppResourceGrantsEditor from "./ProjectAppResourceGrantsEditor";
 import ProjectDeploymentReadiness from "./ProjectDeploymentReadiness";
 import ProjectDeploymentTargetSelector from "./ProjectDeploymentTargetSelector";
 import ProjectDeploymentTargetStatus from "./ProjectDeploymentTargetStatus";
@@ -200,14 +199,6 @@ function ProjectDeploymentPanel({
         missingScopes={eligibility.missingScopes}
       />
 
-      <ProjectAppResourceGrantsEditor
-        projectId={projectId}
-        target={target}
-        requiredResources={readinessQuery.data?.appResources ?? []}
-        canEdit={Boolean(canEdit && childApp)}
-        isLinked={Boolean(childApp)}
-      />
-
       {canEdit && !hasUnsavedChanges && (
         <ProjectDeploymentSecretResourcesEditor
           allowCreate={!isLinkedTarget}
@@ -250,7 +241,8 @@ function ProjectDeploymentPanel({
                 onChange={(event) => setConfirmOverwrite(event.target.checked)}
               />
               <span>
-                I confirm that deploying will replace the current source for App{" "}
+                I confirm that deploying will{" "}
+                {target?.sourceCodePath ? "replace the current source for" : "publish the saved source to"} App{" "}
                 <strong>{appName || "(select an App)"}</strong>.
               </span>
             </label>

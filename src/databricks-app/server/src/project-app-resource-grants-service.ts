@@ -165,10 +165,11 @@ function isSupportedWorkspaceAppResource(
   if (
     isRecord(value.postgres) &&
     hasOnlyResourceKeys(value, "postgres") &&
-    hasOnlyKeys(value.postgres, ["database", "permission"])
+    (hasOnlyKeys(value.postgres, ["database", "permission"]) || hasOnlyKeys(value.postgres, ["branch", "database", "permission"]))
   ) {
     return (
       typeof value.postgres.database === "string" &&
+      (value.postgres.branch === undefined || typeof value.postgres.branch === "string") &&
       value.postgres.permission === "CAN_CONNECT_AND_CREATE"
     );
   }
@@ -182,6 +183,21 @@ function isSupportedWorkspaceAppResource(
       typeof value.database.database_name === "string" &&
       value.database.permission === "CAN_CONNECT_AND_CREATE"
     );
+  }
+  if (isRecord(value.job) && hasOnlyResourceKeys(value, "job") && hasOnlyKeys(value.job, ["id", "permission"])) {
+    return typeof value.job.id === "string" && ["CAN_VIEW", "CAN_MANAGE_RUN", "CAN_MANAGE", "IS_OWNER"].includes(String(value.job.permission));
+  }
+  if (isRecord(value.experiment) && hasOnlyResourceKeys(value, "experiment") && hasOnlyKeys(value.experiment, ["experiment_id", "permission"])) {
+    return typeof value.experiment.experiment_id === "string" && ["CAN_READ", "CAN_EDIT", "CAN_MANAGE"].includes(String(value.experiment.permission));
+  }
+  if (isRecord(value.genie_space) && hasOnlyResourceKeys(value, "genie_space") && hasOnlyKeys(value.genie_space, ["name", "space_id", "permission"])) {
+    return typeof value.genie_space.name === "string" && typeof value.genie_space.space_id === "string" && ["CAN_VIEW", "CAN_RUN", "CAN_EDIT", "CAN_MANAGE"].includes(String(value.genie_space.permission));
+  }
+  if (isRecord(value.serving_endpoint) && hasOnlyResourceKeys(value, "serving_endpoint") && hasOnlyKeys(value.serving_endpoint, ["name", "permission"])) {
+    return typeof value.serving_endpoint.name === "string" && ["CAN_VIEW", "CAN_QUERY", "CAN_MANAGE"].includes(String(value.serving_endpoint.permission));
+  }
+  if (isRecord(value.uc_securable) && hasOnlyResourceKeys(value, "uc_securable") && hasOnlyKeys(value.uc_securable, ["securable_full_name", "securable_type", "permission"])) {
+    return typeof value.uc_securable.securable_full_name === "string" && ["VOLUME", "TABLE", "FUNCTION", "CONNECTION", "MODEL_SERVICE"].includes(String(value.uc_securable.securable_type)) && ["READ_VOLUME", "WRITE_VOLUME", "SELECT", "EXECUTE", "USE_CONNECTION", "MODIFY"].includes(String(value.uc_securable.permission));
   }
   return false;
 }

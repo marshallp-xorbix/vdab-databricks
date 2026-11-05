@@ -6,7 +6,13 @@ const publicDirectory = resolve(import.meta.dirname, "..", ".build", "public");
 const indexHtml = await readFile(resolve(publicDirectory, "index.html"), "utf8");
 const publicJavaScript = await readPublicJavaScript(publicDirectory);
 
-assert.match(indexHtml, /<script\b[^>]*\bsrc=/i, "Marketplace assets include the client entry point");
+const entryAsset = indexHtml.match(/\/assets\/(entry\.client-[A-Za-z0-9_-]+\.js)/)?.[1];
+assert.ok(entryAsset, "Marketplace HTML references the client entry point");
+assert.match(
+  await readFile(resolve(publicDirectory, "assets", entryAsset), "utf8"),
+  /./,
+  "Marketplace assets include the referenced client entry point",
+);
 assert.ok(publicJavaScript.length > 0, "Marketplace assets include JavaScript bundles");
 assert.doesNotMatch(
   publicJavaScript,

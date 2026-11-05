@@ -4,6 +4,7 @@ import type {
 } from "./contracts.ts";
 import { MAX_CHILD_APP_SECRET_IDENTIFIER_LENGTH } from "./contracts.ts";
 import { ApplicationError } from "./application-error.ts";
+import { validateWorkspaceAppResources } from "./workspace-app-resource-validation.ts";
 import type { WorkspaceAppDetails } from "./workspace-app-deployment-client.ts";
 
 interface ApiObject extends Record<string, unknown> {}
@@ -147,9 +148,54 @@ function readWorkspaceAppResources(value: unknown): {
       resources.push(readSqlWarehouseAppResource(entry));
     else if (entry.secret !== undefined)
       resources.push(readSecretAppResource(entry));
+    else if (entry.job !== undefined || entry.experiment !== undefined || entry.genie_space !== undefined || entry.serving_endpoint !== undefined || entry.uc_securable !== undefined)
+      resources.push(readAdditionalAppResource(entry));
     else unsupportedResourceCount += 1;
   }
+  try {
+    validateWorkspaceAppResources(resources);
+  } catch {
+    throw invalidDatabricksResponse();
+  }
   return { resources, unsupportedResourceCount };
+}
+
+function readAdditionalAppResource(entry: ApiObject): WorkspaceAppResource {
+  const name = requireText(entry.name);
+  const description = typeof entry.description === "string" ? entry.description : "";
+  if (isRecord(entry.job)) return { name, description, job: {
+    id: requireText(entry.job.id),
+    permission: readPermission(entry.job.permission, ["CAN_VIEW", "CAN_MANAGE_RUN", "CAN_MANAGE", "IS_OWNER"]),
+  } };
+  if (isRecord(entry.experiment)) return { name, description, experiment: {
+    experiment_id: requireText(entry.experiment.experiment_id),
+    permission: readPermission(entry.experiment.permission, ["CAN_READ", "CAN_EDIT", "CAN_MANAGE"]),
+  } };
+  if (isRecord(entry.genie_space)) return { name, description, genie_space: {
+    name: requireText(entry.genie_space.name),
+    space_id: requireText(entry.genie_space.space_id),
+    permission: readPermission(entry.genie_space.permission, ["CAN_VIEW", "CAN_RUN", "CAN_EDIT", "CAN_MANAGE"]),
+  } };
+  if (isRecord(entry.serving_endpoint)) return { name, description, serving_endpoint: {
+    name: requireText(entry.serving_endpoint.name),
+    permission: readPermission(entry.serving_endpoint.permission, ["CAN_VIEW", "CAN_QUERY", "CAN_MANAGE"]),
+  } };
+  if (isRecord(entry.uc_securable)) return { name, description, uc_securable: {
+    securable_full_name: requireText(entry.uc_securable.securable_full_name),
+    securable_type: readPermission(entry.uc_securable.securable_type, ["VOLUME", "TABLE", "FUNCTION", "CONNECTION", "MODEL_SERVICE"]),
+    permission: readPermission(entry.uc_securable.permission, ["READ_VOLUME", "WRITE_VOLUME", "SELECT", "EXECUTE", "USE_CONNECTION", "MODIFY"]),
+  } };
+  throw invalidDatabricksResponse();
+}
+
+function requireText(value: unknown): string {
+  if (typeof value !== "string") throw invalidDatabricksResponse();
+  return value;
+}
+
+function readPermission<T extends string>(value: unknown, allowed: readonly T[]): T {
+  if (typeof value !== "string" || !allowed.includes(value as T)) throw invalidDatabricksResponse();
+  return value as T;
 }
 
 function readSecretAppResource(
@@ -197,6 +243,9 @@ function readAutoscalingAppResource(
     value.name.length < 2 ||
     value.name.length > 30 ||
     !isRecord(value.postgres) ||
+    (value.postgres.branch !== undefined &&
+      (typeof value.postgres.branch !== "string" ||
+        !/^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}$/.test(value.postgres.branch))) ||
     typeof value.postgres.database !== "string" ||
     !/^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}\/databases\/[A-Za-z0-9_-]{1,128}$/.test(
       value.postgres.database,
@@ -209,6 +258,7 @@ function readAutoscalingAppResource(
     name: value.name,
     description: typeof value.description === "string" ? value.description : "",
     postgres: {
+      ...(typeof value.postgres.branch === "string" ? { branch: value.postgres.branch } : {}),
       database: value.postgres.database,
       permission: "CAN_CONNECT_AND_CREATE",
     },

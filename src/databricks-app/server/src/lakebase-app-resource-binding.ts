@@ -30,6 +30,7 @@ export function createAutoscalingAppResourceBinding(
       name: resourceName,
       description: "VDAB Lakebase Autoscaling",
       postgres: {
+        branch: `projects/${target.projectId}/branches/${target.branchId}`,
         database: `projects/${target.projectId}/branches/${target.branchId}/databases/${target.databaseId}`,
         permission: "CAN_CONNECT_AND_CREATE",
       },

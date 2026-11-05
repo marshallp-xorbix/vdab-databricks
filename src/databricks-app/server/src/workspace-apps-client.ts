@@ -268,7 +268,12 @@ async function listWorkspaceApps(
   }
 
   return {
-    items: validAppRecords.map(toWorkspaceAppSummary),
+    items: await resolveMissingAppStates(
+      caller,
+      validAppRecords.map(toWorkspaceAppSummary),
+      workspaceHost,
+      fetchImplementation,
+    ),
     nextPageToken:
       typeof responseBody.next_page_token === "string" &&
       responseBody.next_page_token.length > 0
@@ -276,6 +281,26 @@ async function listWorkspaceApps(
         : null,
     authenticationMode: "databricks",
   };
+}
+
+async function resolveMissingAppStates(
+  caller: CallerIdentity,
+  apps: WorkspaceAppSummary[],
+  workspaceHost: string,
+  fetchImplementation: typeof fetch,
+): Promise<WorkspaceAppSummary[]> {
+  const resolved = [...apps];
+  for (let index = 0; index < apps.length; index += 10) {
+    const batch = apps.slice(index, index + 10);
+    const results = await Promise.allSettled(batch.map(async (app) => {
+      if (app.appState && app.computeState) return app;
+      return requestWorkspaceApp(caller, app.name, "GET", workspaceHost, fetchImplementation);
+    }));
+    results.forEach((result, offset) => {
+      if (result.status === "fulfilled") resolved[index + offset] = result.value;
+    });
+  }
+  return resolved;
 }
 
 function validateWorkspaceAppsQuery(query: WorkspaceAppsQuery): void {

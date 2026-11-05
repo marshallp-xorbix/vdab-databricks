@@ -46,8 +46,12 @@ function ProjectDeploymentSettingsEditor({
             })
           }
         >
-          <option value="createNew">Create new Databricks App</option>
-          <option value="linkExisting">Link existing Databricks App</option>
+          <option value="createNew">
+            {childAppName ? "Linked App created by VDAB" : "Create new Databricks App"}
+          </option>
+          <option value="linkExisting">
+            {childAppName ? "Linked existing Databricks App" : "Link existing Databricks App"}
+          </option>
         </select>
       </div>
       <div className="grid gap-2">

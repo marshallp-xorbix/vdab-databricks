@@ -106,6 +106,7 @@ const WorkflowBuilderView: FC<WorkflowBuilderViewProps> = ({
     definition,
     onChange,
     defaultTriggerComponentCodeName: triggerableComponents[0]?.codeName ?? "",
+    defaultTriggerEventKey: triggerableComponents[0]?.supportedEvents?.[0] ?? "onClick",
     onWorkflowRemoved: (removedIndex) => {
       setSelection((current) => {
         if (!current) return null;

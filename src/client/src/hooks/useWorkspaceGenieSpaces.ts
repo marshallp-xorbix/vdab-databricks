@@ -6,9 +6,10 @@ export const workspaceGenieSpaceKeys = {
 };
 
 /** Loads Genie spaces visible to the current user through the Node boundary. */
-export function useWorkspaceGenieSpaces() {
+export function useWorkspaceGenieSpaces(enabled = true) {
   return useQuery({
     queryKey: workspaceGenieSpaceKeys.all,
     queryFn: ({ signal }) => listWorkspaceGenieSpaces(signal),
+    enabled,
   });
 }

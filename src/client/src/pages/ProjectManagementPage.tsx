@@ -5,9 +5,12 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import CreateAppWizardDialog from "../components/CreateAppWizardDialog";
 import type { ProjectCreationTarget } from "../types/projectCreationTarget";
+import type { IStandaloneProjectExport } from "../models/ProjectPortability";
 import { useCreateProject } from "../hooks/useCreateProject";
 import { useProjects } from "../hooks/useProjects";
 import { useExportProject } from "../hooks/useExportProject";
+import { startProjectDeployment } from "../api/projectDeploymentsApi";
+import { toast } from "../components/ui/use-toast";
 import ProjectManagementProjectCard from "../components/ProjectManagementProjectCard";
 import ProjectImportPanel from "../components/ProjectImportPanel";
 import {
@@ -40,6 +43,7 @@ function ProjectManagementPage({
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [isExportingAll, setExportingAll] = useState(false);
 
   async function handleCreate(
     name: string,
@@ -51,13 +55,21 @@ function ProjectManagementPage({
       description,
       deploymentSettings: { ...target, workspacePath: null },
     });
-    const query = new URLSearchParams({
-      section: "settings",
-      settings: "resources",
-      deployMode: target.mode,
-      deployAppName: target.appName,
-    });
-    await navigate(`/apps/${createdProject.id}?${query.toString()}`);
+    try {
+      await startProjectDeployment({
+        projectId: createdProject.id,
+        mode: target.mode,
+        appName: target.appName,
+        confirmOverwrite: target.mode === "linkExisting",
+      });
+    } catch (error) {
+      toast({
+        title: "Project created, App deployment needs attention",
+        description: error instanceof Error ? error.message : "Open Deployment settings to retry.",
+        variant: "destructive",
+      });
+    }
+    await navigate(`/apps/${createdProject.id}`);
   }
 
   const filteredProjects = (projectsQuery.data?.items ?? []).filter((project) =>
@@ -70,28 +82,40 @@ function ProjectManagementPage({
     setExportError(null);
     try {
       const bundle = await exportProjectMutation.mutateAsync(projectId);
-      const file = new Blob([JSON.stringify(bundle, null, 2)], {
-        type: "application/json",
-      });
-      const downloadUrl = URL.createObjectURL(file);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = `${
+      downloadJson(bundle, `${
         projectName
           .toLocaleLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "") || "vdab-project"
-      }.vdab.json`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+      }.vdab.json`);
     } catch (error) {
       setExportError(
         error instanceof Error
           ? error.message
           : "The project could not be exported.",
       );
+    }
+  }
+
+  async function handleExportAll() {
+    setExportError(null);
+    setExportingAll(true);
+    try {
+      const projects = projectsQuery.data?.items ?? [];
+      const bundles: IStandaloneProjectExport[] = [];
+      for (const project of projects) {
+        bundles.push(await exportProjectMutation.mutateAsync(project.id));
+      }
+      downloadJson({
+        format: "vdab-project-collection",
+        schemaVersion: 1,
+        exportedAt: new Date().toISOString(),
+        projects: bundles,
+      }, "vdab-all-projects.vdab.json");
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "Apps could not be exported.");
+    } finally {
+      setExportingAll(false);
     }
   }
 
@@ -141,6 +165,9 @@ function ProjectManagementPage({
                 }}
               >
                 Import a standalone project…
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={isExportingAll || projectsQuery.isPending || (projectsQuery.data?.items.length ?? 0) === 0} onSelect={() => void handleExportAll()}>
+                {isExportingAll ? "Exporting Apps…" : "Export all Apps"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -218,3 +245,15 @@ function ProjectManagementPage({
 }
 
 export default ProjectManagementPage;
+
+function downloadJson(value: unknown, filename: string): void {
+  const file = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+  const downloadUrl = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+}
