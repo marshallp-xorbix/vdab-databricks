@@ -6,8 +6,18 @@ import { normalizeWorkspaceHost } from "./workspace-host.ts";
 const INVOCATION_TIMEOUT_MS = 120_000;
 const AI_BUILDER_MAX_OUTPUT_TOKENS = 8_192;
 
+/** Calls a selected chat endpoint and returns its streamed completion. */
+export interface AiBuilderModelClient {
+  invoke(
+    caller: CallerIdentity,
+    endpointName: string,
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+    signal: AbortSignal,
+  ): Promise<Response>;
+}
+
 /** Calls a selected endpoint through the trusted installed workspace origin. */
-export class AiBuilderWorkspaceClient {
+export class AiBuilderWorkspaceClient implements AiBuilderModelClient {
   private readonly workspaceHost: string;
   private readonly fetchImplementation: typeof fetch;
 

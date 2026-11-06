@@ -65,11 +65,11 @@ it("ProjectCard_RunningChildApp_OpensRuntimeAndReportsOnline", () => {
   );
   expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute(
     "href",
-    "/apps/project-one",
+    "/apps/project-one?section=settings",
   );
   expect(screen.getByRole("link", { name: "Deploy" })).toHaveAttribute(
     "href",
-    "/apps/project-one?section=settings&settings=resources#project-deployment",
+    "/apps/project-one?section=settings&focus=deployment-target",
   );
 });
 
@@ -78,9 +78,9 @@ it("ProjectCard_UndeployedChildApp_DisablesRuntimeOpen", () => {
     childApp: undefined,
     app: undefined,
     isOnline: false,
-    status: "Not deployed",
+    status: "Draft",
   });
   renderCard();
-  expect(screen.getByText("Not deployed")).toBeInTheDocument();
+  expect(screen.getByText("Draft")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Open" })).toBeDisabled();
 });

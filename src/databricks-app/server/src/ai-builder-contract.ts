@@ -32,6 +32,7 @@ export type AiBuilderEvent =
         assistantMessage: string;
         proposal: AiBuilderProposal | null;
         version: number;
+        outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
       };
     }
   | {

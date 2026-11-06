@@ -29,7 +29,7 @@ function BuilderNavigationLink({
       title={isCollapsed ? label : undefined}
       aria-label={label}
       aria-current={isSelected ? "page" : undefined}
-      className={isMobile ? mobileNavigationClassName(isSelected) : navigationClassName(isSelected, isCollapsed)}
+      className={isMobile ? mobileNavigationClassName(isSelected) : navigationClassName(isSelected, isCollapsed, "primary")}
     >
       {icon}
       {!isCollapsed && <span>{label}</span>}

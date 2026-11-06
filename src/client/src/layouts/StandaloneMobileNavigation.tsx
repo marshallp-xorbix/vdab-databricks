@@ -4,7 +4,7 @@ import BuilderNavigationLink from "./BuilderNavigationLink";
 
 const BUILDER_SECTIONS = [
   { key: "components", label: "Canvas", icon: LayoutGrid },
-  { key: "workflows", label: "Main Flow", icon: Workflow },
+  { key: "workflows", label: "Workflow", icon: Workflow },
   { key: "code", label: "Code", icon: Code2 },
   { key: "settings", label: "Settings", icon: Settings2 },
 ] as const;

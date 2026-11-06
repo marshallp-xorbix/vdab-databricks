@@ -61,6 +61,8 @@ function ProjectComponentsEditor({
   const { theme: productTheme } = useTheme();
   const jumpToWorkflow = useProjectWorkflowNavigation();
   const [activeDragData, setActiveDragData] = useState<ComponentDragData | null>(null);
+  const [showPalette, setShowPalette] = useState(true);
+  const [showProperties, setShowProperties] = useState(true);
   const resolvedTheme = useMemo(
     () => ({ ...getStreamlitThemeDefaults(productTheme), ...theme }),
     [productTheme, theme],
@@ -152,7 +154,7 @@ function ProjectComponentsEditor({
 
       {isMainFlowActive ? (
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-card">
-          <aside className="h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)]">
+          <aside className={`h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)] ${showPalette ? "" : "hidden"}`}>
             <BuilderLeftPanel
               builderMode="canvas"
               activeTabType={TabType.MainFlow}
@@ -161,7 +163,11 @@ function ProjectComponentsEditor({
             />
           </aside>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            {toolbar}
+            <div className="flex min-w-0 items-center">
+              <button type="button" className="shrink-0 px-2 text-xs font-semibold" aria-pressed={showPalette} onClick={() => setShowPalette((open) => !open)}>Palette</button>
+              <div className="min-w-0 flex-1">{toolbar}</div>
+              <button type="button" className="shrink-0 px-2 text-xs font-semibold" aria-pressed={showProperties} onClick={() => setShowProperties((open) => !open)}>Properties</button>
+            </div>
             <TabBar
               tabs={tabManagement.openTabs}
               activeTabId={tabManagement.activeTabId}
@@ -183,7 +189,7 @@ function ProjectComponentsEditor({
               onDeleteModal={canvasEditor.removeCanvasComponent}
             />
           </div>
-          <aside className="h-full w-80 flex-shrink-0 overflow-hidden border-l border-[var(--builder-chrome-border)]">
+          <aside className={`h-full w-80 flex-shrink-0 overflow-hidden border-l border-[var(--builder-chrome-border)] ${showProperties ? "" : "hidden"}`}>
             <RightSidebar
               selectedComponent={canvasEditor.canvasComponents.find((component) => component.id === editor.selectedKey) ?? null}
               components={canvasEditor.canvasComponents}
@@ -216,7 +222,7 @@ function ProjectComponentsEditor({
         }}
       >
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-card">
-          <aside className="h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)]">
+          <aside className={`h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)] ${showPalette ? "" : "hidden"}`}>
             <BuilderLeftPanel
               builderMode="canvas"
               activeTabType={activeTab?.type ?? TabType.MainPage}
@@ -226,7 +232,11 @@ function ProjectComponentsEditor({
             />
           </aside>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            {toolbar}
+            <div className="flex min-w-0 items-center">
+              <button type="button" className="shrink-0 px-2 text-xs font-semibold" aria-pressed={showPalette} onClick={() => setShowPalette((open) => !open)}>Palette</button>
+              <div className="min-w-0 flex-1">{toolbar}</div>
+              <button type="button" className="shrink-0 px-2 text-xs font-semibold" aria-pressed={showProperties} onClick={() => setShowProperties((open) => !open)}>Properties</button>
+            </div>
             <TabBar
               tabs={tabManagement.openTabs}
               activeTabId={tabManagement.activeTabId}
@@ -252,7 +262,7 @@ function ProjectComponentsEditor({
               />
             </div>
           </div>
-          <aside className="h-full w-80 flex-shrink-0 overflow-hidden border-l border-[var(--builder-chrome-border)]">
+          <aside className={`h-full w-80 flex-shrink-0 overflow-hidden border-l border-[var(--builder-chrome-border)] ${showProperties ? "" : "hidden"}`}>
             <RightSidebar
               selectedComponent={canvasEditor.canvasComponents.find((component) => component.id === editor.selectedKey) ?? null}
               components={canvasEditor.canvasComponents}

@@ -1,4 +1,7 @@
-import { SquarePen, X } from "lucide-react";
+import { Send, SquarePen, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import AiBuilderModelSelector from "./AiBuilderModelSelector";
 import type {
   IAiBuilderConversationMessage,
   IAiBuilderProposal,
@@ -82,26 +85,12 @@ function AiBuilderPanel({
           <h2 id="ai-builder-heading" className="text-sm font-semibold">
             AI Builder
           </h2>
-          <label htmlFor="ai-builder-endpoint" className="sr-only">
-            Serving endpoint
-          </label>
-          <select
-            id="ai-builder-endpoint"
-            name="endpointName"
-            className="h-7 max-w-64 rounded-md border border-input bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <AiBuilderModelSelector
+            endpoints={availableEndpoints}
             value={endpointName}
-            disabled={
-              isDisabled || isPending || availableEndpoints.length === 0
-            }
-            onChange={(event) => setSelectedEndpointName(event.target.value)}
-          >
-            <option value="">Select a ready endpoint with query access</option>
-            {availableEndpoints.map((endpoint) => (
-              <option key={endpoint.name} value={endpoint.name}>
-                {endpoint.name}
-              </option>
-            ))}
-          </select>
+            disabled={isDisabled || isPending || isApplying}
+            onChange={setSelectedEndpointName}
+          />
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button
@@ -148,10 +137,26 @@ function AiBuilderPanel({
               <div
                 className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-snug ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                {message.role === "assistant" ? (
+                  <div className="ai-builder-markdown">
+                    {latestResult && message.id === messages.at(-1)?.id && (
+                      <p className="mb-1 font-semibold">{outcomeTitle(latestResult.outcome)}</p>
+                    )}
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                )}
               </div>
             </li>
           ))
+        )}
+        {isPending && progressMessage && (
+          <li className="flex justify-start">
+            <div className="max-w-[80%] rounded-lg bg-muted px-3 py-2 text-xs" role="status" aria-live="polite">
+              {progressMessage}
+            </div>
+          </li>
         )}
       </ol>
 
@@ -161,24 +166,20 @@ function AiBuilderPanel({
         </p>
       )}
 
-      {progressMessage && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="text-sm text-muted-foreground"
-        >
-          {progressMessage}
-        </p>
-      )}
       {errorMessage && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="px-3 text-sm text-destructive">
+          <span className="font-semibold">Unable to complete. </span>
           {errorMessage}
         </p>
       )}
 
       {latestResult?.proposal && (
         <div className="shrink-0 space-y-2 border-t border-border bg-card p-3">
-          <p className="text-sm">A project proposal is ready for review.</p>
+          <p className="text-sm">
+            {appliedVersion === latestResult.version
+              ? "AI changes applied to the draft. Save the app when you are ready."
+              : "A project proposal is ready for review."}
+          </p>
           {applyError && <p role="alert" className="text-sm text-destructive">{applyError}</p>}
           <Button
             type="button"
@@ -194,7 +195,7 @@ function AiBuilderPanel({
         className="shrink-0 border-t border-border bg-muted p-3"
         onSubmit={(event) => void handleSubmit(event)}
       >
-        <div className="grid gap-2">
+        <div className="relative">
           <Label htmlFor="ai-builder-prompt" className="sr-only">
             What would you like to change?
           </Label>
@@ -205,8 +206,8 @@ function AiBuilderPanel({
             value={prompt}
             maxLength={4000}
             rows={3}
-            className="resize-none bg-background"
-            disabled={isDisabled || isPending || !isEndpointAvailable}
+            className="resize-none bg-background pr-12"
+            disabled={isDisabled || isPending || isApplying || !isEndpointAvailable}
             onChange={(event) => setPrompt(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
@@ -215,26 +216,33 @@ function AiBuilderPanel({
               }
             }}
           />
-        </div>
-        <div className="mt-2 flex justify-end gap-2">
           <Button
             type="submit"
-            size="sm"
+            size="icon"
             aria-label="Generate suggestion"
             disabled={!canSubmit}
+            className="absolute bottom-2 right-2 h-8 w-8"
           >
-            {isPending ? "Generating…" : "Send"}
+            <Send className="h-4 w-4" />
+            <span className="sr-only">{isPending ? "Generating…" : "Send"}</span>
           </Button>
-          {isPending && (
-            <Button type="button" variant="outline" onClick={handleCancel}>
-              Cancel request
-            </Button>
-          )}
         </div>
+        {isPending && (
+          <Button type="button" variant="outline" className="mt-2" onClick={handleCancel}>
+            Cancel request
+          </Button>
+        )}
       </form>
 
     </section>
   );
+}
+
+function outcomeTitle(outcome: string): string {
+  if (outcome === "partial") return "Partial result";
+  if (outcome === "needsClarification") return "Needs clarification";
+  if (outcome === "unableToComplete") return "Unable to complete";
+  return "Completed";
 }
 
 export default AiBuilderPanel;

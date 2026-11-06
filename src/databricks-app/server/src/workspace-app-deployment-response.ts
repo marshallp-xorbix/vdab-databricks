@@ -42,6 +42,7 @@ export function parseWorkspaceAppResponse(value: unknown): WorkspaceAppDetails {
       hasGitSource(readNestedValue(value.active_deployment, "git_source")),
     userApiScopes: readStringArray(value.user_api_scopes),
     ...readWorkspaceAppResources(value.resources),
+    appUpdateTime: typeof value.update_time === "string" ? value.update_time : null,
   };
 }
 

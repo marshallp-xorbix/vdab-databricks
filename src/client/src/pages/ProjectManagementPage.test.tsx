@@ -12,6 +12,7 @@ import {
   listProjects,
 } from "../api/projectsApi";
 import ProjectManagementPage from "./ProjectManagementPage";
+import { startProjectDeployment } from "../api/projectDeploymentsApi";
 
 vi.mock("../api/projectsApi", () => ({
   createProject: vi.fn(),
@@ -20,12 +21,16 @@ vi.mock("../api/projectsApi", () => ({
   importProject: vi.fn(),
   listProjects: vi.fn(),
 }));
+vi.mock("../api/projectDeploymentsApi", () => ({
+  startProjectDeployment: vi.fn(),
+}));
 
 const createProjectMock = vi.mocked(createProject);
 const deleteProjectMock = vi.mocked(deleteProject);
 const exportProjectMock = vi.mocked(exportProject);
 const importProjectMock = vi.mocked(importProject);
 const listProjectsMock = vi.mocked(listProjects);
+const startProjectDeploymentMock = vi.mocked(startProjectDeployment);
 
 const project: IProject = {
   id: "project-1",
@@ -93,14 +98,12 @@ describe("ProjectManagementPage", () => {
   it("creates a project and opens its editor", async () => {
     listProjectsMock.mockResolvedValue({ items: [] });
     createProjectMock.mockResolvedValue(project);
+    startProjectDeploymentMock.mockResolvedValue({} as Awaited<ReturnType<typeof startProjectDeployment>>);
 
     const router = renderProjectManagementPage();
     fireEvent.click(
       await screen.findByRole("button", { name: "Create New App" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    await userEvent.click(screen.getByRole("combobox", { name: "Databricks App" }));
-    await userEvent.click(screen.getByRole("option", { name: "Create new Databricks App" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(screen.getByLabelText("App name"), {
       target: { value: "Revenue dashboard" },
@@ -114,7 +117,7 @@ describe("ProjectManagementPage", () => {
     fireEvent.change(screen.getByLabelText("New Databricks App name"), {
       target: { value: "revenue-dashboard" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create App" }));
 
     await waitFor(() => expect(createProjectMock).toHaveBeenCalled());
     expect(createProjectMock.mock.calls[0]?.[0]).toEqual({
@@ -122,6 +125,12 @@ describe("ProjectManagementPage", () => {
       description: "Finance team",
       deploymentSettings: { mode: "createNew", appName: "revenue-dashboard", workspacePath: null },
     });
+    await waitFor(() => expect(startProjectDeploymentMock.mock.calls[0]?.[0]).toEqual({
+      projectId: "project-1",
+      mode: "createNew",
+      appName: "revenue-dashboard",
+      confirmOverwrite: false,
+    }));
     expect(
       await screen.findByRole("heading", { name: "Project editor route" }),
     ).toBeInTheDocument();
@@ -163,7 +172,7 @@ describe("ProjectManagementPage", () => {
       screen.getByRole("button", { name: "Project import and export actions" }),
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Import a standalone project…" }),
+      await screen.findByRole("menuitem", { name: "Import apps…" }),
     );
     fireEvent.change(await screen.findByLabelText("Project JSON file"), {
       target: {
@@ -196,14 +205,14 @@ describe("ProjectManagementPage", () => {
     const oversizedFile = new File(["{}"], "large-project.vdab.json", {
       type: "application/json",
     });
-    Object.defineProperty(oversizedFile, "size", { value: 1_048_577 });
+    Object.defineProperty(oversizedFile, "size", { value: 10_485_761 });
 
     renderProjectManagementPage();
     await userEvent.click(
       screen.getByRole("button", { name: "Project import and export actions" }),
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Import a standalone project…" }),
+      await screen.findByRole("menuitem", { name: "Import apps…" }),
     );
     const importInput = await screen.findByLabelText("Project JSON file");
     fireEvent.change(importInput, { target: { files: [oversizedFile] } });
@@ -246,7 +255,7 @@ describe("ProjectManagementPage", () => {
         name: "Actions for Revenue dashboard",
       }),
     );
-    await user.click(await screen.findByRole("menuitem", { name: "Export project" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Export this app" }));
 
     await waitFor(() =>
       expect(exportProjectMock.mock.calls[0]?.[0]).toBe(project.id),

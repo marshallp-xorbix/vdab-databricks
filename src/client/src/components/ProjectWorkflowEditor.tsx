@@ -181,7 +181,7 @@ function ProjectWorkflowEditor({
         >
           <SheetTitle className="sr-only">AI Builder</SheetTitle>
           <SheetDescription className="sr-only">
-            Request a project change using a workspace serving endpoint and review it before applying.
+            Request a project change using a workspace serving endpoint.
           </SheetDescription>
             <div className="flex min-h-0 flex-1">
               {customModulesQuery.isPending && (
@@ -208,7 +208,7 @@ function ProjectWorkflowEditor({
                   endpoints={servingEndpointsQuery.data?.items ?? []}
                   components={components}
                   workflow={workflow}
-                  customModulesSource={customModulesSource}
+                  customModulesSource={customModulesSource || customModulesDocument.source}
                   isDisabled={
                     isDisabled ||
                     customModulesQuery.isPending ||
@@ -218,7 +218,9 @@ function ProjectWorkflowEditor({
                   onApplyProposal={(proposal) => {
                     onComponentsChange(proposal.components);
                     onWorkflowChange(proposal.workflow);
-                    onCustomModulesSourceChange(proposal.customModulesSource);
+                    if (proposal.customModulesSource !== customModulesDocument.source) {
+                      onCustomModulesSourceChange(proposal.customModulesSource);
+                    }
                   }}
                 />
               )}

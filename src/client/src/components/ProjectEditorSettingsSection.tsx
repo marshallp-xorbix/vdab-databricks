@@ -143,6 +143,7 @@ function ProjectEditorSettingsSection({
               </section>
               <ProjectDeploymentSettingsEditor
                 settings={deploymentSettings}
+                focusTarget={searchParams.get("focus") === "deployment-target"}
                 childAppName={childAppName}
                 isDisabled={
                   !canEdit ||

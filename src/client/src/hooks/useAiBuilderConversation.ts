@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   IAiBuilderConversationMessage,
   IAiBuilderProposal,
@@ -29,6 +29,7 @@ interface UseAiBuilderConversationOptions {
   ) => void | Promise<void>;
 }
 const MAX_HISTORY_MESSAGES = 20;
+const ENDPOINT_STORAGE_KEY = "vdab-ai-builder-endpoint";
 
 /** Owns AI conversation requests, cancellation and draft proposal validation. */
 export function useAiBuilderConversation({
@@ -50,12 +51,26 @@ export function useAiBuilderConversation({
       (endpoint.permissionLevel === "CAN_QUERY" ||
         endpoint.permissionLevel === "CAN_MANAGE"),
   );
-  const [selectedEndpointName, setSelectedEndpointName] = useState("");
+  const [selectedEndpointName, setSelectedEndpointName] = useState(() => {
+    try {
+      return sessionStorage.getItem(ENDPOINT_STORAGE_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
   const endpointName = availableEndpoints.some(
     (endpoint) => endpoint.name === selectedEndpointName,
   )
     ? selectedEndpointName
     : (availableEndpoints[0]?.name ?? "");
+  useEffect(() => {
+    if (!endpointName) return;
+    try {
+      sessionStorage.setItem(ENDPOINT_STORAGE_KEY, endpointName);
+    } catch {
+      // Session storage can be unavailable in private browsing.
+    }
+  }, [endpointName]);
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<IConversationEntry[]>(() =>
     initialHistory.map((message, index) => ({ ...message, id: index })),
@@ -71,6 +86,14 @@ export function useAiBuilderConversation({
   const [appliedVersion, setAppliedVersion] = useState<number | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const currentDraftSnapshotKey = createDraftSnapshotKey(
+    version,
+    components,
+    workflow,
+    customModulesSource,
+  );
+  const currentDraftSnapshotKeyRef = useRef(currentDraftSnapshotKey);
+  currentDraftSnapshotKeyRef.current = currentDraftSnapshotKey;
   const abortControllerRef = useRef<AbortController | null>(null);
   const nextMessageIdRef = useRef(initialHistory.length);
   const aiBuilderMutation = useAiBuilder();
@@ -82,6 +105,7 @@ export function useAiBuilderConversation({
   const canSubmit =
     !isDisabled &&
     !isPending &&
+    !isApplying &&
     isEndpointAvailable &&
     prompt.trim().length > 0;
 
@@ -137,6 +161,9 @@ export function useAiBuilderConversation({
           content: result.assistantMessage,
         },
       ]);
+      if (result.proposal) {
+        await applyProposal(result, requestSnapshotKey);
+      }
     } catch (error) {
       if (abortController.signal.aborted) {
         setProgressMessage("Request cancelled.");
@@ -162,19 +189,21 @@ export function useAiBuilderConversation({
   async function handleApplyProposal() {
     const result = latestResult;
     if (!result?.proposal || isApplying || isDisabled) return;
+    await applyProposal(result, latestResultSnapshotKey);
+  }
+
+  async function applyProposal(
+    result: IAiBuilderResult,
+    expectedSnapshotKey: string | null,
+  ) {
+    if (!result.proposal) return;
     if (result.version !== version) {
       setApplyError(
         "The project changed after this suggestion. Request a new suggestion before applying it.",
       );
       return;
     }
-    const currentSnapshotKey = createDraftSnapshotKey(
-      version,
-      components,
-      workflow,
-      customModulesSource,
-    );
-    if (latestResultSnapshotKey !== currentSnapshotKey) {
+    if (expectedSnapshotKey !== currentDraftSnapshotKeyRef.current) {
       setApplyError(
         "The editable project changed after this suggestion. Request a new suggestion before applying it.",
       );

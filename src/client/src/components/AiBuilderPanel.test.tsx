@@ -36,7 +36,7 @@ describe("AiBuilderPanel", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("filters endpoint choices, shows progress and lets the user apply a proposal to the draft", async () => {
+  it("filters endpoint choices, shows progress and applies a proposal to the draft", async () => {
     const user = userEvent.setup();
     const onApplyProposal = vi.fn();
     const responseController = createDeferredStreamResponse();
@@ -59,13 +59,10 @@ describe("AiBuilderPanel", () => {
       />,
     );
 
-    const endpointSelect = screen.getByRole("combobox", { name: "Serving endpoint" });
-    expect(Array.from((endpointSelect as HTMLSelectElement).options).map((option) => option.value)).toEqual([
-      "",
-      "builder-model",
-      "manageable-model",
-    ]);
-    expect((endpointSelect as HTMLSelectElement).value).toBe("builder-model");
+    const endpointSelect = screen.getByRole("button", { name: "Serving endpoint" });
+    expect(endpointSelect).toHaveTextContent("builder-model");
+    await user.click(endpointSelect);
+    expect(screen.getByRole("button", { name: /manageable-model/ })).toBeInTheDocument();
 
     await user.type(screen.getByRole("textbox", { name: "What would you like to change?" }), "Add a save button");
     await user.click(screen.getByRole("button", { name: "Generate suggestion" }));
@@ -87,7 +84,6 @@ describe("AiBuilderPanel", () => {
 
     responseController.complete();
     expect(await screen.findByText("Added a save button.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Apply proposal to draft" }));
 
     await waitFor(() => {
       expect(onApplyProposal).toHaveBeenCalledWith(proposal, 4);
@@ -161,19 +157,14 @@ describe("AiBuilderPanel", () => {
     );
     await user.type(screen.getByRole("textbox", { name: "What would you like to change?" }), "Add a button");
     await user.click(screen.getByRole("button", { name: "Generate suggestion" }));
-    await user.click(await screen.findByRole("button", { name: "Apply proposal to draft" }));
-
     expect(await screen.findByRole("alert")).toHaveTextContent("The project changed after this suggestion.");
     expect(onApplyProposal).not.toHaveBeenCalled();
   });
 
   it("rejects applying a proposal after the editable draft changes", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse({
-      assistantMessage: "Here is a proposal.",
-      proposal,
-      version: 4,
-    })));
+    const responseController = createDeferredStreamResponse();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(responseController.response));
     const onApplyProposal = vi.fn();
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
     const initialComponents: IAiBuilderProposal["components"] = [];
@@ -206,7 +197,7 @@ describe("AiBuilderPanel", () => {
         />
       </QueryClientProvider>,
     );
-    await user.click(await screen.findByRole("button", { name: "Apply proposal to draft" }));
+    responseController.complete();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("editable project changed");
     expect(onApplyProposal).not.toHaveBeenCalled();

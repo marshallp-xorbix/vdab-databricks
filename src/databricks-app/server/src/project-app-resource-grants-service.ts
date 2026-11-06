@@ -64,6 +64,7 @@ export class ProjectAppResourceGrantsService {
     ))[0];
     if (!latestDeployment) throw childAppTargetConflict();
     const resources = readWorkspaceAppResourceInput(body);
+    const expectedUpdateTime = readExpectedUpdateTime(body);
     validateWorkspaceAppResources(resources);
 
     const source = await this.previewService.generateDeploymentSource(
@@ -101,10 +102,24 @@ export class ProjectAppResourceGrantsService {
       );
     }
 
+    if (
+      currentApp.appUpdateTime &&
+      expectedUpdateTime &&
+      currentApp.appUpdateTime !== expectedUpdateTime
+    ) {
+      throw new ApplicationError(
+        409,
+        "app_resources_conflict",
+        "App resources changed",
+        "The App resources changed in Databricks. Reload from Databricks and try again.",
+      );
+    }
+
     await this.workspaceClient.updateAppResources(
       caller,
       childApp.appName,
       resources,
+      expectedUpdateTime,
     );
     await this.repository.updateDeployment(
       projectId,
@@ -114,6 +129,16 @@ export class ProjectAppResourceGrantsService {
     );
     return { appName: childApp.appName, resourceCount: resources.length };
   }
+}
+
+function readExpectedUpdateTime(body: unknown): string | null {
+  if (!isRecord(body) || body.expectedUpdateTime === undefined || body.expectedUpdateTime === null) {
+    return null;
+  }
+  if (typeof body.expectedUpdateTime !== "string" || body.expectedUpdateTime.length > 200) {
+    throw invalidResourceGrantInput();
+  }
+  return body.expectedUpdateTime;
 }
 
 function readWorkspaceAppResourceInput(body: unknown): WorkspaceAppResource[] {

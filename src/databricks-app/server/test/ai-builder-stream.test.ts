@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readAiBuilderCompletion } from "../src/ai-builder-stream.ts";
+import { LocalTestAiBuilderWorkspaceClient } from "../src/local-test-ai-builder-client.ts";
 
 test("AiBuilderStream_ParsesChunkedToolArgumentsAndStreamsProgress", async () => {
   const args = JSON.stringify({
@@ -23,6 +24,18 @@ test("AiBuilderStream_ParsesChunkedToolArgumentsAndStreamsProgress", async () =>
   assert.equal(result.toolName, "apply_project_operations");
   assert.equal(result.toolArgumentsJson, args);
   assert.deepEqual(progress, ["Working"]);
+});
+
+test("LocalTestAiBuilder_ReturnsAnApplyToolCall", async () => {
+  const response = await new LocalTestAiBuilderWorkspaceClient().invoke(
+    { authenticationMode: "local-test", userId: "local-editor" } as never,
+    "sample-chat-endpoint",
+    [],
+    new AbortController().signal,
+  );
+  const result = await readAiBuilderCompletion(response, new AbortController().signal, () => undefined);
+  assert.equal(result.toolName, "apply_project_operations");
+  assert.match(result.toolArgumentsJson ?? "", /local-test-title/);
 });
 
 test("AiBuilderStream_ReturnsTextOnlyAnswerWithoutAProposal", async () => {

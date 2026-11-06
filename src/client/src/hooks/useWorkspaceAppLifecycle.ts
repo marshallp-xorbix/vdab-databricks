@@ -17,7 +17,10 @@ export function useWorkspaceAppLifecycle(appName: string | undefined) {
     queryKey: workspaceAppLifecycleKeys.detail(appName),
     queryFn: ({ signal }) => getWorkspaceApp(appName ?? "", signal),
     enabled: Boolean(appName),
-    refetchInterval: 30_000,
+    refetchInterval: (query) => {
+      const state = `${query.state.data?.computeState ?? ""} ${query.state.data?.appState ?? ""}`.toUpperCase();
+      return /STARTING|STOPPING|UPDATING|DEPLOYING/.test(state) ? 3_000 : 60_000;
+    },
   });
   const actionMutation = useMutation({
     mutationFn: (action: "start" | "stop") =>

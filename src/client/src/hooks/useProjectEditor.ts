@@ -147,9 +147,9 @@ export function useProjectEditor() {
     return () => window.removeEventListener("beforeunload", preventUnload);
   }, [isDirty]);
 
-  async function handleSave() {
+  async function handleSave(): Promise<boolean> {
     if (!project || !canEdit) {
-      return;
+      return false;
     }
 
     try {
@@ -161,8 +161,9 @@ export function useProjectEditor() {
         ...(isDeploymentSettingsDirty ? { deploymentSettings } : {}),
         version: project.version,
       });
+      return true;
     } catch {
-      // The mutation state renders the safe API error below.
+      return false;
     }
   }
 
@@ -200,7 +201,10 @@ export function useProjectEditor() {
     }
   }
 
-  async function handleSaveCanvas(): Promise<void> {
+  async function handleSaveCanvas(): Promise<boolean> {
+    if (!isMetadataDirty && !isComponentsDirty && !isWorkflowDirty && !isThemeDirty && !isDeploymentSettingsDirty) {
+      return Boolean(project && canEdit && !isCustomModulesDirty);
+    }
     if (
       !project ||
       !componentsDocument ||
@@ -209,7 +213,7 @@ export function useProjectEditor() {
       isCustomModulesDirty ||
       isCanvasSaving
     )
-      return;
+      return false;
     setCanvasSaving(true);
     try {
       let version = isMetadataDirty
@@ -243,8 +247,9 @@ export function useProjectEditor() {
           workflow,
         });
       }
+      return true;
     } catch {
-      // Each mutation retains its error and unsaved drafts for an explicit retry.
+      return false;
     } finally {
       setCanvasSaving(false);
     }

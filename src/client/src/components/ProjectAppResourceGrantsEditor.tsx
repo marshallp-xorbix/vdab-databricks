@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import type {
   IWorkspaceAppDeploymentTarget,
   IWorkspaceAppResource,
 } from "../models/ProjectDeployments";
 import { useUpdateProjectResourceGrants } from "../hooks/useUpdateProjectResourceGrants";
-import { useWorkspaceSqlWarehouses } from "../hooks/useWorkspaceSqlWarehouses";
-import ProjectAdditionalResourceGrantForm from "./ProjectAdditionalResourceGrantForm";
+import ProjectAppResourceTargetFields from "./ProjectAppResourceTargetFields";
+import { formatPermissionLabel, APP_RESOURCE_KINDS, KIND_LABELS, type AppResourceKind } from "../types/appResourceKinds";
+import { createEmptyAppResource, duplicateAppResourceKeys, nextAppResourceKey } from "../utils/appResourceRows";
 
 interface IProjectAppResourceGrantsEditorProps {
   projectId: string;
@@ -15,6 +15,7 @@ interface IProjectAppResourceGrantsEditorProps {
   requiredResources: readonly IWorkspaceAppResource[];
   canEdit: boolean;
   isLinked: boolean;
+  onReload?: () => void;
 }
 
 /** Edits app service-principal resource grants for the linked child App. */
@@ -24,38 +25,29 @@ function ProjectAppResourceGrantsEditor({
   requiredResources,
   canEdit,
   isLinked,
+  onReload,
 }: Readonly<IProjectAppResourceGrantsEditorProps>) {
   const [resources, setResources] = useState<IWorkspaceAppResource[]>([]);
-  const [resourceName, setResourceName] = useState("");
-  const [warehouseResourceName, setWarehouseResourceName] = useState("");
-  const [warehouseId, setWarehouseId] = useState("");
-  const [secretScope, setSecretScope] = useState("");
-  const [secretKey, setSecretKey] = useState("");
-  const [secretPermission, setSecretPermission] = useState<"READ" | "WRITE" | "MANAGE">("READ");
+  const [isEditing, setIsEditing] = useState(false);
+  const [addKind, setAddKind] = useState<AppResourceKind | "">("");
   const saveMutation = useUpdateProjectResourceGrants();
-  const warehousesQuery = useWorkspaceSqlWarehouses(
-    Boolean(target && isLinked && canEdit),
-  );
+  const duplicateKeys = duplicateAppResourceKeys(resources);
+  const conflict = saveMutation.isError && saveMutation.error instanceof Error &&
+    saveMutation.error.message.includes("Reload from Databricks");
 
   useEffect(() => {
     setResources(target?.appResources ?? []);
   }, [target?.appResources]);
 
-  const canAddSecret =
-    /^[a-z][a-z0-9-]{0,28}[a-z0-9]$/.test(resourceName.trim()) &&
-    secretScope.trim().length > 0 &&
-    secretScope.trim().length <= 128 &&
-    secretKey.trim().length > 0 &&
-    secretKey.trim().length <= 128 &&
-    !containsControlCharacter(`${secretScope}${secretKey}`) &&
-    !resources.some((resource) => resource.name === resourceName.trim());
+  function cancelEditing() {
+    setResources(target?.appResources ?? []);
+    setIsEditing(false);
+    saveMutation.reset();
+  }
+
   const isDirty = Boolean(
     target && JSON.stringify(resources) !== JSON.stringify(target.appResources),
   );
-  const canAddWarehouse =
-    /^[a-z][a-z0-9-]{0,28}[a-z0-9]$/.test(warehouseResourceName.trim()) &&
-    warehouseId.length > 0 &&
-    !resources.some((resource) => resource.name === warehouseResourceName.trim());
 
   function isRequired(resource: IWorkspaceAppResource): boolean {
     return requiredResources.some(
@@ -63,24 +55,11 @@ function ProjectAppResourceGrantsEditor({
     );
   }
 
-  function addSecret() {
-    if (!canAddSecret) return;
-    setResources((current) => [
-      ...current,
-      {
-        name: resourceName.trim(),
-        description: "VDAB secret resource grant",
-        secret: {
-          scope: secretScope.trim(),
-          key: secretKey.trim(),
-          permission: secretPermission,
-        },
-      },
-    ]);
-    setResourceName("");
-    setSecretScope("");
-    setSecretKey("");
-    setSecretPermission("READ");
+  function addSelectedKind() {
+    if (!addKind) return;
+    const name = nextAppResourceKey(addKind, resources);
+    setResources((current) => [...current, createEmptyAppResource(addKind, name)]);
+    setAddKind("");
   }
 
   function updatePermission(name: string, permission: string) {
@@ -89,36 +68,33 @@ function ProjectAppResourceGrantsEditor({
     ));
   }
 
-  function addWarehouse() {
-    if (!canAddWarehouse) return;
-    const warehouse = warehousesQuery.data?.items.find(
-      (item) => item.id === warehouseId,
-    );
-    if (!warehouse) return;
-    setResources((current) => [
-      ...current,
-      {
-        name: warehouseResourceName.trim(),
-        description: "VDAB SQL warehouse resource grant",
-        sql_warehouse: { id: warehouse.id, permission: "CAN_USE" },
-      },
-    ]);
-    setWarehouseResourceName("");
-    setWarehouseId("");
+  function replaceResource(name: string, next: IWorkspaceAppResource) {
+    setResources((current) => current.map((resource) => resource.name === name ? next : resource));
   }
 
   async function save() {
-    if (!canEdit || !target || !isDirty || saveMutation.isPending) return;
-    await saveMutation.mutateAsync({ projectId, resources });
+    if (!canEdit || !target || !isDirty || saveMutation.isPending || duplicateKeys.length > 0) return;
+    try {
+      await saveMutation.mutateAsync({
+        projectId,
+        resources,
+        ...(target.appUpdateTime ? { expectedUpdateTime: target.appUpdateTime } : {}),
+      });
+      setIsEditing(false);
+    } catch {
+      // The mutation error remains visible in the editor for a retry.
+    }
   }
 
   return (
     <section aria-labelledby="resource-grants-heading" className="space-y-4 rounded-xl border border-border bg-card p-5">
       <header>
-        <h3 id="resource-grants-heading" className="text-base font-semibold">App resource grants</h3>
+        <h3 id="resource-grants-heading" className="text-base font-semibold">App resources</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          These grants let the Databricks App service principal access workspace resources. The current project bindings are required and cannot be removed here.
+          Specify what resources the App service principal can access. Click Edit to change resources; Save resources writes updates to Databricks. Current project bindings are required.{" "}
+          <a className="underline underline-offset-4" href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/resources" target="_blank" rel="noopener noreferrer">Databricks Apps resources</a>
         </p>
+        {target?.computeState && <p className="mt-2 text-sm text-muted-foreground">Compute: {target.computeState}</p>}
       </header>
 
       {!target ? (
@@ -131,6 +107,20 @@ function ProjectAppResourceGrantsEditor({
         </p>
       ) : (
         <>
+          {canEdit && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
+              {isEditing ? (
+                <>
+                  <Button type="button" disabled={!isDirty || saveMutation.isPending || duplicateKeys.length > 0} onClick={() => void save()}>
+                    {saveMutation.isPending ? "Saving…" : "Save resources"}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={saveMutation.isPending} onClick={cancelEditing}>Cancel</Button>
+                </>
+              ) : (
+                <Button type="button" variant="secondary" onClick={() => setIsEditing(true)}>Edit</Button>
+              )}
+            </div>
+          )}
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-left text-sm">
               <thead className="bg-muted text-xs uppercase text-muted-foreground">
@@ -144,16 +134,20 @@ function ProjectAppResourceGrantsEditor({
                     <tr key={resource.name} className="border-t border-border align-top">
                       <td className="px-3 py-3 font-medium">{resource.name}{required && <span className="ml-2 text-xs text-muted-foreground">Required</span>}</td>
                       <td className="px-3 py-3">{type}</td>
-                      <td className="px-3 py-3">{resourceDetails(resource)}</td>
+                      <td className="px-3 py-3">
+                        {isEditing ? (
+                          <ProjectAppResourceTargetFields resource={resource} onChange={(next) => replaceResource(resource.name, next)} />
+                        ) : resourceDetails(resource)}
+                      </td>
                       <td className="px-3 py-3">
                         {permissionOptions(resource).length > 1 ? (
-                          <select aria-label={`Permission for ${resource.name}`} className="h-9 rounded-md border border-input bg-background px-2" value={resourcePermission(resource)} disabled={!canEdit || required} onChange={(event) => updatePermission(resource.name, event.target.value)}>
-                            {permissionOptions(resource).map((value) => <option key={value} value={value}>{value.replaceAll("_", " ").toLowerCase()}</option>)}
+                          <select aria-label={`Permission for ${resource.name}`} className="h-9 rounded-md border border-input bg-background px-2" value={resourcePermission(resource)} disabled={!canEdit || !isEditing || required} onChange={(event) => updatePermission(resource.name, event.target.value)}>
+                            {permissionOptions(resource).map((value) => <option key={value} value={value}>{formatPermissionLabel(value)}</option>)}
                           </select>
                         ) : resourcePermission(resource)}
                       </td>
                       <td className="px-3 py-3 text-right">
-                        {!required && (
+                        {!required && isEditing && (
                           <Button type="button" variant="ghost" size="sm" disabled={!canEdit} onClick={() => setResources((current) => current.filter((item) => item.name !== resource.name))}>Remove</Button>
                         )}
                       </td>
@@ -165,36 +159,29 @@ function ProjectAppResourceGrantsEditor({
             </table>
           </div>
 
-          <fieldset disabled={!canEdit} className="grid gap-3 rounded-md border border-border p-4 sm:grid-cols-[1fr_1fr_1fr_150px_auto] sm:items-end">
-            <legend className="px-1 text-sm font-medium">Add secret grant</legend>
-            <label className="space-y-1 text-sm"><span>App resource key</span><Input value={resourceName} maxLength={30} onChange={(event) => setResourceName(event.target.value)} /></label>
-            <label className="space-y-1 text-sm"><span>Secret scope</span><Input value={secretScope} maxLength={128} onChange={(event) => setSecretScope(event.target.value)} /></label>
-            <label className="space-y-1 text-sm"><span>Secret key</span><Input value={secretKey} maxLength={128} onChange={(event) => setSecretKey(event.target.value)} /></label>
-            <label className="space-y-1 text-sm"><span>Permission</span><select className="h-10 w-full rounded-md border border-input bg-background px-3" value={secretPermission} onChange={(event) => setSecretPermission(event.target.value as "READ" | "WRITE" | "MANAGE")}><option value="READ">Read</option><option value="WRITE">Write</option><option value="MANAGE">Manage</option></select></label>
-            <Button type="button" variant="outline" disabled={!canAddSecret} onClick={addSecret}>Add</Button>
-          </fieldset>
-
-          <ProjectAdditionalResourceGrantForm
-            existingNames={resources.map((resource) => resource.name)}
-            disabled={!canEdit}
-            onAdd={(resource) => setResources((current) => [...current, resource])}
-          />
-
-          <fieldset disabled={!canEdit} className="grid gap-3 rounded-md border border-border p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-            <legend className="px-1 text-sm font-medium">Add SQL warehouse grant</legend>
-            <label className="space-y-1 text-sm"><span>App resource key</span><Input value={warehouseResourceName} maxLength={30} onChange={(event) => setWarehouseResourceName(event.target.value)} /></label>
-            <label className="space-y-1 text-sm"><span>SQL warehouse</span><select className="h-10 w-full rounded-md border border-input bg-background px-3" value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}><option value="">Select a warehouse…</option>{(warehousesQuery.data?.items ?? []).map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>
-            <Button type="button" variant="outline" disabled={!canAddWarehouse || warehousesQuery.isPending} onClick={addWarehouse}>Add</Button>
-            {warehousesQuery.isError && <p role="alert" className="text-sm text-destructive">{warehousesQuery.error instanceof Error ? warehousesQuery.error.message : "SQL warehouses could not be loaded."}</p>}
-          </fieldset>
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {saveMutation.isError && <p role="alert" className="text-sm text-destructive">{saveMutation.error instanceof Error ? saveMutation.error.message : "Resource grants could not be updated."}</p>}
-            {saveMutation.isSuccess && <p role="status" className="text-sm text-muted-foreground">Grant update submitted to Databricks.</p>}
-            <Button type="button" className="ml-auto" disabled={!canEdit || !isDirty || saveMutation.isPending} onClick={() => void save()}>
-              {saveMutation.isPending ? "Saving grants…" : "Save resource grants"}
-            </Button>
-          </div>
+          {duplicateKeys.length > 0 && (
+            <p role="status" className="text-sm text-destructive">Duplicate resource keys: {duplicateKeys.join(", ")}. Keys must be unique.</p>
+          )}
+          {isEditing && (
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="grid gap-1 text-sm">
+                <span>Resource type</span>
+                <select aria-label="Resource type" className="h-10 rounded-md border border-input bg-background px-3" value={addKind} onChange={(event) => setAddKind(event.target.value as AppResourceKind | "")}>
+                  <option value="">Choose a type</option>
+                  {APP_RESOURCE_KINDS.map((kind) => <option key={kind} value={kind}>{KIND_LABELS[kind]}</option>)}
+                </select>
+              </label>
+              <Button type="button" variant="outline" disabled={!addKind} onClick={addSelectedKind}>Add resource</Button>
+            </div>
+          )}
+          {conflict && onReload && (
+            <div role="alert" className="rounded-md border border-warning/40 bg-warning-subtle p-3 text-sm">
+              <p>The App resources changed in Databricks.</p>
+              <Button type="button" variant="outline" size="sm" className="mt-2" onClick={onReload}>Reload from Databricks</Button>
+            </div>
+          )}
+          {saveMutation.isError && !conflict && <p role="alert" className="text-sm text-destructive">{saveMutation.error instanceof Error ? saveMutation.error.message : "Resource grants could not be updated."}</p>}
+          {saveMutation.isSuccess && <p role="status" className="text-sm text-muted-foreground">Grant update submitted to Databricks.</p>}
         </>
       )}
     </section>
@@ -258,13 +245,6 @@ function withPermission(resource: IWorkspaceAppResource, permission: string): IW
   if ("serving_endpoint" in resource) return { ...resource, serving_endpoint: { ...resource.serving_endpoint, permission: permission as typeof resource.serving_endpoint.permission } };
   if ("uc_securable" in resource) return { ...resource, uc_securable: { ...resource.uc_securable, permission: permission as typeof resource.uc_securable.permission } };
   return resource;
-}
-
-function containsControlCharacter(value: string): boolean {
-  return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0) ?? 0;
-    return codePoint <= 0x1f || codePoint === 0x7f;
-  });
 }
 
 function sameResourceBinding(

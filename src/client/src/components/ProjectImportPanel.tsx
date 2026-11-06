@@ -9,7 +9,7 @@ interface IProjectImportPanelProps {
   className?: string;
 }
 
-const MAX_PROJECT_IMPORT_BYTES = 10_485_760;
+const MAX_PROJECT_IMPORT_BYTES = 1_048_576;
 
 /** Imports a portable project and explains which workspace resources need reselection. */
 function ProjectImportPanel({ className }: Readonly<IProjectImportPanelProps>) {
@@ -24,7 +24,7 @@ function ProjectImportPanel({ className }: Readonly<IProjectImportPanelProps>) {
     setImportError(null);
     setImportResults([]);
     if (selectedFile.size > MAX_PROJECT_IMPORT_BYTES) {
-      setImportError("Choose a project export smaller than 10 MiB.");
+      setImportError("Choose a project export smaller than 1 MiB.");
       return;
     }
     try {

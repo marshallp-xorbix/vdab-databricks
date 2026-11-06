@@ -103,14 +103,12 @@ describe("ProjectEditorPage", () => {
     );
   });
 
-  it("opens the deployment panel from the builder Deploy action", async () => {
+  it("opens App Details from Deploy when the workspace target is missing", async () => {
     await renderProjectEditorPage();
 
-    await userEvent.click(await screen.findByRole("link", { name: "Deploy" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Deploy" }));
 
-    expect(
-      await screen.findByRole("heading", { name: "Child App deployment" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByLabelText("Workspace path")).toBeInTheDocument();
   });
 
   it("saves and reopens custom Python source under the shared project version", async () => {

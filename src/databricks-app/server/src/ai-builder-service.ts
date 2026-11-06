@@ -14,7 +14,7 @@ import type { ProjectComponentsService } from "./db/project-components-service.t
 import type { ProjectWorkflowService } from "./db/project-workflow-service.ts";
 import type { ProjectCustomModulesService } from "./db/project-custom-modules-service.ts";
 import type { WorkspaceResourcesService } from "./workspace-resources-service.ts";
-import { AiBuilderWorkspaceClient } from "./ai-builder-workspace-client.ts";
+import type { AiBuilderModelClient } from "./ai-builder-workspace-client.ts";
 
 export interface PreparedAiBuilderRequest {
   execute(
@@ -31,7 +31,7 @@ export class AiBuilderService {
   private readonly customModules: ProjectCustomModulesService;
   private readonly workspaceResources: WorkspaceResourcesService;
   private readonly componentRegistry: ComponentRegistryService;
-  private readonly workspaceClient: AiBuilderWorkspaceClient;
+  private readonly workspaceClient: AiBuilderModelClient;
   private readonly resourceContext: AiBuilderResourceContextService;
 
   constructor(
@@ -41,7 +41,7 @@ export class AiBuilderService {
     customModules: ProjectCustomModulesService,
     workspaceResources: WorkspaceResourcesService,
     componentRegistry: ComponentRegistryService,
-    workspaceClient: AiBuilderWorkspaceClient,
+    workspaceClient: AiBuilderModelClient,
     resourceContext: AiBuilderResourceContextService,
   ) {
     this.projects = projects;
@@ -100,7 +100,10 @@ export class AiBuilderService {
     caller: CallerIdentity,
     endpointName: string,
   ): Promise<WorkspaceServingEndpointResource> {
-    if (caller.authenticationMode !== "databricks" || !caller.databricksAccessToken) {
+    if (caller.authenticationMode === "databricks" && !caller.databricksAccessToken) {
+      throw new ApplicationError(401, "databricks_session_required", "Databricks sign-in required", "Open VDAB through Databricks and grant the requested model-serving access.");
+    }
+    if (caller.authenticationMode !== "databricks" && caller.authenticationMode !== "local-test") {
       throw new ApplicationError(401, "databricks_session_required", "Databricks sign-in required", "Open VDAB through Databricks and grant the requested model-serving access.");
     }
     const endpoints = await this.workspaceResources.listServingEndpoints(caller);
@@ -152,12 +155,13 @@ function readCompletionResult(
   completion: Awaited<ReturnType<typeof readAiBuilderCompletion>>,
   input: AiBuilderInput,
   definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
-): { assistantMessage: string; proposal: AiBuilderInput["proposalContext"] | null; version: number } {
+): { assistantMessage: string; proposal: AiBuilderInput["proposalContext"] | null; version: number; outcome: "completed" | "partial" | "needsClarification" } {
   if (completion.toolArgumentsJson === null) {
     return {
       assistantMessage: completion.assistantMessage.slice(0, 4_000),
       proposal: null,
       version: input.version,
+      outcome: "needsClarification",
     };
   }
   if (completion.toolName !== AI_BUILDER_TOOL_NAME) throw invalidToolProposal();
@@ -168,9 +172,14 @@ function readCompletionResult(
   } catch {
     throw invalidToolProposal();
   }
-  if (!isRecord(argumentsValue) || !hasExactKeys(argumentsValue, ["assistantMessage", "operationsJson"]) ||
+  if (!isRecord(argumentsValue)) throw invalidToolProposal();
+  const outcome = argumentsValue.outcome === "partial" ? "partial" : "completed";
+  if (!hasExactKeys(argumentsValue, argumentsValue.outcome === undefined
+        ? ["assistantMessage", "operationsJson"]
+        : ["assistantMessage", "operationsJson", "outcome"]) ||
       typeof argumentsValue.assistantMessage !== "string" || argumentsValue.assistantMessage.length > 4_000 ||
-      typeof argumentsValue.operationsJson !== "string") {
+      typeof argumentsValue.operationsJson !== "string" ||
+      (argumentsValue.outcome !== undefined && argumentsValue.outcome !== "partial" && argumentsValue.outcome !== "completed")) {
     throw invalidToolProposal();
   }
 
@@ -183,6 +192,7 @@ function readCompletionResult(
       definitions,
     ),
     version: input.version,
+    outcome,
   };
 }
 

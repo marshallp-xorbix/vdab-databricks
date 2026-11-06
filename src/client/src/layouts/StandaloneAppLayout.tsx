@@ -62,11 +62,11 @@ function StandaloneAppLayout() {
 
       <div className="flex min-h-0 flex-1">
         <aside
-          className={`hidden shrink-0 flex-col border-r border-border bg-background transition-[width] md:flex ${isSidebarCollapsed ? "w-16" : "w-56"}`}
+          className={`hidden shrink-0 flex-col border-r transition-[width] md:flex ${isSidebarCollapsed ? "w-16" : "w-56"} ${isBuilderRoute ? "border-[var(--primary-sidebar-rail)] bg-[var(--primary-sidebar-bg)] text-[var(--primary-sidebar-foreground)]" : "border-border bg-background"}`}
         >
           <div className="px-4 pb-2 pt-5">
             {!isSidebarCollapsed && (
-              <p className="text-[11px] font-medium tracking-wide text-muted-foreground">
+              <p className={`text-[11px] font-medium tracking-wide ${isBuilderRoute ? "text-[var(--primary-sidebar-muted)]" : "text-muted-foreground"}`}>
                 {isBuilderRoute ? "BUILDER" : "NAVIGATION"}
               </p>
             )}
@@ -120,7 +120,7 @@ function StandaloneAppLayout() {
             {isBuilderRoute && !isSidebarCollapsed && (
               <Link
                 to="/apps"
-                className="flex min-h-12 items-center gap-2 border-t border-border px-3 text-sm text-foreground hover:bg-accent"
+                className="flex min-h-12 items-center gap-2 border-t border-[var(--primary-sidebar-rail)] px-3 text-sm text-[var(--primary-sidebar-foreground)] hover:bg-[var(--primary-sidebar-hover)] hover:text-white"
               >
                 <ChevronLeft className="h-4 w-4" />
                 <span>Back to Apps</span>

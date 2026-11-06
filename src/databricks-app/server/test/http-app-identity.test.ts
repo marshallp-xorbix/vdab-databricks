@@ -66,7 +66,7 @@ test("HttpApp_AiBuilderStreamsProgressAndResultEvents", async () => {
           await emit({ event: "progress", data: { message: "Generating" } });
           await emit({
             event: "result",
-            data: { assistantMessage: "Ready", proposal: null, version: 1 },
+            data: { assistantMessage: "Ready", proposal: null, version: 1, outcome: "needsClarification" },
           });
         },
       };
@@ -85,7 +85,7 @@ test("HttpApp_AiBuilderStreamsProgressAndResultEvents", async () => {
     assert.equal(response.status, 200, body);
     assert.match(response.headers.get("content-type") ?? "", /text\/event-stream/);
     assert.match(body, /event: progress\ndata: \{"message":"Generating"\}/);
-    assert.match(body, /event: result\ndata: \{"assistantMessage":"Ready","proposal":null,"version":1\}/);
+    assert.match(body, /event: result\ndata: \{"assistantMessage":"Ready","proposal":null,"version":1,"outcome":"needsClarification"\}/);
   } finally {
     await appHarness.dispose();
   }

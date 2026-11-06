@@ -57,21 +57,30 @@ export class AiBuilderProposal implements IAiBuilderProposal {
 }
 
 /** Validated response from the end of an AI Builder stream. */
+export type AiBuilderOutcome =
+  | "completed"
+  | "partial"
+  | "needsClarification"
+  | "unableToComplete";
+
 export interface IAiBuilderResult {
   assistantMessage: string;
   proposal: IAiBuilderProposal | null;
   version: number;
+  outcome: AiBuilderOutcome;
 }
 
 export class AiBuilderResult implements IAiBuilderResult {
   assistantMessage: string;
   proposal: IAiBuilderProposal | null;
   version: number;
+  outcome: AiBuilderOutcome;
 
   constructor(source: Partial<IAiBuilderResult> = {}) {
     this.assistantMessage = source.assistantMessage ?? "";
     this.proposal = source.proposal ?? null;
     this.version = source.version ?? 1;
+    this.outcome = source.outcome ?? (source.proposal ? "completed" : "needsClarification");
   }
 }
 

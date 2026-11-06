@@ -150,6 +150,7 @@ try {
   assert.deepEqual(servingEndpointsPage.items, [
     {
       name: "sample-chat-endpoint",
+      task: "llm/v1/chat",
       readiness: "ready",
       permissionLevel: "CAN_QUERY",
     },
@@ -310,6 +311,11 @@ try {
 
   process.stdout.write(
     `${JSON.stringify({ event: "app.smoke.passed", checks: ["health", "session", "offline-apps", "workspace-resource-routes", "component-registry", "project-create-list-read", "project-metadata-save-reopen", "project-components-save-reopen", "project-custom-modules-save-reopen", "workflow-save", "all-workflow-actions-and-event-callbacks-preview", "custom-and-prebuilt-module-preview", "textinput-preview", "button-preview", "checkbox-toggle-preview", "dropdown-preview", "date-time-preview", "slider-preview", "label-preview", "expander-preview", "columns-preview", "rows-preview", "tabs-preview", "form-preview", "modal-preview", "file-upload-preview", "data-window-preview", "editable-data-window-preview", "bar-chart-preview", "line-chart-preview", "pie-chart-preview", "donut-chart-preview", "amoeba-story-preview", "flow-field-story-preview", "heat-map-story-preview", "honeycomb-story-preview", "network-web-story-preview", "pulse-wave-story-preview", "spiral-story-preview", "terrain-story-preview", "dashboard-embed-preview", "genie-chat-preview", "model-chat-preview", "standalone-project-export-import", "static"] })}\n`,
+  );
+} catch (error) {
+  throw new Error(
+    `Packaged app smoke failed. App output: ${childOutput.replaceAll("local-smoke-secret-must-not-be-logged", "[redacted]")}`,
+    { cause: error },
   );
 } finally {
   if (child.exitCode === null && child.signalCode === null) {

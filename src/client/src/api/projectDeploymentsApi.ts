@@ -216,6 +216,7 @@ export async function getWorkspaceAppDeploymentTarget(
 export async function updateProjectResourceGrants(input: {
   projectId: string;
   resources: IWorkspaceAppResource[];
+  expectedUpdateTime?: string | null;
 }): Promise<void> {
   const response = await fetch(
     `${projectPath(input.projectId)}/deployments/resources`,
@@ -226,7 +227,10 @@ export async function updateProjectResourceGrants(input: {
         "Content-Type": "application/json",
       },
       credentials: "same-origin",
-      body: JSON.stringify({ resources: input.resources }),
+      body: JSON.stringify({
+        resources: input.resources,
+        ...(input.expectedUpdateTime ? { expectedUpdateTime: input.expectedUpdateTime } : {}),
+      }),
     },
   );
   if (!response.ok) throw new Error(await readErrorMessage(response));
@@ -405,6 +409,7 @@ function parseWorkspaceAppDeploymentTarget(
     appResources: value.appResources as IWorkspaceAppResource[],
     secretResources: value.secretResources as IWorkspaceSecretAppResource[],
     unsupportedResourceCount: value.unsupportedResourceCount,
+    appUpdateTime: typeof value.appUpdateTime === "string" ? value.appUpdateTime : null,
   });
 }
 

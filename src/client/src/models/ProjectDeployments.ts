@@ -167,6 +167,7 @@ export interface IWorkspaceAppDeploymentTarget {
   appResources: IWorkspaceAppResource[];
   secretResources: IWorkspaceSecretAppResource[];
   unsupportedResourceCount: number;
+  appUpdateTime?: string | null;
 }
 
 export class WorkspaceAppDeploymentTarget implements IWorkspaceAppDeploymentTarget {
@@ -185,6 +186,7 @@ export class WorkspaceAppDeploymentTarget implements IWorkspaceAppDeploymentTarg
   appResources: IWorkspaceAppResource[];
   secretResources: IWorkspaceSecretAppResource[];
   unsupportedResourceCount: number;
+  appUpdateTime: string | null;
 
   constructor(source: Partial<IWorkspaceAppDeploymentTarget> = {}) {
     this.appId = source.appId ?? null;
@@ -202,5 +204,6 @@ export class WorkspaceAppDeploymentTarget implements IWorkspaceAppDeploymentTarg
     this.appResources = source.appResources ?? [];
     this.secretResources = source.secretResources ?? [];
     this.unsupportedResourceCount = source.unsupportedResourceCount ?? 0;
+    this.appUpdateTime = source.appUpdateTime ?? null;
   }
 }

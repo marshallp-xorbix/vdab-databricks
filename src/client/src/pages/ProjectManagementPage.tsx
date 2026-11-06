@@ -9,7 +9,7 @@ import type { IStandaloneProjectExport } from "../models/ProjectPortability";
 import { useCreateProject } from "../hooks/useCreateProject";
 import { useProjects } from "../hooks/useProjects";
 import { useExportProject } from "../hooks/useExportProject";
-import { startProjectDeployment } from "../api/projectDeploymentsApi";
+import { useStartProjectDeployment } from "../hooks/useStartProjectDeployment";
 import { toast } from "../components/ui/use-toast";
 import ProjectManagementProjectCard from "../components/ProjectManagementProjectCard";
 import ProjectImportPanel from "../components/ProjectImportPanel";
@@ -37,12 +37,14 @@ function ProjectManagementPage({
 }: Readonly<IProjectManagementPageProps>) {
   const projectsQuery = useProjects();
   const createProjectMutation = useCreateProject();
+  const startProjectDeploymentMutation = useStartProjectDeployment();
   const exportProjectMutation = useExportProject();
   const navigate = useNavigate();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [isExportingAll, setExportingAll] = useState(false);
 
   async function handleCreate(
@@ -56,7 +58,7 @@ function ProjectManagementPage({
       deploymentSettings: { ...target, workspacePath: null },
     });
     try {
-      await startProjectDeployment({
+      await startProjectDeploymentMutation.mutateAsync({
         projectId: createdProject.id,
         mode: target.mode,
         appName: target.appName,
@@ -73,13 +75,12 @@ function ProjectManagementPage({
   }
 
   const filteredProjects = (projectsQuery.data?.items ?? []).filter((project) =>
-    `${project.name} ${project.description ?? ""}`
-      .toLocaleLowerCase()
-      .includes(searchQuery.trim().toLocaleLowerCase()),
+    project.name.toLocaleLowerCase().includes(searchQuery.trim().toLocaleLowerCase()),
   );
 
   async function handleExport(projectId: string, projectName: string) {
     setExportError(null);
+    setExportNotice(null);
     try {
       const bundle = await exportProjectMutation.mutateAsync(projectId);
       downloadJson(bundle, `${
@@ -88,6 +89,7 @@ function ProjectManagementPage({
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "") || "vdab-project"
       }.vdab.json`);
+      setExportNotice(`Exported ${projectName}. Select workspace resources again after import.`);
     } catch (error) {
       setExportError(
         error instanceof Error
@@ -99,6 +101,7 @@ function ProjectManagementPage({
 
   async function handleExportAll() {
     setExportError(null);
+    setExportNotice(null);
     setExportingAll(true);
     try {
       const projects = projectsQuery.data?.items ?? [];
@@ -112,6 +115,7 @@ function ProjectManagementPage({
         exportedAt: new Date().toISOString(),
         projects: bundles,
       }, "vdab-all-projects.vdab.json");
+      setExportNotice("Exported all apps. Select workspace resources again after import.");
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "Apps could not be exported.");
     } finally {
@@ -164,16 +168,19 @@ function ProjectManagementPage({
                   setImportDialogOpen(true);
                 }}
               >
-                Import a standalone project…
+                Import apps…
               </DropdownMenuItem>
               <DropdownMenuItem disabled={isExportingAll || projectsQuery.isPending || (projectsQuery.data?.items.length ?? 0) === 0} onSelect={() => void handleExportAll()}>
-                {isExportingAll ? "Exporting Apps…" : "Export all Apps"}
+                {isExportingAll ? "Exporting apps…" : "Export all apps"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
 
+      {exportNotice && (
+        <p role="status" className="text-sm text-muted-foreground">{exportNotice}</p>
+      )}
       {exportError && (
         <p role="alert" className="text-sm text-destructive">
           {exportError}
@@ -198,7 +205,7 @@ function ProjectManagementPage({
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
               {searchQuery
-                ? "Try another app name or description."
+                ? "Try another app name."
                 : "Create your first app to start building in this workspace."}
             </p>
             {!searchQuery && (

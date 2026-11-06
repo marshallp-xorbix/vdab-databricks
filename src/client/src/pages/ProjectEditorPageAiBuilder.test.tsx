@@ -98,10 +98,10 @@ describe("ProjectEditorPage AI Builder drafts", () => {
     await renderProjectEditorPage();
     await user.click(await screen.findByRole("link", { name: "Workflow" }));
     await user.click(screen.getByRole("link", { name: "Prompt" }));
-    const endpointSelect = await screen.findByRole("combobox", {
+    const endpointSelect = await screen.findByRole("button", {
       name: "Serving endpoint",
     });
-    await waitFor(() => expect(endpointSelect).toHaveValue("builder-model"));
+    await waitFor(() => expect(endpointSelect).toHaveTextContent("builder-model"));
     await user.click(screen.getByRole("link", { name: "Settings" }));
     await waitFor(() =>
       expect(screen.getByLabelText("Name")).toHaveValue(project.name),
@@ -123,9 +123,7 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       screen.getByRole("button", { name: "Generate suggestion" }),
     );
     await screen.findByText("Added the requested control.");
-    await user.click(
-      screen.getByRole("button", { name: "Apply proposal to draft" }),
-    );
+    expect(await screen.findByRole("button", { name: "Applied to draft" })).toBeDisabled();
 
     await user.click(screen.getByRole("link", { name: "Canvas" }));
     expect(
@@ -273,9 +271,7 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       screen.getByRole("button", { name: "Generate suggestion" }),
     );
     await screen.findByText("Updated all project drafts.");
-    await user.click(
-      screen.getByRole("button", { name: "Apply proposal to draft" }),
-    );
+    expect(await screen.findByRole("button", { name: "Applied to draft" })).toBeDisabled();
 
     await user.click(screen.getByRole("link", { name: "Canvas" }));
     await user.click(await screen.findByRole("link", { name: "Workflow" }));

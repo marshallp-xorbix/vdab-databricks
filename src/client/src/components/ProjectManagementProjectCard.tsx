@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MoreVertical } from "lucide-react";
 import { Button } from "./ui/button";
+import { toast } from "./ui/use-toast";
 import ProjectDeleteAction from "./ProjectDeleteAction";
+import { deploySavedProjectAndOpen } from "../utils/deploySavedProject";
+import { getDatabricksComputeStatePresentation } from "../utils/workspaceAppStatus";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +28,36 @@ function ProjectManagementProjectCard({
   isExporting,
   onExport,
 }: Readonly<IProjectManagementProjectCardProps>) {
-  const { app, isOnline, status } = useProjectAppStatus(project.id);
+  const { app, childApp, status } = useProjectAppStatus(project.id);
+  const [isDeploying, setDeploying] = useState(false);
+  const presentation = app?.computeState
+    ? getDatabricksComputeStatePresentation(app.computeState)
+    : null;
+  const statusLabel = !childApp
+    ? status === "Error" || status === "Checking" ? status : "Draft"
+    : presentation?.shortLabel ?? status;
+  const settings = project.deploymentSettings;
+  const canDeployNow = Boolean(settings?.appName && settings.workspacePath);
+
+  async function deploy(): Promise<void> {
+    if (!settings?.appName || !settings.workspacePath || isDeploying) return;
+    setDeploying(true);
+    try {
+      await deploySavedProjectAndOpen({
+        projectId: project.id,
+        mode: settings.mode,
+        appName: settings.appName,
+      });
+    } catch (error) {
+      toast({
+        title: "Deployment failed",
+        description: error instanceof Error ? error.message : "The App deployment could not be started.",
+        variant: "destructive",
+      });
+      setDeploying(false);
+    }
+  }
+
   return (
     <li>
       <article className="flex flex-col rounded-xl border border-border bg-card p-5 shadow-[var(--card-shadow)] transition-all hover:border-primary/35 hover:shadow-md">
@@ -43,12 +76,10 @@ function ProjectManagementProjectCard({
           <div className="mb-0.5 flex min-h-5 items-center gap-2">
             <span
               aria-hidden="true"
-              className={`h-2.5 w-2.5 shrink-0 rounded-full ${isOnline ? "bg-success" : "bg-muted-foreground"}`}
+              className={`h-2.5 w-2.5 shrink-0 rounded-full ${presentation?.dotColorClass ?? "bg-muted-foreground"} ${presentation?.dotPulse ? "animate-pulse" : ""}`}
             />
-            <span
-              className={`text-sm font-medium ${isOnline ? "text-success" : "text-muted-foreground"}`}
-            >
-              {status}
+            <span className={`text-sm font-medium ${presentation?.labelTextClass ?? "text-muted-foreground"}`}>
+              {statusLabel}
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -62,7 +93,7 @@ function ProjectManagementProjectCard({
               variant="outline"
               asChild
             >
-              <Link to={`/apps/${project.id}`}>Edit</Link>
+              <Link to={`/apps/${project.id}?section=settings`}>Edit</Link>
             </Button>
             {app?.url ? (
               <Button
@@ -87,18 +118,15 @@ function ProjectManagementProjectCard({
                 Open
               </Button>
             )}
-            <Button
-              className="flex-1 shadow-md hover:opacity-90"
-              type="button"
-              size="sm"
-              asChild
-            >
-              <Link
-                to={`/apps/${project.id}?section=settings&settings=resources#project-deployment`}
-              >
-                Deploy
-              </Link>
-            </Button>
+            {canDeployNow ? (
+              <Button className="flex-1 shadow-md hover:opacity-90" type="button" size="sm" disabled={isDeploying} onClick={() => void deploy()}>
+                {isDeploying ? "Deploying…" : "Deploy"}
+              </Button>
+            ) : (
+              <Button className="flex-1 shadow-md hover:opacity-90" type="button" size="sm" asChild>
+                <Link to={`/apps/${project.id}?section=settings&focus=deployment-target`}>Deploy</Link>
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -115,7 +143,7 @@ function ProjectManagementProjectCard({
                   disabled={isExporting}
                   onClick={() => void onExport(project.id, project.name)}
                 >
-                  {isExporting ? "Exporting…" : "Export project"}
+                  {isExporting ? "Exporting…" : "Export this app"}
                 </DropdownMenuItem>
                 <ProjectDeleteAction project={project} renderAsMenuItem />
               </DropdownMenuContent>

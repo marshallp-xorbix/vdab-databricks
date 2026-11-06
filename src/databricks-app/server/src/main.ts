@@ -24,6 +24,7 @@ import { WorkspaceAppsService } from "./workspace-apps-service.ts";
 import { ComponentRegistryService } from "./component-registry/component-registry-service.ts";
 import { ProjectPreviewService } from "./generation/project-preview-service.ts";
 import { LocalTestWorkspaceResourcesClient } from "./local-test-workspace-resources-client.ts";
+import { LocalTestAiBuilderWorkspaceClient } from "./local-test-ai-builder-client.ts";
 import { createWorkspaceResourcesClient } from "./workspace-resources-client.ts";
 import { WorkspaceResourcesService } from "./workspace-resources-service.ts";
 import { createWorkspaceExecutionResourcesClient } from "./workspace-execution-resources-client.ts";
@@ -167,7 +168,7 @@ async function start(): Promise<void> {
           requireWorkspaceId(workspaceId),
         )
       : undefined;
-  const aiBuilderService = workspaceHost
+  const aiBuilderService = workspaceHost || isLocalTestMode
     ? new AiBuilderService(
         projectService,
         projectComponentsService,
@@ -175,7 +176,9 @@ async function start(): Promise<void> {
         projectCustomModulesService,
         workspaceResourcesService,
         componentRegistryService,
-        new AiBuilderWorkspaceClient(workspaceHost),
+        isLocalTestMode
+          ? new LocalTestAiBuilderWorkspaceClient()
+          : new AiBuilderWorkspaceClient(workspaceHost ?? ""),
         new AiBuilderResourceContextService(
           workspaceResourcesService,
           workspaceExecutionResourcesService,

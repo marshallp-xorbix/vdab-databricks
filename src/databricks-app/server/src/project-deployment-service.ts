@@ -106,6 +106,7 @@ export class ProjectDeploymentService {
       appResources: resources,
       secretResources: resources.filter(isSecretResource),
       unsupportedResourceCount: app.unsupportedResourceCount ?? 0,
+      appUpdateTime: app.appUpdateTime ?? null,
     };
   }
 

@@ -57,6 +57,7 @@ export interface WorkspaceAppDetails {
   userApiScopes: string[];
   resources: WorkspaceAppResource[];
   unsupportedResourceCount?: number;
+  appUpdateTime?: string | null;
 }
 
 /** Caller-authorized App and immutable source deployment operations. */
@@ -71,6 +72,7 @@ export interface WorkspaceAppDeploymentClient {
     caller: CallerIdentity,
     appName: string,
     resources: WorkspaceAppResource[],
+    expectedUpdateTime?: string | null,
   ): Promise<void>;
   createApp(
     caller: CallerIdentity,
@@ -114,8 +116,8 @@ export function createWorkspaceAppDeploymentClient(
     countApps: (caller) => countApps(caller, host, fetchImplementation),
     getApp: (caller, appName) =>
       getApp(caller, appName, host, fetchImplementation),
-    updateAppResources: (caller, appName, resources) =>
-      updateAppResources(caller, appName, resources, host, fetchImplementation),
+    updateAppResources: (caller, appName, resources, expectedUpdateTime) =>
+      updateAppResources(caller, appName, resources, host, fetchImplementation, expectedUpdateTime),
     createApp: (
       caller,
       appName,
@@ -254,6 +256,7 @@ async function updateAppResources(
   resources: WorkspaceAppResource[],
   host: string,
   fetchImplementation: typeof fetch,
+  expectedUpdateTime?: string | null,
 ): Promise<void> {
   validateAppName(appName);
   const response = await callDatabricks(
@@ -264,6 +267,7 @@ async function updateAppResources(
       app: {
         name: appName,
         resources: validateWorkspaceAppResources(resources),
+        ...(expectedUpdateTime ? { update_time: expectedUpdateTime } : {}),
       },
       update_mask: "resources",
     },

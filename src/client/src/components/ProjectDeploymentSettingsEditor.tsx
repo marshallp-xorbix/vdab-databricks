@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { IProjectDeploymentSettings } from "../models/ProjectDeploymentSettings";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -6,6 +7,7 @@ interface IProjectDeploymentSettingsEditorProps {
   settings: IProjectDeploymentSettings | null;
   childAppName?: string;
   isDisabled: boolean;
+  focusTarget?: boolean;
   onChange: (settings: IProjectDeploymentSettings) => void;
 }
 
@@ -14,8 +16,13 @@ function ProjectDeploymentSettingsEditor({
   settings,
   childAppName,
   isDisabled,
+  focusTarget = false,
   onChange,
 }: Readonly<IProjectDeploymentSettingsEditorProps>) {
+  const workspacePathRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (focusTarget) workspacePathRef.current?.focus();
+  }, [focusTarget]);
   const current = settings ?? {
     mode: "createNew",
     appName: childAppName ?? "",
@@ -70,6 +77,7 @@ function ProjectDeploymentSettingsEditor({
       <div className="grid gap-2">
         <Label htmlFor="project-workspace-path">Workspace path</Label>
         <Input
+          ref={workspacePathRef}
           id="project-workspace-path"
           value={current.workspacePath ?? ""}
           maxLength={1024}

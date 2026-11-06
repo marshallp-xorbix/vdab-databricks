@@ -97,16 +97,10 @@ function ProjectEditorPage({
           ? isMetadataDirty
           : false;
 
-  async function handleSaveActiveSection() {
-    if (activeEditorSection === "components") {
-      await handleSaveCanvas();
-      return;
-    }
-    if (activeEditorSection === "workflows") {
-      await handleSaveWorkflow();
-      return;
-    }
-    await handleSave();
+  async function handleSaveActiveSection(): Promise<boolean> {
+    if (activeEditorSection === "components") return handleSaveCanvas();
+    if (activeEditorSection === "workflows") return handleSaveWorkflow();
+    return handleSave();
   }
 
   const builderActions = (
@@ -121,6 +115,11 @@ function ProjectEditorPage({
         replaceComponentsMutation.isPending ||
         replaceWorkflowMutation.isPending
       }
+      hasUnsavedChanges={editor.isDirty}
+      isCustomModulesDirty={isCustomModulesDirty}
+      deploymentSettings={editor.deploymentSettings}
+      components={editor.components}
+      onSaveForDeploy={handleSaveCanvas}
       onSave={handleSaveActiveSection}
       onRefresh={() => {
         void Promise.all([

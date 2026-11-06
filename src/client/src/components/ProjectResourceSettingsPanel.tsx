@@ -27,6 +27,7 @@ export default function ProjectResourceSettingsPanel({ projectId, canEdit }: Rea
         requiredResources={readiness.data?.appResources ?? []}
         canEdit={canEdit && Boolean(childApp) && !readiness.isPending && !readiness.isError}
         isLinked={Boolean(childApp)}
+        onReload={() => void target.refetch()}
       />
     </div>
   );

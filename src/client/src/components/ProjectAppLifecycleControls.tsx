@@ -2,7 +2,7 @@ import { Circle, Loader2, Play, Square } from "lucide-react";
 import { useWorkspaceAppLifecycle } from "../hooks/useWorkspaceAppLifecycle";
 import { toast } from "./ui/use-toast";
 import { Button } from "./ui/button";
-import { readWorkspaceAppStatus } from "../utils/workspaceAppStatus";
+import { getDatabricksComputeStatePresentation, readWorkspaceAppStatus } from "../utils/workspaceAppStatus";
 
 interface IProjectAppLifecycleControlsProps {
   appName: string | undefined;
@@ -26,11 +26,14 @@ function ProjectAppLifecycleControls({
     app?.computeState === "UPDATING" ||
     app?.appState === "DEPLOYING";
   const action = isActive ? "stop" : "start";
+  const presentation = app?.computeState
+    ? getDatabricksComputeStatePresentation(app.computeState)
+    : null;
   const statusLabel = !appName
-    ? "Not deployed"
+    ? "Draft"
     : appQuery.isError
-      ? "Status unavailable"
-      : readWorkspaceAppStatus(app);
+      ? "Error"
+      : presentation?.shortLabel ?? readWorkspaceAppStatus(app);
 
   async function handleAction() {
     try {
@@ -57,7 +60,7 @@ function ProjectAppLifecycleControls({
     (!isActive && !isStopped);
 
   return (
-    <div className="flex items-center gap-2 border-l border-[var(--builder-chrome-border)] pl-2">
+    <div className="flex shrink-0 items-center gap-2 border-l border-[var(--builder-chrome-border)] pl-2">
       {app?.url && app.appState === "RUNNING" && (
         <Button type="button" variant="outline" size="sm" asChild>
           <a href={app.url} target="_blank" rel="noopener noreferrer">
@@ -83,18 +86,16 @@ function ProjectAppLifecycleControls({
         {isActive ? "Stop app" : "Start app"}
       </Button>
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs ${
-          isActive
-            ? "border-emerald-500/30 text-emerald-500"
-            : isStopped
-              ? "border-destructive/30 text-destructive"
-              : "border-border text-muted-foreground"
-        }`}
+        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--builder-chrome-border)] bg-card px-2.5 py-0.5 text-xs font-semibold"
         role="status"
         aria-live="polite"
+        title={presentation?.statusLabel ?? statusLabel}
       >
-        <Circle aria-hidden="true" className="h-2 w-2 fill-current" />
-        {statusLabel}
+        <Circle
+          aria-hidden="true"
+          className={`h-2 w-2 fill-current ${presentation?.dotColorClass ?? "text-muted-foreground"} ${presentation?.dotPulse ? "animate-pulse" : ""} ${presentation?.labelTextClass ?? ""}`}
+        />
+        <span className={presentation?.labelTextClass}>{statusLabel}</span>
       </span>
     </div>
   );

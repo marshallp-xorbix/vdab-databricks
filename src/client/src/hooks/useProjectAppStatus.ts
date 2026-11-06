@@ -1,6 +1,6 @@
 import { useProjectDeployments } from "./useProjectDeployments";
 import { useWorkspaceAppLifecycle } from "./useWorkspaceAppLifecycle";
-import { readWorkspaceAppStatus } from "../utils/workspaceAppStatus";
+import { getDatabricksComputeStatePresentation, readWorkspaceAppStatus } from "../utils/workspaceAppStatus";
 
 /** Joins the saved child-App link with its current workspace lifecycle state. */
 export function useProjectAppStatus(projectId: string) {
@@ -12,12 +12,12 @@ export function useProjectAppStatus(projectId: string) {
   const isOnline = lifecycleStatus === "Running";
   const status = deploymentsQuery.isPending
     ? "Checking"
-    : deploymentsQuery.isError
-      ? "Status unavailable"
+    : deploymentsQuery.isError || appQuery.isError
+      ? "Error"
       : !childApp
-        ? "Not deployed"
-        : appQuery.isError
-          ? "Status unavailable"
+        ? "Draft"
+        : app?.computeState
+          ? getDatabricksComputeStatePresentation(app.computeState).shortLabel
           : isOnline
             ? "Online"
             : lifecycleStatus;

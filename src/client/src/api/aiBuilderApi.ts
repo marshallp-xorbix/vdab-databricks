@@ -192,10 +192,19 @@ function readAiBuilderResult(value: Record<string, unknown>): IAiBuilderResult {
     ? null
     : readProposal(value.proposal);
 
+  const outcome = value.outcome === "completed" ||
+    value.outcome === "partial" ||
+    value.outcome === "needsClarification" ||
+    value.outcome === "unableToComplete"
+    ? value.outcome
+    : proposal
+      ? "completed"
+      : "needsClarification";
   return new AiBuilderResult({
     assistantMessage: value.assistantMessage,
     proposal,
     version: value.version,
+    outcome,
   });
 }
 

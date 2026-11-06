@@ -238,6 +238,7 @@ export interface WorkspaceAppDeploymentTarget {
   appResources: WorkspaceAppResource[];
   secretResources: WorkspaceSecretAppResource[];
   unsupportedResourceCount: number;
+  appUpdateTime: string | null;
 }
 
 /** Safe name exposed for a resource visible to the current workspace user. */

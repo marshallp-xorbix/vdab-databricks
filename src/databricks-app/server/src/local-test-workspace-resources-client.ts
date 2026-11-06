@@ -22,6 +22,7 @@ export class LocalTestWorkspaceResourcesClient implements WorkspaceResourcesClie
   ): Promise<WorkspaceServingEndpointResource[]> {
     return [{
       name: "sample-chat-endpoint",
+      task: "llm/v1/chat",
       readiness: "ready",
       permissionLevel: "CAN_QUERY",
     }];
