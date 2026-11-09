@@ -338,6 +338,7 @@ describe("ProjectDeploymentPanel", () => {
       data: {
         ...makeTarget("existing-child", "team-apps", ["sql:restricted-query"]),
         appUrl: "https://child-app.example.databricksapps.com/",
+        appState: "RUNNING",
       },
       isPending: false,
       isError: false,

@@ -194,7 +194,7 @@ The setup diagnostics page may say it cannot verify consent if the workspace blo
 
 1. In **Canvas**, drag components from the catalog onto the page. Select a component to change labels, properties, layout, and data bindings.
 2. In **Workflow**, add a workflow and actions. For a button, select its `onClick` trigger and connect it to the workflow event/action. Save and check validation messages.
-3. Optionally open **AI Builder**, choose a ready chat endpoint you can query (not an embedding endpoint), and request components or changes. The picker lists workspace serving and AI Gateway chat endpoints the signed-in user can query. A successful proposal is applied to the current draft automatically when the draft has not changed during generation; review the result, then save. In a real workspace, confirm this with a chat endpoint you can query. Local-test mode uses `sample-chat-endpoint`, which returns a tool call and applies a title to the draft.
+3. Optionally choose **Prompt** from the builder toolbar to open AI Builder on the current section (Canvas, Workflow, Code, or Settings). Pick a ready chat endpoint you can query (not an embedding endpoint). A successful proposal is applied to the current draft automatically when the draft has not changed during generation; if the draft changed during generation, use **Apply proposal to draft**. In a real workspace, confirm this with a chat endpoint you can query. Local-test mode uses `sample-chat-endpoint`, which returns a tool call and applies a title to the draft.
 4. In **Settings → App Details**, set the child App's workspace folder and confirm the saved target. Reopen the project to verify persistence.
 5. In **Settings → Resources**, manage the child App's resource grants. The acting user needs permission to use the resources; the child App has its own identity and grants.
 6. Save before previewing or deploying. Deployment uses the saved project version.
@@ -202,7 +202,7 @@ The setup diagnostics page may say it cannot verify consent if the workspace blo
 ### Deploy and run the generated child App
 
 1. Select **Deploy** in the builder header or on an Apps card. VDAB saves the current draft, writes the generated source to `<workspacePath>/.vdab/deployments/<projectId>/<deploymentId>`, and starts the Databricks App deployment. When the App URL is available, the current window opens that App page.
-2. If the child App name or workspace folder is missing, Deploy opens App Details and focuses those fields. Genie Chat and Model Chat also block deploy until their workspace target is selected. **Settings → Deployment** remains the place for history, retry, and rollback.
+2. If the child App name or workspace folder is missing, Deploy opens App Details and focuses those fields. Genie Chat and Model Chat block deploy until each component is bound to a matching App resource under **Settings → Resources** (Genie space or serving endpoint with CAN_QUERY/CAN_MANAGE). **Settings → Deployment** remains the place for history, retry, and rollback. Start Databricks Job workflows deploy with the other workflow actions.
 3. Return to VDAB's Apps dashboard to check the child App status. **Open** launches the live App URL, **Edit** reopens Settings, and **Deploy** starts the same deployment.
 
 ### Update and recover

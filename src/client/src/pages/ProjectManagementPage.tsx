@@ -13,6 +13,7 @@ import { useStartProjectDeployment } from "../hooks/useStartProjectDeployment";
 import { toast } from "../components/ui/use-toast";
 import ProjectManagementProjectCard from "../components/ProjectManagementProjectCard";
 import ProjectImportPanel from "../components/ProjectImportPanel";
+import ProjectExportPreviewDialog from "../components/ProjectExportPreviewDialog";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,12 @@ function ProjectManagementPage({
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [isExportingAll, setExportingAll] = useState(false);
+  const [exportPreview, setExportPreview] = useState<{
+    title: string;
+    filename: string;
+    payload: unknown;
+    notice: string;
+  } | null>(null);
 
   async function handleCreate(
     name: string,
@@ -83,13 +90,18 @@ function ProjectManagementPage({
     setExportNotice(null);
     try {
       const bundle = await exportProjectMutation.mutateAsync(projectId);
-      downloadJson(bundle, `${
+      const filename = `${
         projectName
           .toLocaleLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "") || "vdab-project"
-      }.vdab.json`);
-      setExportNotice(`Exported ${projectName}. Select workspace resources again after import.`);
+      }.vdab.json`;
+      setExportPreview({
+        title: `Export ${projectName}`,
+        filename,
+        payload: bundle,
+        notice: `Exported ${projectName}. Select workspace resources again after import.`,
+      });
     } catch (error) {
       setExportError(
         error instanceof Error
@@ -109,13 +121,18 @@ function ProjectManagementPage({
       for (const project of projects) {
         bundles.push(await exportProjectMutation.mutateAsync(project.id));
       }
-      downloadJson({
-        format: "vdab-project-collection",
-        schemaVersion: 1,
-        exportedAt: new Date().toISOString(),
-        projects: bundles,
-      }, "vdab-all-projects.vdab.json");
-      setExportNotice("Exported all apps. Select workspace resources again after import.");
+      setExportPreview({
+        title: "Export all apps",
+        filename: "vdab-all-projects.vdab.json",
+        payload: {
+          format: "vdab-project-collection",
+          schemaVersion: 1,
+          exportedAt: new Date().toISOString(),
+          projects: bundles,
+        },
+        notice:
+          "Exported all apps. Select workspace resources again after import.",
+      });
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "Apps could not be exported.");
     } finally {
@@ -247,6 +264,19 @@ function ProjectManagementPage({
           <ProjectImportPanel className="border-0 bg-transparent p-0 shadow-none" />
         </DialogContent>
       </Dialog>
+      <ProjectExportPreviewDialog
+        open={exportPreview !== null}
+        title={exportPreview?.title ?? "Export"}
+        filename={exportPreview?.filename ?? "export.vdab.json"}
+        payload={exportPreview?.payload ?? null}
+        onClose={() => setExportPreview(null)}
+        onDownload={() => {
+          if (!exportPreview) return;
+          downloadJson(exportPreview.payload, exportPreview.filename);
+          setExportNotice(exportPreview.notice);
+          setExportPreview(null);
+        }}
+      />
     </main>
   );
 }

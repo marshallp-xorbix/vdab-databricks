@@ -24,8 +24,7 @@ export function createSmokeEmbeddedFixtures(): unknown[] {
     codeName: "smokeGenieChat",
     description: null,
     properties: {
-      genieSpaceId: "0123456789abcdef0123456789abcdef",
-      genieSpaceTitle: "Sample Genie Space",
+      genieSpaceAppResourceName: "sales-genie",
       title: "Workspace Genie",
       showBorder: true,
       chatTotalHeightPixels: 600,
@@ -42,7 +41,7 @@ export function createSmokeEmbeddedFixtures(): unknown[] {
     codeName: "smokeModelChat",
     description: null,
     properties: {
-      servingEndpointName: "sample-chat-endpoint",
+      servingEndpointAppResourceName: "sample-chat-endpoint",
       title: "Workspace model chat",
       showBorder: true,
       chatTotalHeightPixels: 600,

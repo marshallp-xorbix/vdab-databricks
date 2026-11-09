@@ -53,6 +53,7 @@ describe("aiBuilderApi", () => {
         customModulesSource: "# modules\n",
       },
       version: 3,
+      outcome: "completed",
     });
   });
 
@@ -69,6 +70,7 @@ describe("aiBuilderApi", () => {
       assistantMessage: "What should the button do?",
       proposal: null,
       version: 3,
+      outcome: "needsClarification",
     });
   });
 

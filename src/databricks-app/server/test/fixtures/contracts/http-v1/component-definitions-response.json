@@ -1343,8 +1343,7 @@
       "supportedEvents": null,
       "children": null,
       "props": {
-        "genieSpaceId": "",
-        "genieSpaceTitle": "",
+        "genieSpaceAppResourceName": "",
         "title": "Genie Chat",
         "showBorder": false,
         "chatTotalHeightPixels": 600
@@ -1363,7 +1362,7 @@
       "supportedEvents": null,
       "children": null,
       "props": {
-        "servingEndpointName": "",
+        "servingEndpointAppResourceName": "",
         "title": "Model Chat",
         "showBorder": false,
         "chatTotalHeightPixels": 600

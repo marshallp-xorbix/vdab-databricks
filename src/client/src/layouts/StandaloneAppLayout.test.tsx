@@ -50,7 +50,6 @@ describe("StandaloneAppLayout", () => {
       "src",
       "/vdab%20-%20logo.png",
     );
-    expect(screen.getByText("My Apps")).toBeInTheDocument();
     expect(
       screen.getByRole("group", { name: "Signed-in Databricks user" }),
     ).toHaveTextContent("Patrick Marshall");

@@ -6,16 +6,17 @@ const DEFAULT_HEIGHT_PIXELS = 600;
 const MIN_HEIGHT_PIXELS = 300;
 const MAX_HEIGHT_PIXELS = 2000;
 const MAX_TITLE_LENGTH = 500;
-const SERVING_ENDPOINT_NAME_PATTERN = /^[A-Za-z0-9_-]{1,63}$/;
+const MAX_RESOURCE_NAME_LENGTH = 63;
+const APP_RESOURCE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,62}$/;
 const MODEL_CHAT_PROPERTY_NAMES = [
-  "servingEndpointName",
+  "servingEndpointAppResourceName",
   "title",
   "showBorder",
   "chatTotalHeightPixels",
 ];
 
 export interface ModelChatProperties {
-  servingEndpointName: string;
+  servingEndpointAppResourceName: string;
   title: string;
   showBorder: boolean;
   chatTotalHeightPixels: number;
@@ -25,7 +26,7 @@ export interface ModelChatProperties {
 export function normalizeModelChatProperties(value: ProjectJsonObject): ProjectJsonObject {
   const properties = readProperties(value, invalidComponents);
   return {
-    servingEndpointName: properties.servingEndpointName,
+    servingEndpointAppResourceName: properties.servingEndpointAppResourceName,
     title: properties.title,
     showBorder: properties.showBorder,
     chatTotalHeightPixels: properties.chatTotalHeightPixels,
@@ -52,19 +53,22 @@ function readProperties(
   const invalid = (detail: string): never => {
     throw errorFactory(detail);
   };
-  if (!isRecord(value) || hasUnexpectedProperties(value, MODEL_CHAT_PROPERTY_NAMES)) {
+  const migrated = migrateLegacyModelChatProperties(value);
+  if (!isRecord(migrated) || hasUnexpectedProperties(migrated, MODEL_CHAT_PROPERTY_NAMES)) {
     return invalid("ModelChat contains an unsupported component property.");
   }
 
-  const servingEndpointName = value.servingEndpointName ?? "";
+  const servingEndpointAppResourceName = migrated.servingEndpointAppResourceName ?? "";
   if (
-    typeof servingEndpointName !== "string" ||
-    (servingEndpointName !== "" && !SERVING_ENDPOINT_NAME_PATTERN.test(servingEndpointName))
+    typeof servingEndpointAppResourceName !== "string" ||
+    (servingEndpointAppResourceName !== "" &&
+      (servingEndpointAppResourceName.length > MAX_RESOURCE_NAME_LENGTH ||
+        !APP_RESOURCE_NAME_PATTERN.test(servingEndpointAppResourceName)))
   ) {
-    return invalid("Select a valid serving endpoint from the current workspace.");
+    return invalid("Select a valid serving endpoint app resource from App Settings.");
   }
 
-  const title = value.title === undefined ? "Model Chat" : value.title;
+  const title = migrated.title === undefined ? "Model Chat" : migrated.title;
   if (
     typeof title !== "string" ||
     title.trim() !== title ||
@@ -75,14 +79,14 @@ function readProperties(
     return invalid("ModelChat title must be a non-empty string of at most 500 characters.");
   }
 
-  const showBorder = value.showBorder === undefined ? false : value.showBorder;
+  const showBorder = migrated.showBorder === undefined ? false : migrated.showBorder;
   if (typeof showBorder !== "boolean") {
     return invalid("ModelChat border setting must be a boolean.");
   }
 
-  const chatTotalHeightPixels = value.chatTotalHeightPixels === undefined
+  const chatTotalHeightPixels = migrated.chatTotalHeightPixels === undefined
     ? DEFAULT_HEIGHT_PIXELS
-    : value.chatTotalHeightPixels;
+    : migrated.chatTotalHeightPixels;
   if (
     typeof chatTotalHeightPixels !== "number" ||
     !Number.isSafeInteger(chatTotalHeightPixels) ||
@@ -92,5 +96,24 @@ function readProperties(
     return invalid(`ModelChat height must be an integer from ${MIN_HEIGHT_PIXELS} to ${MAX_HEIGHT_PIXELS} pixels.`);
   }
 
-  return { servingEndpointName, title, showBorder, chatTotalHeightPixels };
+  return {
+    servingEndpointAppResourceName,
+    title,
+    showBorder,
+    chatTotalHeightPixels,
+  };
+}
+
+/** Drops legacy endpoint-name binding fields when migrating older saved components. */
+export function migrateLegacyModelChatProperties(value: unknown): ProjectJsonObject {
+  if (!isRecord(value)) return {};
+  const { servingEndpointName: _legacyEndpoint, ...rest } = value;
+  const resourceName =
+    typeof rest.servingEndpointAppResourceName === "string"
+      ? rest.servingEndpointAppResourceName
+      : "";
+  return {
+    ...rest,
+    servingEndpointAppResourceName: resourceName,
+  };
 }

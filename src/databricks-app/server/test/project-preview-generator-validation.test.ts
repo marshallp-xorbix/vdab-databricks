@@ -265,7 +265,7 @@ test("ProjectPreviewGenerator_RejectsMalformedPropertiesAndInvalidModelChatEndpo
   const invalidModelChat: ProjectComponent = {
     ...createTextInput(),
     type: "ModelChat",
-    properties: { servingEndpointName: "../external" },
+    properties: { servingEndpointAppResourceName: "../external" },
   };
 
   assert.throws(

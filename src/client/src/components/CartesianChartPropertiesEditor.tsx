@@ -66,7 +66,11 @@ function CartesianChartPropertiesEditor({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor={colorId}>Series color</Label>
+          <Label htmlFor={colorId}>
+            {chartType === "PieChart" || chartType === "DonutChart"
+              ? "Palette base color"
+              : "Series color"}
+          </Label>
           <Input
             id={colorId}
             type="color"

@@ -38,11 +38,15 @@ function ProjectGeneratedCodeEditor({
   const replaceCustomModulesMutation = useReplaceProjectCustomModules();
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [openState, setOpenState] = useState<Record<string, boolean>>({});
-  const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
+  const [loadedProjectId, setLoadedProjectId] = useState<string | null>(() =>
+    hasLoadedCustomModulesSource ? projectId : null,
+  );
   const customModulesDocument = customModulesQuery.data;
+  const modulesReady =
+    loadedProjectId === projectId || hasLoadedCustomModulesSource;
   const isCustomModulesDirty = Boolean(
     customModulesDocument &&
-      loadedProjectId === projectId &&
+      modulesReady &&
       customModulesSource !== customModulesDocument.source,
   );
   const previewFiles = preview?.files ?? [];
@@ -151,7 +155,7 @@ function ProjectGeneratedCodeEditor({
           customModulesCode={customModulesSource}
           onCustomModulesCodeChange={onCustomModulesSourceChange}
           prebuiltModulesLibrarySource={PREBUILT_MODULES_LIBRARY_SOURCE}
-          appMetaLoading={customModulesQuery.isPending || loadedProjectId !== projectId}
+          appMetaLoading={customModulesQuery.isPending || !modulesReady}
           previewErrors={[]}
           readOnly={isDisabled}
         />

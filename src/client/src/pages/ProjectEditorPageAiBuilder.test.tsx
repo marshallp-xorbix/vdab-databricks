@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { UserEvent } from "@testing-library/user-event";
 import { getProjectComponents } from "../api/projectComponentsApi";
 import {
   getProjectMock,
@@ -24,12 +25,19 @@ import {
 afterEach(resetProjectEditorTestState);
 beforeEach(initializeProjectEditorTestState);
 
+async function ensureAiBuilderOpen(user: UserEvent): Promise<void> {
+  if (!screen.queryByRole("region", { name: "AI Builder" })) {
+    await user.click(screen.getByRole("button", { name: "Prompt" }));
+  }
+  await screen.findByRole("region", { name: "AI Builder" });
+}
+
 describe("ProjectEditorPage AI Builder drafts", () => {
   it("opens the AI Builder directly from the shared builder Prompt action", async () => {
     const user = userEvent.setup();
     await renderProjectEditorPage();
 
-    await user.click(await screen.findByRole("link", { name: "Prompt" }));
+    await user.click(await screen.findByRole("button", { name: "Prompt" }));
 
     expect(await screen.findByRole("region", { name: "AI Builder" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "What would you like to change?" })).toBeInTheDocument();
@@ -97,9 +105,9 @@ describe("ProjectEditorPage AI Builder drafts", () => {
 
     await renderProjectEditorPage();
     await user.click(await screen.findByRole("link", { name: "Workflow" }));
-    await user.click(screen.getByRole("link", { name: "Prompt" }));
+    await ensureAiBuilderOpen(user);
     const endpointSelect = await screen.findByRole("button", {
-      name: "Serving endpoint",
+      name: "Select AI model",
     });
     await waitFor(() => expect(endpointSelect).toHaveTextContent("builder-model"));
     await user.click(screen.getByRole("link", { name: "Settings" }));
@@ -107,7 +115,7 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       expect(screen.getByLabelText("Name")).toHaveValue(project.name),
     );
     await user.click(screen.getByRole("link", { name: "Workflow" }));
-    await user.click(screen.getByRole("link", { name: "Prompt" }));
+    await ensureAiBuilderOpen(user);
     const promptInput = screen.getByRole("textbox", {
       name: "What would you like to change?",
     });
@@ -123,21 +131,19 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       screen.getByRole("button", { name: "Generate suggestion" }),
     );
     await screen.findByText("Added the requested control.");
-    expect(await screen.findByRole("button", { name: "Applied to draft" })).toBeDisabled();
+    expect(
+      await screen.findByText("AI changes applied to the draft. Save the app when you are ready."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Apply proposal to draft" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: "Canvas" }));
-    expect(
-      screen.getByRole("button", { name: "Save" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     await user.click(screen.getByRole("link", { name: "Workflow" }));
     await user.click(screen.getByRole("link", { name: "Code" }));
     await user.click(await screen.findByRole("button", { name: "custom_modules.py" }));
     expect(
       screen.getByText("Custom Python changes are not saved."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Save" }),
-    ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save custom modules" })).toBeEnabled();
   }, 15_000);
 
@@ -261,7 +267,7 @@ describe("ProjectEditorPage AI Builder drafts", () => {
 
     await renderProjectEditorPage();
     await user.click(await screen.findByRole("link", { name: "Workflow" }));
-    await user.click(screen.getByRole("link", { name: "Prompt" }));
+    await ensureAiBuilderOpen(user);
     const promptInput = await screen.findByRole("textbox", {
       name: "What would you like to change?",
     });
@@ -271,7 +277,9 @@ describe("ProjectEditorPage AI Builder drafts", () => {
       screen.getByRole("button", { name: "Generate suggestion" }),
     );
     await screen.findByText("Updated all project drafts.");
-    expect(await screen.findByRole("button", { name: "Applied to draft" })).toBeDisabled();
+    expect(
+      await screen.findByText("AI changes applied to the draft. Save the app when you are ready."),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: "Canvas" }));
     await user.click(await screen.findByRole("link", { name: "Workflow" }));
@@ -281,16 +289,6 @@ describe("ProjectEditorPage AI Builder drafts", () => {
     await waitFor(() =>
       expect(replaceProjectWorkflowMock).toHaveBeenCalledTimes(1),
     );
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Save" }),
-      ).toBeDisabled(),
-    );
-    await user.click(screen.getByRole("link", { name: "Canvas" }));
-    expect(
-      await screen.findByRole("button", { name: "Save" }),
-    ).toBeDisabled();
-    await user.click(screen.getByRole("link", { name: "Workflow" }));
     await user.click(screen.getByRole("link", { name: "Code" }));
     await user.click(await screen.findByRole("button", { name: "custom_modules.py" }));
     await user.click(

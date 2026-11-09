@@ -26,6 +26,8 @@ import type { ComponentDragData } from "../types/dnd";
 import { readComponentDragData } from "../utils/dndPayload";
 import { nestedLayoutFirstCollisionDetection } from "../utils/componentDragCollision";
 import { useProjectWorkflowNavigation } from "../hooks/useProjectWorkflowNavigation";
+import { useBuilderLayout } from "../context/BuilderLayoutContext";
+import { PREBUILT_MODULES_LIBRARY_SOURCE } from "../utils/prebuiltModulesLibrarySource";
 
 interface IProjectComponentsEditorProps {
   components: IProjectComponent[];
@@ -34,6 +36,7 @@ interface IProjectComponentsEditorProps {
   isDisabled: boolean;
   workflow: IProjectWorkflowDefinition;
   toolbar: ReactNode;
+  customModulesCode?: string;
   onComponentsChange: (components: IProjectComponent[]) => void;
   onWorkflowChange: (workflow: IProjectWorkflowDefinition) => void;
   onPageWidthChange: (pageWidth: number) => void;
@@ -47,6 +50,7 @@ function ProjectComponentsEditor({
   isDisabled,
   workflow,
   toolbar,
+  customModulesCode = "",
   onComponentsChange,
   onWorkflowChange,
   onPageWidthChange,
@@ -60,9 +64,8 @@ function ProjectComponentsEditor({
   });
   const { theme: productTheme } = useTheme();
   const jumpToWorkflow = useProjectWorkflowNavigation();
+  const { isLeftPanelOpen, isRightPanelOpen } = useBuilderLayout();
   const [activeDragData, setActiveDragData] = useState<ComponentDragData | null>(null);
-  const [showPalette, setShowPalette] = useState(true);
-  const [showProperties, setShowProperties] = useState(true);
   const resolvedTheme = useMemo(
     () => ({ ...getStreamlitThemeDefaults(productTheme), ...theme }),
     [productTheme, theme],
@@ -154,7 +157,7 @@ function ProjectComponentsEditor({
 
       {isMainFlowActive ? (
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-card">
-          <aside className={`h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)] ${showPalette ? "" : "hidden"}`}>
+          <aside className={`h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)] ${isLeftPanelOpen ? "" : "hidden"}`}>
             <BuilderLeftPanel
               builderMode="canvas"
               activeTabType={TabType.MainFlow}
@@ -163,11 +166,7 @@ function ProjectComponentsEditor({
             />
           </aside>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="flex min-w-0 items-center">
-              <button type="button" className="shrink-0 px-2 text-xs font-semibold" aria-pressed={showPalette} onClick={() => setShowPalette((open) => !open)}>Palette</button>
-              <div className="min-w-0 flex-1">{toolbar}</div>
-              <button type="button" className="shrink-0 px-2 text-xs font-semibold" aria-pressed={showProperties} onClick={() => setShowProperties((open) => !open)}>Properties</button>
-            </div>
+            <div className="min-w-0">{toolbar}</div>
             <TabBar
               tabs={tabManagement.openTabs}
               activeTabId={tabManagement.activeTabId}
@@ -189,12 +188,14 @@ function ProjectComponentsEditor({
               onDeleteModal={canvasEditor.removeCanvasComponent}
             />
           </div>
-          <aside className={`h-full w-80 flex-shrink-0 overflow-hidden border-l border-[var(--builder-chrome-border)] ${showProperties ? "" : "hidden"}`}>
+          <aside className={`h-full w-80 flex-shrink-0 overflow-hidden border-l border-[var(--builder-chrome-border)] ${isRightPanelOpen ? "" : "hidden"}`}>
             <RightSidebar
               selectedComponent={canvasEditor.canvasComponents.find((component) => component.id === editor.selectedKey) ?? null}
               components={canvasEditor.canvasComponents}
               onUpdateComponent={canvasEditor.updateCanvasComponent}
               workflowDefinition={canvasWorkflow}
+              customModulesCode={customModulesCode}
+              prebuiltModulesLibrarySource={PREBUILT_MODULES_LIBRARY_SOURCE}
               onWorkflowDefinitionChange={canvasEditor.updateCanvasWorkflow}
               onJumpToWorkflowAction={jumpToWorkflow}
               onCloseProperties={() => editor.selectComponent(null)}
@@ -222,7 +223,7 @@ function ProjectComponentsEditor({
         }}
       >
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-card">
-          <aside className={`h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)] ${showPalette ? "" : "hidden"}`}>
+          <aside className={`h-full w-60 flex-shrink-0 overflow-hidden border-r border-[var(--builder-chrome-border)] ${isLeftPanelOpen ? "" : "hidden"}`}>
             <BuilderLeftPanel
               builderMode="canvas"
               activeTabType={activeTab?.type ?? TabType.MainPage}
@@ -232,11 +233,7 @@ function ProjectComponentsEditor({
             />
           </aside>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="flex min-w-0 items-center">
-              <button type="button" className="shrink-0 px-2 text-xs font-semibold" aria-pressed={showPalette} onClick={() => setShowPalette((open) => !open)}>Palette</button>
-              <div className="min-w-0 flex-1">{toolbar}</div>
-              <button type="button" className="shrink-0 px-2 text-xs font-semibold" aria-pressed={showProperties} onClick={() => setShowProperties((open) => !open)}>Properties</button>
-            </div>
+            <div className="min-w-0">{toolbar}</div>
             <TabBar
               tabs={tabManagement.openTabs}
               activeTabId={tabManagement.activeTabId}
@@ -262,12 +259,14 @@ function ProjectComponentsEditor({
               />
             </div>
           </div>
-          <aside className={`h-full w-80 flex-shrink-0 overflow-hidden border-l border-[var(--builder-chrome-border)] ${showProperties ? "" : "hidden"}`}>
+          <aside className={`h-full w-80 flex-shrink-0 overflow-hidden border-l border-[var(--builder-chrome-border)] ${isRightPanelOpen ? "" : "hidden"}`}>
             <RightSidebar
               selectedComponent={canvasEditor.canvasComponents.find((component) => component.id === editor.selectedKey) ?? null}
               components={canvasEditor.canvasComponents}
               onUpdateComponent={canvasEditor.updateCanvasComponent}
               workflowDefinition={canvasWorkflow}
+              customModulesCode={customModulesCode}
+              prebuiltModulesLibrarySource={PREBUILT_MODULES_LIBRARY_SOURCE}
               onWorkflowDefinitionChange={canvasEditor.updateCanvasWorkflow}
               onJumpToWorkflowAction={jumpToWorkflow}
               onCloseProperties={() => editor.selectComponent(null)}

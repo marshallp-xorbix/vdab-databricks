@@ -7,6 +7,8 @@ import { deploySavedProjectAndOpen } from "../utils/deploySavedProject";
 import { getChatDeployBlockingMessage } from "../utils/chatDeployBlocking";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectDeploymentSettings } from "../models/ProjectDeploymentSettings";
+import { useProjectDeployments } from "../hooks/useProjectDeployments";
+import { useWorkspaceAppDeploymentTarget } from "../hooks/useWorkspaceAppDeploymentTarget";
 
 interface IProjectDeployButtonProps {
   projectId: string;
@@ -34,7 +36,12 @@ function ProjectDeployButton({
 }: Readonly<IProjectDeployButtonProps>) {
   const navigate = useNavigate();
   const [isDeploying, setDeploying] = useState(false);
-  const missingTarget = !deploymentSettings?.appName || !deploymentSettings.workspacePath;
+  const deploymentsQuery = useProjectDeployments(projectId);
+  const targetQuery = useWorkspaceAppDeploymentTarget(
+    deploymentsQuery.data?.childApp?.appName ?? deploymentSettings?.appName,
+  );
+  const missingTarget =
+    !deploymentSettings?.appName || !deploymentSettings.workspacePath;
 
   async function deploy(): Promise<void> {
     if (!canEdit || isSaving || isDeploying) return;
@@ -42,13 +49,21 @@ function ProjectDeployButton({
       navigate(`/apps/${projectId}?section=settings&focus=deployment-target`);
       toast({
         title: "Deployment needs a target",
-        description: "Set the child App name and workspace folder, then choose Deploy again.",
+        description:
+          "Set the child App name and workspace folder, then choose Deploy again.",
       });
       return;
     }
-    const blocker = getChatDeployBlockingMessage(components);
+    const blocker = getChatDeployBlockingMessage(
+      components,
+      targetQuery.data?.appResources ?? [],
+    );
     if (blocker) {
-      toast({ title: "Deployment blocked", description: blocker, variant: "destructive" });
+      toast({
+        title: "Deployment blocked",
+        description: blocker,
+        variant: "destructive",
+      });
       return;
     }
     if (isCustomModulesDirty) {
@@ -64,7 +79,8 @@ function ProjectDeployButton({
       if (!saved) {
         toast({
           title: "Save failed",
-          description: "The project could not be saved, so deployment did not start.",
+          description:
+            "The project could not be saved, so deployment did not start.",
           variant: "destructive",
         });
         return;
@@ -80,7 +96,10 @@ function ProjectDeployButton({
     } catch (error) {
       toast({
         title: "Deployment failed",
-        description: error instanceof Error ? error.message : "The App deployment could not be started.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The App deployment could not be started.",
         variant: "destructive",
       });
       setDeploying(false);

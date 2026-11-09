@@ -153,7 +153,14 @@ test("ProjectPreviewGenerator_AddsApprovedAsyncpgOnlyForLakebaseBackedOutput", (
     lakebasePreview.files.map((file) => file.path),
     ["app.py", "app.yaml", "custom_modules.py", "requirements.txt", ".streamlit/config.toml", ASYNC_PG_LICENSE_FILE_PATH],
   );
-  assert.equal(lakebasePreview.files.find((file) => file.path === "requirements.txt")?.content, "asyncpg==0.32.0\n");
+  assert.match(
+    lakebasePreview.files.find((file) => file.path === "requirements.txt")?.content ?? "",
+    /asyncpg==0\.32\.0/,
+  );
+  assert.match(
+    lakebasePreview.files.find((file) => file.path === "requirements.txt")?.content ?? "",
+    /streamlit>=1\.56\.0/,
+  );
   assert.equal(lakebasePreview.files.find((file) => file.path === ASYNC_PG_LICENSE_FILE_PATH)?.content, ASYNC_PG_LICENSE_TEXT);
   assert.match(
     lakebasePreview.files[0]?.content ?? "",
@@ -182,7 +189,10 @@ test("ProjectPreviewGenerator_UsesViewerAuthorizedDatabaseInstanceCredentialsFor
   );
   const source = preview.files.find((file) => file.path === "app.py")?.content ?? "";
 
-  assert.equal(preview.files.find((file) => file.path === "requirements.txt")?.content, "asyncpg==0.32.0\n");
+  assert.match(
+    preview.files.find((file) => file.path === "requirements.txt")?.content ?? "",
+    /asyncpg==0\.32\.0/,
+  );
   assert.match(
     source,
     /_vdab_lakebase_provisioned_query_df\('public', 'customers', 100/,

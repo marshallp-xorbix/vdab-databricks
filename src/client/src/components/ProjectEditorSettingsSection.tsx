@@ -16,6 +16,7 @@ import {
   readSettingsTab,
   readDeploymentMode,
 } from "../utils/projectEditorSettings";
+import { getDatabricksComputeStatePresentation } from "../utils/workspaceAppStatus";
 
 interface IProjectEditorSettingsSectionProps {
   editor: ReturnType<typeof useProjectEditor>;
@@ -216,7 +217,19 @@ function ProjectEditorSettingsSection({
                   <span className="inline-flex items-center gap-2 rounded-full border border-border px-2 py-0.5 text-xs">
                     <span
                       aria-hidden="true"
-                      className="h-2 w-2 rounded-full bg-warning"
+                      className={`h-2 w-2 rounded-full ${
+                        appStatus.app?.computeState
+                          ? `${getDatabricksComputeStatePresentation(appStatus.app.computeState).dotColorClass}${
+                              getDatabricksComputeStatePresentation(
+                                appStatus.app.computeState,
+                              ).dotPulse
+                                ? " animate-pulse"
+                                : ""
+                            }`
+                          : appStatus.status === "Error"
+                            ? "bg-destructive"
+                            : "bg-muted-foreground"
+                      }`}
                     />
                     {appStatus.status}
                   </span>

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import ProjectEditorUnsavedChangesDialog from "../components/ProjectEditorUnsavedChangesDialog";
 import ProjectEditorToolbar from "../components/ProjectEditorToolbar";
@@ -6,10 +6,20 @@ import ProjectEditorSettingsSection from "../components/ProjectEditorSettingsSec
 import ProjectEditorComponentsSection from "../components/ProjectEditorComponentsSection";
 import ProjectEditorWorkflowSection from "../components/ProjectEditorWorkflowSection";
 import ProjectGeneratedCodeEditor from "../components/ProjectGeneratedCodeEditor";
+import AiBuilderPanel from "../components/AiBuilderPanel";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "../components/ui/sheet";
 import { useProjectEditor } from "../hooks/useProjectEditor";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ComponentRegistryProvider } from "../context/ComponentRegistryContext";
+import { BuilderLayoutProvider } from "../context/BuilderLayoutContext";
 import { useProjectDeployments } from "../hooks/useProjectDeployments";
+import { useProjectCustomModules } from "../hooks/useProjectCustomModules";
+import { useWorkspaceServingEndpoints } from "../hooks/useWorkspaceServingEndpoints";
 
 interface IProjectEditorPageProps {
   title?: string;
@@ -19,8 +29,22 @@ interface IProjectEditorPageProps {
 function ProjectEditorPage({
   title = "App Builder",
 }: Readonly<IProjectEditorPageProps>) {
+  return (
+    <BuilderLayoutProvider>
+      <ProjectEditorPageContent title={title} />
+    </BuilderLayoutProvider>
+  );
+}
+
+function ProjectEditorPageContent({
+  title = "App Builder",
+}: Readonly<IProjectEditorPageProps>) {
   const editor = useProjectEditor();
+  const [searchParams, setSearchParams] = useSearchParams();
   const projectDeploymentsQuery = useProjectDeployments(editor.project?.id);
+  const customModulesQuery = useProjectCustomModules(editor.project?.id);
+  const servingEndpointsQuery = useWorkspaceServingEndpoints();
+  const [showAiChat, setShowAiChat] = useState(false);
   const [customModulesState, setCustomModulesState] = useState({
     projectId: "",
     source: null as string | null,
@@ -60,6 +84,36 @@ function ProjectEditorPage({
     },
     [project],
   );
+
+  useEffect(() => {
+    if (searchParams.get("tool") !== "ai") return;
+    setShowAiChat(true);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("tool");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const document = customModulesQuery.data;
+    if (
+      document &&
+      project &&
+      document.projectId === project.id &&
+      !hasLoadedCustomModulesSource
+    ) {
+      handleCustomModulesSourceChange(document.source);
+    }
+  }, [
+    customModulesQuery.data,
+    handleCustomModulesSourceChange,
+    hasLoadedCustomModulesSource,
+    project,
+  ]);
 
   if (projectQuery.isPending) {
     return (
@@ -108,17 +162,19 @@ function ProjectEditorPage({
       projectId={project.id}
       appName={projectDeploymentsQuery.data?.childApp?.appName}
       canEdit={canEdit}
-      canSave={isActiveSectionDirty}
+      canSave={canEdit}
       isSaving={
         isCanvasSaving ||
         updateProjectMutation.isPending ||
         replaceComponentsMutation.isPending ||
         replaceWorkflowMutation.isPending
       }
-      hasUnsavedChanges={editor.isDirty}
+      hasUnsavedChanges={editor.isDirty || isActiveSectionDirty}
       isCustomModulesDirty={isCustomModulesDirty}
       deploymentSettings={editor.deploymentSettings}
       components={editor.components}
+      isAiOpen={showAiChat}
+      onToggleAi={() => setShowAiChat((open) => !open)}
       onSaveForDeploy={handleSaveCanvas}
       onSave={handleSaveActiveSection}
       onRefresh={() => {
@@ -153,6 +209,7 @@ function ProjectEditorPage({
           <ProjectEditorComponentsSection
             isActive={activeEditorSection === "components"}
             toolbar={builderActions}
+            customModulesSource={customModulesSource}
             editor={editor}
           />
         </ComponentRegistryProvider>
@@ -199,6 +256,79 @@ function ProjectEditorPage({
           />
         )}
       </div>
+
+      <Sheet
+        modal={false}
+        open={showAiChat}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setShowAiChat(false);
+        }}
+      >
+        <SheetContent
+          side="right"
+          overlayClassName="pointer-events-none"
+          className="!inset-y-auto !top-auto !right-4 !bottom-4 !h-[70vh] !w-96 !max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border-2 border-primary bg-card p-0 shadow-xl sm:!max-w-96 [&>button]:hidden"
+        >
+          <SheetTitle className="sr-only">AI Builder</SheetTitle>
+          <SheetDescription className="sr-only">
+            Request a project change using a workspace serving endpoint.
+          </SheetDescription>
+          <div className="flex min-h-0 flex-1">
+            {customModulesQuery.isPending && (
+              <p role="status" className="p-3 text-sm">
+                Loading custom modules…
+              </p>
+            )}
+            {customModulesQuery.isError && (
+              <p role="alert" className="p-3 text-sm text-destructive">
+                {customModulesQuery.error instanceof Error
+                  ? customModulesQuery.error.message
+                  : "Custom Python modules could not be loaded."}
+              </p>
+            )}
+            {servingEndpointsQuery.isError && (
+              <p role="alert" className="p-3 text-sm text-destructive">
+                {servingEndpointsQuery.error instanceof Error
+                  ? servingEndpointsQuery.error.message
+                  : "Serving endpoints could not be loaded for AI Builder."}
+              </p>
+            )}
+            {customModulesQuery.data && (
+              <AiBuilderPanel
+                projectId={project.id}
+                version={
+                  editor.componentsDocument?.version ??
+                  editor.workflowDocument?.version ??
+                  project.version
+                }
+                endpoints={servingEndpointsQuery.data?.items ?? []}
+                endpointsLoading={servingEndpointsQuery.isPending}
+                components={editor.components}
+                workflow={editor.workflow}
+                customModulesSource={
+                  customModulesSource || customModulesQuery.data.source
+                }
+                isDisabled={
+                  !canEdit ||
+                  customModulesQuery.isPending ||
+                  servingEndpointsQuery.isError
+                }
+                onClose={() => setShowAiChat(false)}
+                onApplyProposal={(proposal) => {
+                  editor.handleComponentsChange(proposal.components);
+                  editor.setWorkflow(proposal.workflow);
+                  if (
+                    proposal.customModulesSource !==
+                    customModulesQuery.data.source
+                  ) {
+                    handleCustomModulesSourceChange(proposal.customModulesSource);
+                  }
+                }}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <ProjectEditorUnsavedChangesDialog
         isOpen={navigationBlocker.state === "blocked"}

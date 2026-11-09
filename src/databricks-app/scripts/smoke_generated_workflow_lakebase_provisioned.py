@@ -22,7 +22,8 @@ from smoke_generated_workflow_assertions import _validate_workflow_contract
 
 def _run_lakebase_provisioned_scenarios(sources: Mapping[str, str]) -> list[str]:
     """Execute generated Provisioned reads and editable writes with local mocks."""
-    if sources.get("requirements.txt") != "asyncpg==0.32.0\n":
+    requirements = sources.get("requirements.txt") or ""
+    if "asyncpg==0.32.0" not in requirements or "streamlit>=" not in requirements:
         raise AssertionError("Provisioned output omitted the approved runtime requirement.")
     with tempfile.TemporaryDirectory(prefix="vdab-provisioned-smoke-") as directory:
         bundle_directory = Path(directory)

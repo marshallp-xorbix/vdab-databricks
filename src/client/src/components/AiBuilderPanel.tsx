@@ -1,7 +1,6 @@
-import { Send, SquarePen, X } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { ArrowUpIcon, Loader2, SquarePen, X } from "lucide-react";
 import AiBuilderModelSelector from "./AiBuilderModelSelector";
+import AiBuilderOutcomeMessage from "./AiBuilderOutcomeMessage";
 import type {
   IAiBuilderConversationMessage,
   IAiBuilderProposal,
@@ -11,13 +10,21 @@ import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
 import type { IWorkspaceServingEndpoint } from "../models/WorkspaceServingEndpoint";
 import { useAiBuilderConversation } from "../hooks/useAiBuilderConversation";
 import { Button } from "./ui/button";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from "./ui/input-group";
 import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface IAiBuilderPanelProps {
   projectId: string;
   version: number;
   endpoints: IWorkspaceServingEndpoint[];
+  endpointsLoading?: boolean;
   components: IProjectComponent[];
   workflow: IProjectWorkflowDefinition;
   customModulesSource: string;
@@ -35,6 +42,7 @@ function AiBuilderPanel({
   projectId,
   version,
   endpoints,
+  endpointsLoading = false,
   components,
   workflow,
   customModulesSource,
@@ -75,6 +83,13 @@ function AiBuilderPanel({
     onApplyProposal,
   });
 
+  const showManualApply =
+    Boolean(latestResult?.proposal) &&
+    appliedVersion !== latestResult?.version;
+  const lastAssistantMessageId = [...messages]
+    .reverse()
+    .find((message) => message.role === "assistant")?.id;
+
   return (
     <section
       aria-labelledby="ai-builder-heading"
@@ -89,6 +104,7 @@ function AiBuilderPanel({
             endpoints={availableEndpoints}
             value={endpointName}
             disabled={isDisabled || isPending || isApplying}
+            isLoading={endpointsLoading}
             onChange={setSelectedEndpointName}
           />
         </div>
@@ -138,12 +154,25 @@ function AiBuilderPanel({
                 className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-snug ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
               >
                 {message.role === "assistant" ? (
-                  <div className="ai-builder-markdown">
-                    {latestResult && message.id === messages.at(-1)?.id && (
-                      <p className="mb-1 font-semibold">{outcomeTitle(latestResult.outcome)}</p>
-                    )}
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-                  </div>
+                  latestResult && message.id === lastAssistantMessageId ? (
+                    <AiBuilderOutcomeMessage
+                      outcome={latestResult.outcome}
+                      message={message.content}
+                      suggestedNextStep={
+                        applyError
+                          ? "Request a new suggestion after saving or reverting draft changes."
+                          : appliedVersion === latestResult.version
+                            ? "Save the app when you are ready."
+                            : null
+                      }
+                    />
+                  ) : (
+                    <div className="ai-builder-markdown">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  )
                 ) : (
                   <p className="whitespace-pre-wrap">{message.content}</p>
                 )}
@@ -153,7 +182,11 @@ function AiBuilderPanel({
         )}
         {isPending && progressMessage && (
           <li className="flex justify-start">
-            <div className="max-w-[80%] rounded-lg bg-muted px-3 py-2 text-xs" role="status" aria-live="polite">
+            <div
+              className="max-w-[80%] rounded-lg bg-muted px-3 py-2 text-xs"
+              role="status"
+              aria-live="polite"
+            >
               {progressMessage}
             </div>
           </li>
@@ -173,40 +206,47 @@ function AiBuilderPanel({
         </p>
       )}
 
-      {latestResult?.proposal && (
+      {showManualApply && (
         <div className="shrink-0 space-y-2 border-t border-border bg-card p-3">
           <p className="text-sm">
-            {appliedVersion === latestResult.version
-              ? "AI changes applied to the draft. Save the app when you are ready."
-              : "A project proposal is ready for review."}
+            A project proposal is ready but was not applied automatically.
           </p>
-          {applyError && <p role="alert" className="text-sm text-destructive">{applyError}</p>}
+          {applyError && (
+            <p role="alert" className="text-sm text-destructive">
+              {applyError}
+            </p>
+          )}
           <Button
             type="button"
-            disabled={isDisabled || isApplying || appliedVersion === latestResult.version}
+            disabled={isDisabled || isApplying}
             onClick={() => void handleApplyProposal()}
           >
-            {appliedVersion === latestResult.version ? "Applied to draft" : isApplying ? "Applying…" : "Apply proposal to draft"}
+            {isApplying ? "Applying…" : "Apply proposal to draft"}
           </Button>
         </div>
+      )}
+
+      {latestResult?.proposal && appliedVersion === latestResult.version && (
+        <p role="status" className="shrink-0 border-t border-border px-3 py-2 text-xs text-muted-foreground">
+          AI changes applied to the draft. Save the app when you are ready.
+        </p>
       )}
 
       <form
         className="shrink-0 border-t border-border bg-muted p-3"
         onSubmit={(event) => void handleSubmit(event)}
       >
-        <div className="relative">
-          <Label htmlFor="ai-builder-prompt" className="sr-only">
-            What would you like to change?
-          </Label>
-          <Textarea
+        <Label htmlFor="ai-builder-prompt" className="sr-only">
+          What would you like to change?
+        </Label>
+        <InputGroup className="bg-background">
+          <InputGroupTextarea
             id="ai-builder-prompt"
             name="prompt"
             placeholder="Describe what you want to build..."
             value={prompt}
             maxLength={4000}
             rows={3}
-            className="resize-none bg-background pr-12"
             disabled={isDisabled || isPending || isApplying || !isEndpointAvailable}
             onChange={(event) => setPrompt(event.target.value)}
             onKeyDown={(event) => {
@@ -216,33 +256,33 @@ function AiBuilderPanel({
               }
             }}
           />
-          <Button
-            type="submit"
-            size="icon"
-            aria-label="Generate suggestion"
-            disabled={!canSubmit}
-            className="absolute bottom-2 right-2 h-8 w-8"
-          >
-            <Send className="h-4 w-4" />
-            <span className="sr-only">{isPending ? "Generating…" : "Send"}</span>
-          </Button>
-        </div>
-        {isPending && (
-          <Button type="button" variant="outline" className="mt-2" onClick={handleCancel}>
-            Cancel request
-          </Button>
-        )}
+          <InputGroupAddon align="block-end" className="justify-end">
+            {isPending ? (
+              <InputGroupButton
+                type="button"
+                size="icon-sm"
+                aria-label="Cancel request"
+                onClick={handleCancel}
+              >
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="sr-only">Cancel request</span>
+              </InputGroupButton>
+            ) : (
+              <InputGroupButton
+                type="submit"
+                size="icon-sm"
+                aria-label="Generate suggestion"
+                disabled={!canSubmit}
+              >
+                <ArrowUpIcon className="h-4 w-4" />
+                <span className="sr-only">Send</span>
+              </InputGroupButton>
+            )}
+          </InputGroupAddon>
+        </InputGroup>
       </form>
-
     </section>
   );
-}
-
-function outcomeTitle(outcome: string): string {
-  if (outcome === "partial") return "Partial result";
-  if (outcome === "needsClarification") return "Needs clarification";
-  if (outcome === "unableToComplete") return "Unable to complete";
-  return "Completed";
 }
 
 export default AiBuilderPanel;

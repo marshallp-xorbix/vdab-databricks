@@ -59,7 +59,7 @@ describe("AiBuilderPanel", () => {
       />,
     );
 
-    const endpointSelect = screen.getByRole("button", { name: "Serving endpoint" });
+    const endpointSelect = screen.getByRole("button", { name: "Select AI model" });
     expect(endpointSelect).toHaveTextContent("builder-model");
     await user.click(endpointSelect);
     expect(screen.getByRole("button", { name: /manageable-model/ })).toBeInTheDocument();
@@ -88,7 +88,9 @@ describe("AiBuilderPanel", () => {
     await waitFor(() => {
       expect(onApplyProposal).toHaveBeenCalledWith(proposal, 4);
     });
-    expect(screen.getByRole("button", { name: "Applied to draft" })).toBeDisabled();
+    expect(
+      screen.getByText(/AI changes applied to the draft/i),
+    ).toBeInTheDocument();
   });
 
   it("explains when no ready queryable endpoint is available and hides apply for text-only responses", async () => {

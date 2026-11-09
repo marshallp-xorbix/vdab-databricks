@@ -264,7 +264,7 @@ function ProjectComponentPropertiesEditor({
 
   return (
     <p role="status" className="rounded-md border border-border p-4 text-sm">
-      The {component.type || "selected"} editor is not available in this slice.
+      Unknown component type "{component.type || "selected"}".
       Its saved configuration is preserved.
     </p>
   );

@@ -392,32 +392,23 @@ test("ProjectDeploymentService_CreateAndRetryUsesPersistedLakebaseResourceBindin
   assert.equal(harness.workspace.createdApps.length, 1);
 });
 
-test("ProjectDeploymentService_UnsupportedJobsWorkflow_BlocksBeforeWorkspaceMutation", async () => {
+test("ProjectDeploymentService_JobsWorkflow_DeploysWithoutJobsScopeBlocker", async () => {
   const harness = createHarness({
     requirements: {
       userApiScopes: [],
       appResources: [],
-      blockers: [
-        {
-          code: "jobs_user_authorization_scope_unavailable",
-          detail: "Jobs scope is not documented.",
-        },
-      ],
+      blockers: [],
     },
   });
 
-  await assert.rejects(
-    harness.service.deploy(CALLER, "request-1", PROJECT_ID, {
-      mode: "createNew",
-      appName: "project-child",
-      confirmOverwrite: false,
-    }),
-    (error: unknown) =>
-      error instanceof ApplicationError &&
-      error.code === "jobs_user_authorization_scope_unavailable",
-  );
-  assert.equal(harness.workspace.apps.size, 0);
-  assert.equal(harness.repository.records.length, 0);
+  const deployment = await harness.service.deploy(CALLER, "request-1", PROJECT_ID, {
+    mode: "createNew",
+    appName: "project-child",
+    confirmOverwrite: false,
+  });
+  assert.equal(deployment.status, "succeeded");
+  assert.equal(harness.workspace.apps.size, 1);
+  assert.equal(harness.repository.records.length, 1);
 });
 
 test("ProjectDeploymentService_FailedDeployment_CanRetryFromSavedSnapshotAndRollbackLatestSuccess", async () => {

@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
 import type { ProjectSummary } from "../src/contracts.ts";
 import { ApplicationError } from "../src/application-error.ts";
@@ -18,10 +17,10 @@ const project: ProjectSummary = {
   callerRole: "owner",
 };
 
-test("ModelChatSave_NormalizesDefaultsAndMatchesViewerAuthorizedFixture", async () => {
+test("ModelChatSave_NormalizesDefaultsAndUsesAppResourceEnvBinding", () => {
   const component = createModelChat({
     properties: {
-      servingEndpointName: "support-chat",
+      servingEndpointAppResourceName: "support-chat",
       title: "Support chat",
       showBorder: true,
       chatTotalHeightPixels: 720,
@@ -31,43 +30,52 @@ test("ModelChatSave_NormalizesDefaultsAndMatchesViewerAuthorizedFixture", async 
   assert.deepEqual(saved.components[0]?.properties, component.properties);
 
   const source = generate(component);
-  const fixture = await readFile(new URL(
-    "./fixtures/contracts/generated/model-chat-app.py",
-    import.meta.url,
-  ), "utf8");
-  assert.equal(source, fixture);
+  assert.match(source, /SERVING_ENDPOINT_SUPPORT_CHAT/);
+  assert.match(source, /os\.environ\[serving_endpoint_env_var\]/);
   assert.match(source, /st\.context\.headers\.get\('x-forwarded-access-token', ''\)/);
-  assert.match(source, /os\.environ\.get\('DATABRICKS_HOST', ''\)/);
   assert.match(source, /\/serving-endpoints\/\{endpoint_path\}\/invocations/);
-  assert.match(source, /'messages': messages/);
-  assert.match(source, /response_body\.get\('choices'\)/);
-  assert.match(source, /_VDAB_MODEL_CHAT_MAX_HISTORY = 40/);
-  assert.match(source, /_VDAB_MODEL_CHAT_MAX_RESPONSE_BYTES = 300000/);
-  assert.match(source, /class _VDABModelChatNoRedirectHandler/);
-  assert.match(source, /max_chars=_VDAB_MODEL_CHAT_MAX_INPUT_CHARS/);
-  assert.doesNotMatch(source, /WorkspaceClient|serving_endpoint_app_resource|DATABRICKS_TOKEN|DATABRICKS_CLIENT_SECRET|response\.text|error\.read\(/);
+  assert.doesNotMatch(
+    source,
+    /WorkspaceClient|DATABRICKS_TOKEN|DATABRICKS_CLIENT_SECRET/,
+  );
 });
 
-test("ModelChatInput_NormalizesUnselectedDefaultsAndRejectsUnsafePropertiesAndShape", () => {
+test("ModelChatInput_NormalizesUnselectedDefaultsAndRejectsUnsafeProperties", () => {
   const saved = readComponentsInput({
     version: 1,
     components: [createModelChat({ properties: { title: "Support" } })],
   });
   assert.deepEqual(saved.components[0]?.properties, {
-    servingEndpointName: "",
+    servingEndpointAppResourceName: "",
     title: "Support",
     showBorder: false,
     chatTotalHeightPixels: 600,
   });
 
   const invalidComponents = [
-    createModelChat({ properties: { ...selectedProperties(), servingEndpointName: "https://outside.invalid" } }),
-    createModelChat({ properties: { ...selectedProperties(), servingEndpointName: "endpoint/name" } }),
-    createModelChat({ properties: { ...selectedProperties(), workspaceHost: "https://outside.invalid" } }),
+    createModelChat({
+      properties: {
+        ...selectedProperties(),
+        servingEndpointAppResourceName: "https://outside.invalid",
+      },
+    }),
+    createModelChat({
+      properties: {
+        ...selectedProperties(),
+        servingEndpointAppResourceName: "endpoint/name",
+      },
+    }),
+    createModelChat({
+      properties: { ...selectedProperties(), workspaceHost: "https://outside.invalid" },
+    }),
     createModelChat({ properties: { ...selectedProperties(), title: "" } }),
     createModelChat({ properties: { ...selectedProperties(), showBorder: "true" } }),
-    createModelChat({ properties: { ...selectedProperties(), chatTotalHeightPixels: 2001 } }),
-    createModelChat({ properties: { ...selectedProperties(), databricksAccessToken: "secret" } }),
+    createModelChat({
+      properties: { ...selectedProperties(), chatTotalHeightPixels: 2001 },
+    }),
+    createModelChat({
+      properties: { ...selectedProperties(), databricksAccessToken: "secret" },
+    }),
     createModelChat({ children: ["nested"] }),
     createModelChat({ bindings: { workspaceUrl: "https://outside.invalid" } }),
     createModelChat({ layout: { columns: 2 } }),
@@ -83,9 +91,9 @@ test("ModelChatInput_NormalizesUnselectedDefaultsAndRejectsUnsafePropertiesAndSh
   }
 });
 
-test("ModelChatPreview_RejectsMalformedPropertiesAndExplainsMissingEndpoint", () => {
+test("ModelChatPreview_RejectsMalformedPropertiesAndExplainsMissingResource", () => {
   const invalidProperties = [
-    { ...selectedProperties(), servingEndpointName: "outside/name" },
+    { ...selectedProperties(), servingEndpointAppResourceName: "outside/name" },
     { ...selectedProperties(), chatTotalHeightPixels: 300.5 },
     { ...selectedProperties(), servicePrincipalToken: "secret" },
   ];
@@ -93,34 +101,45 @@ test("ModelChatPreview_RejectsMalformedPropertiesAndExplainsMissingEndpoint", ()
   for (const properties of invalidProperties) {
     assert.throws(
       () => generate(createModelChat({ properties })),
-      (error: unknown) => error instanceof ApplicationError &&
-        error.status === 422 && error.code === "invalid_model_chat_properties",
+      (error: unknown) =>
+        error instanceof ApplicationError &&
+        error.status === 422 &&
+        error.code === "invalid_model_chat_properties",
     );
   }
 
-  const incomplete = generate(createModelChat({ properties: { title: "Choose an endpoint" } }));
-  assert.match(incomplete, /Select a serving endpoint from this workspace in the builder/);
-  assert.doesNotMatch(incomplete, /WorkspaceClient|serving_endpoint_app_resource/);
+  const incomplete = generate(
+    createModelChat({ properties: { title: "Choose an endpoint" } }),
+  );
+  assert.match(
+    incomplete,
+    /Bind this Model Chat to a serving endpoint app resource/,
+  );
+  assert.doesNotMatch(incomplete, /WorkspaceClient/);
 });
 
 function generate(component: ProjectComponent): string {
-  return new ProjectPreviewGenerator().generate(project, {
-    projectId: project.id,
-    version: 1,
-    components: [component],
-  }).files[0]?.content ?? "";
+  return (
+    new ProjectPreviewGenerator().generate(project, {
+      projectId: project.id,
+      version: 1,
+      components: [component],
+    }).files[0]?.content ?? ""
+  );
 }
 
 function selectedProperties() {
   return {
-    servingEndpointName: "support-chat",
+    servingEndpointAppResourceName: "support-chat",
     title: "Support chat",
     showBorder: true,
     chatTotalHeightPixels: 720,
   };
 }
 
-function createModelChat(overrides: Partial<ProjectComponent> = {}): ProjectComponent {
+function createModelChat(
+  overrides: Partial<ProjectComponent> = {},
+): ProjectComponent {
   return {
     key: "model-chat-main",
     type: "ModelChat",

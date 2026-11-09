@@ -89,18 +89,6 @@ export function getProjectDeploymentRequirements(
     }
   }
 
-  if (
-    workflow.workflows.some((definition) =>
-      definition.nodes.some((node) => node.actionType === "startDatabricksJob"),
-    )
-  ) {
-    blockers.push({
-      code: "jobs_user_authorization_scope_unavailable",
-      detail:
-        "Databricks documents user-authorized Jobs use, but its current Databricks Apps supported-scope list does not include a Jobs scope. The deployment is blocked to prevent a shared-identity fallback.",
-    });
-  }
-
   return {
     userApiScopes: [...userApiScopes].sort(),
     appResources,

@@ -6,10 +6,10 @@ import { generateProjectSource } from "./preview-component-source.ts";
 import {
   ASYNC_PG_LICENSE_FILE_PATH,
   ASYNC_PG_LICENSE_TEXT,
-  ASYNC_PG_REQUIREMENTS_CONTENT,
 } from "./asyncpg-package-notice.ts";
 import { resolveWorkflowModuleFiles } from "./preview-workflow-modules.ts";
 import { projectUsesLakebase } from "./preview-lakebase-helpers.ts";
+import { generateRequirementsFile } from "./preview-requirements.ts";
 import { DEFAULT_CUSTOM_MODULES_SOURCE } from "./custom-modules-template.ts";
 import { PREVIEW_APP_MANIFEST_CONTENT } from "../generated-app-manifest.ts";
 
@@ -112,16 +112,13 @@ export class ProjectPreviewGenerator {
       { path: "app.py", content },
       { path: "app.yaml", content: PREVIEW_APP_MANIFEST_CONTENT },
       { path: "custom_modules.py", content: moduleFiles.customModulesSource ?? DEFAULT_CUSTOM_MODULES_SOURCE },
-      { path: REQUIREMENTS_FILE_PATH, content: "" },
+      {
+        path: REQUIREMENTS_FILE_PATH,
+        content: generateRequirementsFile(document.components, workflow),
+      },
       { path: ".streamlit/config.toml", content: getThemeConfig(project.theme) },
     ];
     if (projectUsesLakebase(document.components, workflow)) {
-      const requirementsFile = files.find(
-        (file) => file.path === REQUIREMENTS_FILE_PATH,
-      );
-      if (requirementsFile) {
-        requirementsFile.content = ASYNC_PG_REQUIREMENTS_CONTENT;
-      }
       files.push({
         path: ASYNC_PG_LICENSE_FILE_PATH,
         content: ASYNC_PG_LICENSE_TEXT,

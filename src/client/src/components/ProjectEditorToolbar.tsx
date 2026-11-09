@@ -1,22 +1,25 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Bot, Check, RefreshCcw, Save } from "lucide-react";
+import { Bot, Check, PanelLeft, PanelRight, RefreshCcw, Save } from "lucide-react";
 import { Button } from "./ui/button";
 import ProjectAppLifecycleControls from "./ProjectAppLifecycleControls";
 import ProjectDeployButton from "./ProjectDeployButton";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectDeploymentSettings } from "../models/ProjectDeploymentSettings";
+import { useBuilderLayout } from "../context/BuilderLayoutContext";
 
 interface IProjectEditorToolbarProps {
   projectId: string;
   appName?: string;
   canEdit: boolean;
   canSave: boolean;
+  saveDisabledReason?: string;
   isSaving: boolean;
   hasUnsavedChanges: boolean;
   isCustomModulesDirty: boolean;
   deploymentSettings: IProjectDeploymentSettings | null;
   components: readonly IProjectComponent[];
+  isAiOpen: boolean;
+  onToggleAi: () => void;
   onSave: () => Promise<boolean>;
   onSaveForDeploy: () => Promise<boolean>;
   onRefresh: () => void;
@@ -28,16 +31,25 @@ function ProjectEditorToolbar({
   appName,
   canEdit,
   canSave,
+  saveDisabledReason,
   isSaving,
   hasUnsavedChanges,
   isCustomModulesDirty,
   deploymentSettings,
   components,
+  isAiOpen,
+  onToggleAi,
   onSave,
   onSaveForDeploy,
   onRefresh,
 }: Readonly<IProjectEditorToolbarProps>) {
   const [showSaved, setShowSaved] = useState(false);
+  const {
+    isLeftPanelOpen,
+    setIsLeftPanelOpen,
+    isRightPanelOpen,
+    setIsRightPanelOpen,
+  } = useBuilderLayout();
 
   async function save(): Promise<void> {
     const saved = await onSave();
@@ -53,17 +65,18 @@ function ProjectEditorToolbar({
     >
       <Button
         size="sm"
-        asChild
+        type="button"
+        aria-pressed={isAiOpen}
+        onClick={onToggleAi}
         className="h-auto shrink-0 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
       >
-        <Link to={`/apps/${projectId}?section=workflows&tool=ai`}>
-          <Bot className="mr-1 h-3.5 w-3.5" />
-          Prompt
-        </Link>
+        <Bot className="mr-1 h-3.5 w-3.5" />
+        Prompt
       </Button>
       <Button
         size="sm"
         aria-label="Save"
+        title={saveDisabledReason}
         disabled={!canEdit || !canSave || isSaving}
         onClick={() => void save()}
         className="h-auto shrink-0 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
@@ -92,6 +105,30 @@ function ProjectEditorToolbar({
         Refresh
       </Button>
       <ProjectAppLifecycleControls appName={appName} canEdit={canEdit} />
+      <div className="ml-auto flex shrink-0 items-center gap-0.5 px-1">
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          aria-label={isLeftPanelOpen ? "Hide palette" : "Show palette"}
+          aria-pressed={isLeftPanelOpen}
+          onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+          className="h-8 w-8 text-[var(--builder-chrome-foreground)] hover:bg-[var(--builder-chrome-hover)]"
+        >
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          aria-label={isRightPanelOpen ? "Hide properties" : "Show properties"}
+          aria-pressed={isRightPanelOpen}
+          onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+          className="h-8 w-8 text-[var(--builder-chrome-foreground)] hover:bg-[var(--builder-chrome-hover)]"
+        >
+          <PanelRight className="h-4 w-4" />
+        </Button>
+      </div>
     </nav>
   );
 }

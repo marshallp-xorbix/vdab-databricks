@@ -1,17 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { readWorkflowTool } from "../utils/projectEditorSettings";
 import { useSearchParams } from "react-router-dom";
 import WorkflowBuilderView from "./AppBuilderComponents/AppCanvas/WorkflowBuilderView";
 import { Button } from "./ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from "./ui/sheet";
 import { useProjectCustomModules } from "../hooks/useProjectCustomModules";
-import { useWorkspaceServingEndpoints } from "../hooks/useWorkspaceServingEndpoints";
-import AiBuilderPanel from "./AiBuilderPanel";
 import { PREBUILT_MODULES_LIBRARY_SOURCE } from "../utils/prebuiltModulesLibrarySource";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
@@ -24,13 +15,11 @@ import {
 
 interface IProjectWorkflowEditorProps {
   projectId: string;
-  version: number;
   components: IProjectComponent[];
   definitions: IComponentDefinition[];
   workflow: IProjectWorkflowDefinition;
   isDirty: boolean;
   isSaving: boolean;
-  onComponentsChange: (components: IProjectComponent[]) => void;
   isDisabled: boolean;
   saveError: string | null;
   onWorkflowChange: (workflow: IProjectWorkflowDefinition) => void;
@@ -44,13 +33,11 @@ interface IProjectWorkflowEditorProps {
 /** Hosts the visual workflow editor for a project. */
 function ProjectWorkflowEditor({
   projectId,
-  version,
   components,
   definitions,
   workflow,
   isDirty,
   isSaving,
-  onComponentsChange,
   isDisabled,
   saveError,
   onWorkflowChange,
@@ -63,24 +50,25 @@ function ProjectWorkflowEditor({
   const [searchParams, setSearchParams] = useSearchParams();
   const focusedWorkflow = searchParams.get("workflowFocus");
   const focusedAction = searchParams.get("actionFocus");
-  const focusRequest = useMemo(() => focusedWorkflow ? { workflowCodeName: focusedWorkflow, ...(focusedAction ? { nodeId: focusedAction } : {}) } : null, [focusedWorkflow, focusedAction]);
-  const [activeTool, setActiveTool] = useState<"workflow" | "ai">(
-    () => readWorkflowTool(searchParams.get("tool")),
+  const focusRequest = useMemo(
+    () =>
+      focusedWorkflow
+        ? {
+            workflowCodeName: focusedWorkflow,
+            ...(focusedAction ? { nodeId: focusedAction } : {}),
+          }
+        : null,
+    [focusedWorkflow, focusedAction],
   );
   const customModulesQuery = useProjectCustomModules(projectId);
-  const servingEndpointsQuery = useWorkspaceServingEndpoints();
   const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
   const customModulesDocument = customModulesQuery.data;
   const isCustomModulesDirty = Boolean(
     customModulesDocument &&
-    loadedProjectId === projectId &&
-    customModulesSource !== customModulesDocument.source,
+      loadedProjectId === projectId &&
+      customModulesSource !== customModulesDocument.source,
   );
   const workflowIsDisabled = isDisabled;
-
-  useEffect(() => {
-    setActiveTool(readWorkflowTool(searchParams.get("tool")));
-  }, [searchParams]);
 
   useEffect(() => {
     if (
@@ -105,15 +93,6 @@ function ProjectWorkflowEditor({
     onCustomModulesDirtyChange(isCustomModulesDirty);
   }, [isCustomModulesDirty, onCustomModulesDirtyChange]);
 
-  function handleCloseAiBuilder() {
-    setActiveTool("workflow");
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete("tool");
-      return next;
-    }, { replace: true });
-  }
-
   const editorComponents = toWorkflowBuilderComponents(components, definitions);
   const editorWorkflow = toWorkflowBuilderDefinition(workflow, components);
 
@@ -133,11 +112,14 @@ function ProjectWorkflowEditor({
         </div>
       )}
       <p role="status" aria-live="polite" className="sr-only">
-        {isDirty ? "Workflow changes are not saved." : isSaving ? "Saving workflows…" : "Workflows saved."}
+        {isDirty
+          ? "Workflow changes are not saved."
+          : isSaving
+            ? "Saving workflows…"
+            : "Workflows saved."}
       </p>
 
       <div
-        hidden={activeTool !== "workflow"}
         aria-disabled={workflowIsDisabled}
         className={`min-h-0 flex-1 overflow-hidden ${
           workflowIsDisabled ? "pointer-events-none opacity-70" : ""
@@ -149,12 +131,17 @@ function ProjectWorkflowEditor({
         >
           <WorkflowBuilderView
             focusRequest={focusRequest}
-            onFocusHandled={() => setSearchParams((current) => {
-              const next = new URLSearchParams(current);
-              next.delete("workflowFocus");
-              next.delete("actionFocus");
-              return next;
-            }, { replace: true })}
+            onFocusHandled={() =>
+              setSearchParams(
+                (current) => {
+                  const next = new URLSearchParams(current);
+                  next.delete("workflowFocus");
+                  next.delete("actionFocus");
+                  return next;
+                },
+                { replace: true },
+              )
+            }
             components={editorComponents}
             workflowDefinition={editorWorkflow}
             customModulesCode={customModulesSource}
@@ -167,66 +154,6 @@ function ProjectWorkflowEditor({
           />
         </fieldset>
       </div>
-      <Sheet
-        modal={false}
-        open={activeTool === "ai"}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) handleCloseAiBuilder();
-        }}
-      >
-        <SheetContent
-          side="right"
-          overlayClassName="pointer-events-none"
-          className="!inset-y-auto !top-auto !right-4 !bottom-4 !h-[70vh] !w-96 !max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border-2 border-primary bg-card p-0 shadow-xl sm:!max-w-96 [&>button]:hidden"
-        >
-          <SheetTitle className="sr-only">AI Builder</SheetTitle>
-          <SheetDescription className="sr-only">
-            Request a project change using a workspace serving endpoint.
-          </SheetDescription>
-            <div className="flex min-h-0 flex-1">
-              {customModulesQuery.isPending && (
-                <p role="status">Loading custom modules…</p>
-              )}
-              {customModulesQuery.isError && (
-                <p role="alert">
-                  {customModulesQuery.error instanceof Error
-                    ? customModulesQuery.error.message
-                    : "Custom Python modules could not be loaded."}
-                </p>
-              )}
-              {servingEndpointsQuery.isError && (
-                <p role="alert">
-                  {servingEndpointsQuery.error instanceof Error
-                    ? servingEndpointsQuery.error.message
-                    : "Serving endpoints could not be loaded for AI Builder."}
-                </p>
-              )}
-              {customModulesDocument && (
-                <AiBuilderPanel
-                  projectId={projectId}
-                  version={version}
-                  endpoints={servingEndpointsQuery.data?.items ?? []}
-                  components={components}
-                  workflow={workflow}
-                  customModulesSource={customModulesSource || customModulesDocument.source}
-                  isDisabled={
-                    isDisabled ||
-                    customModulesQuery.isPending ||
-                    servingEndpointsQuery.isError
-                  }
-                  onClose={handleCloseAiBuilder}
-                  onApplyProposal={(proposal) => {
-                    onComponentsChange(proposal.components);
-                    onWorkflowChange(proposal.workflow);
-                    if (proposal.customModulesSource !== customModulesDocument.source) {
-                      onCustomModulesSourceChange(proposal.customModulesSource);
-                    }
-                  }}
-                />
-              )}
-            </div>
-        </SheetContent>
-      </Sheet>
     </section>
   );
 }

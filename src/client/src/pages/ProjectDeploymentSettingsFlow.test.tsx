@@ -33,9 +33,9 @@ it("DeploymentSettings_SaveAndReopen_PreservesWizardTargetAndWorkspaceFolder", a
   await renderProjectEditorPage({ openMainPage: false });
   await user.click(screen.getByRole("link", { name: "Settings" }));
   expect(
-    await screen.findByRole("textbox", { name: "Databricks App name" }),
+    await screen.findByLabelText("Databricks App name"),
   ).toHaveValue("parity-demo");
-  fireEvent.change(screen.getByRole("textbox", { name: "Workspace path" }), {
+  fireEvent.change(screen.getByLabelText("Workspace path"), {
     target: { value: "/Workspace/Shared/parity-demo" },
   });
   await user.click(screen.getByRole("button", { name: "Save Changes" }));
@@ -51,9 +51,9 @@ it("DeploymentSettings_SaveAndReopen_PreservesWizardTargetAndWorkspaceFolder", a
   await user.click(screen.getByRole("link", { name: "Canvas" }));
   await user.click(screen.getByRole("link", { name: "Settings" }));
   expect(
-    await screen.findByRole("textbox", { name: "Workspace path" }),
+    await screen.findByLabelText("Workspace path"),
   ).toHaveValue("/Workspace/Shared/parity-demo");
   expect(
-    screen.getByRole("textbox", { name: "Databricks App name" }),
+    screen.getByLabelText("Databricks App name"),
   ).toHaveValue("parity-demo");
 });

@@ -9,6 +9,7 @@ type ProjectEditorState = ReturnType<typeof useProjectEditor>;
 interface IProjectEditorComponentsSectionProps {
   isActive: boolean;
   toolbar: ReactNode;
+  customModulesSource?: string;
   editor: Pick<
     ProjectEditorState,
     | "componentsQuery"
@@ -36,6 +37,7 @@ interface IProjectEditorComponentsSectionProps {
 function ProjectEditorComponentsSection({
   isActive,
   toolbar,
+  customModulesSource = "",
   editor,
 }: Readonly<IProjectEditorComponentsSectionProps>) {
   const {
@@ -123,6 +125,7 @@ function ProjectEditorComponentsSection({
           workflow={workflow}
           isWorkflowReady={editor.workflowQuery.isSuccess}
           toolbar={toolbar}
+          customModulesCode={customModulesSource}
           onComponentsChange={handleComponentsChange}
           onWorkflowChange={setWorkflow}
           onPageWidthChange={(pageWidth) =>

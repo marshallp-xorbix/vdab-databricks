@@ -1,12 +1,14 @@
 import type { FC, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { ComponentWorkflowsPanel } from "../../properties/ComponentWorkflowsPanel";
+import { BindingsPanel } from "../../properties/BindingsPanel";
 import {
   getCodeNameInputValidationError,
   MAX_CODE_NAME_LENGTH,
   normalizeCodeName,
 } from "../../../utils/codeNameUtils";
 import type { VdabComponent } from "../../../types/components";
+import type { Binding } from "../../../types/components/bindings";
 import { humanizeComponentType } from "../../../types/components/componentTypes";
 import {
   EMPTY_WORKFLOW_DEFINITION,
@@ -18,6 +20,7 @@ import { CanvasContextType } from "../../../types/editor";
 import ProjectComponentPropertiesEditor, {
   type IProjectComponentPropertiesEditorProps,
 } from "../../ProjectComponentPropertiesEditor";
+import { getWorkflowBindingOverridesForComponent } from "../../../utils/workflow/workflowBindingOverrides";
 
 interface PropertiesPanelProps {
   selectedComponent: VdabComponent | null;
@@ -226,6 +229,28 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
                 {renderPropertyEditor()}
               </div>
             </div>
+
+            {(selectedComponent.supportedBindings?.length ?? 0) > 0 &&
+            projectComponentEditor ? (
+              <div className="rounded-lg border border-[var(--builder-chrome-border)] bg-[var(--builder-panel-bg)] px-1 py-2 shadow-sm">
+                <div className="px-3 pb-3 pt-2" data-property-nested-fields>
+                  <BindingsPanel
+                    component={selectedComponent}
+                    onUpdateBindings={(bindings) =>
+                      projectComponentEditor.onBindingsChange(
+                        bindings as Record<string, Binding> | null,
+                      )
+                    }
+                    workflowBindingOverrides={getWorkflowBindingOverridesForComponent(
+                      workflowDefinition,
+                      selectedComponent.codeName ?? "",
+                      components,
+                    )}
+                    onJumpToWorkflowAction={onJumpToWorkflowAction}
+                  />
+                </div>
+              </div>
+            ) : null}
 
             <div className="rounded-lg border border-[var(--builder-chrome-border)] bg-[var(--builder-panel-bg)] px-1 py-2 shadow-sm">
               <div className="flex items-center gap-2 px-3 pb-1 pt-2">

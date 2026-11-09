@@ -69,6 +69,9 @@ describe("CreateAppWizardDialog", () => {
     const { onOpenChange } = renderDialog();
 
     expect(screen.getByText("This builder uses the workspace where it is installed.")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("wizard-native-select"), {
+      target: { value: "linkExisting" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(screen.getByTestId("wizard-native-select"), {
       target: { value: "existing-child" },
@@ -79,7 +82,8 @@ describe("CreateAppWizardDialog", () => {
     fireEvent.change(screen.getByLabelText("Description"), {
       target: { value: "Finance team" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create and link project" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Create and link App" }));
 
     await waitFor(() => {
       expect(mockCreateProject).toHaveBeenCalledWith("Revenue dashboard", "Finance team", {
@@ -103,7 +107,7 @@ describe("CreateAppWizardDialog", () => {
       target: { value: "Not Valid" },
     });
 
-    const createButton = screen.getByRole("button", { name: "Create project" });
+    const createButton = screen.getByRole("button", { name: "Create App" });
     expect(createButton).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText("New Databricks App name"), {

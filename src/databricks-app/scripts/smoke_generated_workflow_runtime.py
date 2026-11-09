@@ -99,6 +99,8 @@ def _mock_http(
             "PGPORT",
             "PGDATABASE",
             "PGSSLMODE",
+            "GENIE_SPACE_SALES_GENIE",
+            "SERVING_ENDPOINT_SAMPLE_CHAT_ENDPOINT",
             AUTOSCALING_RESOURCE_ENVIRONMENT_VARIABLE,
             PROVISIONED_RESOURCE_ENVIRONMENT_VARIABLE,
         )
@@ -112,6 +114,8 @@ def _mock_http(
     os.environ["PGPORT"] = "5432"
     os.environ["PGDATABASE"] = "builder"
     os.environ["PGSSLMODE"] = "require"
+    os.environ["GENIE_SPACE_SALES_GENIE"] = "0123456789abcdef0123456789abcdef"
+    os.environ["SERVING_ENDPOINT_SAMPLE_CHAT_ENDPOINT"] = "sample-chat-endpoint"
     os.environ[AUTOSCALING_RESOURCE_ENVIRONMENT_VARIABLE] = AUTOSCALING_ENDPOINT_PATH
     os.environ[PROVISIONED_RESOURCE_ENVIRONMENT_VARIABLE] = PROVISIONED_DATABASE_HOST
     if lakebase_connection is not None:

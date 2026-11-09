@@ -121,9 +121,9 @@ function ProjectComponentDataPropertiesEditor({
   }
 
   return (
-    <p role="status" className="rounded-md border border-border p-4 text-sm">
-      The {component.type || "selected"} editor is not available in this slice.
-      Its saved configuration is preserved.
+    <p role="alert" className="rounded-md border border-destructive/30 p-4 text-sm">
+      Unknown component type "{component.type || "selected"}". Its saved
+      configuration is preserved.
     </p>
   );
 }

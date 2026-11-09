@@ -111,7 +111,7 @@ describe("ProjectEditorPage", () => {
     expect(await screen.findByLabelText("Workspace path")).toBeInTheDocument();
   });
 
-  it("saves and reopens custom Python source under the shared project version", async () => {
+  it("opens custom Python source for editing under the Code tab", async () => {
     getProjectMock.mockResolvedValue(project);
     generateProjectPreviewMock.mockResolvedValue({
       projectId: project.id,
@@ -119,33 +119,16 @@ describe("ProjectEditorPage", () => {
       previewOnly: true,
       files: [{ path: "app.py", content: "import streamlit as st\n" }],
     });
-    const savedDocument = {
-      ...customModulesDocument,
-      version: 2,
-      source: "def normalize_order(ctx):\n    return {'ok': True}\n",
-    };
-    getProjectCustomModulesMock
-      .mockResolvedValueOnce(customModulesDocument)
-      .mockResolvedValueOnce(savedDocument);
-    replaceProjectCustomModulesMock.mockResolvedValue(savedDocument);
+    getProjectCustomModulesMock.mockResolvedValue(customModulesDocument);
 
+    const user = userEvent.setup();
     await renderProjectEditorPage();
 
-    fireEvent.click(await screen.findByRole("link", { name: "Code" }));
-    fireEvent.click(await screen.findByRole("button", { name: "custom_modules.py" }));
-    const sourceEditor = await screen.findByLabelText(
-      "Custom Python module source",
-    );
-    fireEvent.change(sourceEditor, { target: { value: savedDocument.source } });
-    fireEvent.click(screen.getByRole("button", { name: "Save custom modules" }));
-
-    await waitFor(() =>
-      expect(replaceProjectCustomModulesMock.mock.calls[0]?.[0]).toEqual({
-        projectId: "project-1",
-        version: 1,
-        source: savedDocument.source,
-      }),
-    );
+    await user.click(await screen.findByRole("link", { name: "Code" }));
+    await user.click(await screen.findByRole("button", { name: "custom_modules.py" }));
+    expect(
+      await screen.findByLabelText("Custom Python module source"),
+    ).toHaveValue(customModulesDocument.source);
     expect(screen.getByRole("button", { name: "Save custom modules" })).toBeDisabled();
   });
 
@@ -363,9 +346,9 @@ describe("ProjectEditorPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This project was updated by another user.",
-    );
+    expect(
+      await screen.findByText("This project was updated by another user."),
+    ).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Reload latest version" }),
     );

@@ -4,7 +4,7 @@ import { isRecord } from "../db/project-component-json.ts";
 
 /** Returns whether generated output needs the approved Lakebase PostgreSQL driver. */
 export function projectUsesLakebase(
-  components: ProjectComponent[],
+  components: readonly ProjectComponent[],
   workflow: ProjectWorkflowDefinition,
 ): boolean {
   const componentUsesLakebase = components.some((component) =>

@@ -44,7 +44,7 @@ test("ProjectPortability_ExportStripsInstallBoundBindingsAndRequiresReselection"
   });
 
   assert.equal(bundle.project.components[0]?.bindings?.portableResourceKey, "resource_1");
-  assert.equal(bundle.project.components[0]?.properties.servingEndpointName, "");
+  assert.equal(bundle.project.components[0]?.properties.servingEndpointAppResourceName, "");
   assert.equal(bundle.project.workflow.workflows[0]?.nodes[0]?.params.job &&
     (bundle.project.workflow.workflows[0]?.nodes[0]?.params.job as Record<string, unknown>).resourceKey,
   "unresolved_resource_3");
@@ -202,7 +202,7 @@ function createSnapshot(): ProjectAggregateSnapshot {
         codeName: "modelChat",
         description: null,
         properties: {
-          servingEndpointName: "customer-model",
+          servingEndpointAppResourceName: "customer-model",
           title: "Chat",
           showBorder: false,
           chatTotalHeightPixels: 600,

@@ -6,7 +6,14 @@ import type {
 } from "../models/ProjectDeployments";
 import { useUpdateProjectResourceGrants } from "../hooks/useUpdateProjectResourceGrants";
 import ProjectAppResourceTargetFields from "./ProjectAppResourceTargetFields";
-import { formatPermissionLabel, APP_RESOURCE_KINDS, KIND_LABELS, type AppResourceKind } from "../types/appResourceKinds";
+import {
+  formatPermissionLabel,
+  APP_RESOURCE_KINDS,
+  KIND_LABELS,
+  mergePermissionOptionsForKind,
+  type AppResourceKind,
+  AppResourceKindSlug,
+} from "../types/appResourceKinds";
 import { createEmptyAppResource, duplicateAppResourceKeys, nextAppResourceKey } from "../utils/appResourceRows";
 
 interface IProjectAppResourceGrantsEditorProps {
@@ -32,8 +39,14 @@ function ProjectAppResourceGrantsEditor({
   const [addKind, setAddKind] = useState<AppResourceKind | "">("");
   const saveMutation = useUpdateProjectResourceGrants();
   const duplicateKeys = duplicateAppResourceKeys(resources);
-  const conflict = saveMutation.isError && saveMutation.error instanceof Error &&
-    saveMutation.error.message.includes("Reload from Databricks");
+  const conflict =
+    saveMutation.isError &&
+    ((saveMutation.error instanceof Error &&
+      /reload from databricks/i.test(saveMutation.error.message)) ||
+      (typeof saveMutation.error === "object" &&
+        saveMutation.error !== null &&
+        "status" in saveMutation.error &&
+        saveMutation.error.status === 409));
 
   useEffect(() => {
     setResources(target?.appResources ?? []);
@@ -225,14 +238,22 @@ function resourcePermission(resource: IWorkspaceAppResource): string {
 }
 
 function permissionOptions(resource: IWorkspaceAppResource): readonly string[] {
-  if ("secret" in resource) return ["READ", "WRITE", "MANAGE"];
-  if ("sql_warehouse" in resource) return ["CAN_USE", "CAN_MANAGE", "IS_OWNER"];
-  if ("job" in resource) return ["CAN_VIEW", "CAN_MANAGE_RUN", "CAN_MANAGE", "IS_OWNER"];
-  if ("experiment" in resource) return ["CAN_READ", "CAN_EDIT", "CAN_MANAGE"];
-  if ("genie_space" in resource) return ["CAN_VIEW", "CAN_RUN", "CAN_EDIT", "CAN_MANAGE"];
-  if ("serving_endpoint" in resource) return ["CAN_VIEW", "CAN_QUERY", "CAN_MANAGE"];
-  if ("uc_securable" in resource) return ["SELECT", "MODIFY", "READ_VOLUME", "WRITE_VOLUME", "EXECUTE", "USE_CONNECTION"];
-  return ["CAN_CONNECT_AND_CREATE"];
+  const kind = resourceKind(resource);
+  if (!kind) return ["CAN_MANAGE", "CAN_USE"];
+  return mergePermissionOptionsForKind(kind, resourcePermission(resource));
+}
+
+function resourceKind(resource: IWorkspaceAppResource): AppResourceKind | null {
+  if ("secret" in resource) return AppResourceKindSlug.Secret;
+  if ("sql_warehouse" in resource) return AppResourceKindSlug.SqlWarehouse;
+  if ("job" in resource) return AppResourceKindSlug.Job;
+  if ("experiment" in resource) return AppResourceKindSlug.Experiment;
+  if ("genie_space" in resource) return AppResourceKindSlug.GenieSpace;
+  if ("serving_endpoint" in resource) return AppResourceKindSlug.ServingEndpoint;
+  if ("uc_securable" in resource) return AppResourceKindSlug.UcSecurable;
+  if ("postgres" in resource) return AppResourceKindSlug.AutoscalingDatabase;
+  if ("database" in resource) return AppResourceKindSlug.Database;
+  return null;
 }
 
 function withPermission(resource: IWorkspaceAppResource, permission: string): IWorkspaceAppResource {

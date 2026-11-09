@@ -58,15 +58,14 @@ export function createStandaloneProjectExport(
       const reference = addReference(resource.kind, resource.label, { componentKey: component.key });
       portableComponent.bindings = { portableResourceKey: reference.key };
     }
-    if (component.type === "ModelChat" && typeof component.properties.servingEndpointName === "string" && component.properties.servingEndpointName) {
-      const reference = addReference("servingEndpoint", component.properties.servingEndpointName, { componentKey: component.key });
-      portableComponent.properties.servingEndpointName = "";
+    if (component.type === "ModelChat" && typeof component.properties.servingEndpointAppResourceName === "string" && component.properties.servingEndpointAppResourceName) {
+      const reference = addReference("servingEndpoint", component.properties.servingEndpointAppResourceName, { componentKey: component.key });
+      portableComponent.properties.servingEndpointAppResourceName = "";
       portableComponent.resourceReferenceKeys = [...new Set([...(portableComponent.resourceReferenceKeys ?? []), reference.key])];
     }
-    if (component.type === "GenieChat" && typeof component.properties.genieSpaceId === "string" && component.properties.genieSpaceId) {
-      const reference = addReference("genieSpace", readLabel(component.properties.genieSpaceTitle, "Genie space"), { componentKey: component.key });
-      portableComponent.properties.genieSpaceId = "";
-      portableComponent.properties.genieSpaceTitle = "";
+    if (component.type === "GenieChat" && typeof component.properties.genieSpaceAppResourceName === "string" && component.properties.genieSpaceAppResourceName) {
+      const reference = addReference("genieSpace", component.properties.genieSpaceAppResourceName, { componentKey: component.key });
+      portableComponent.properties.genieSpaceAppResourceName = "";
       portableComponent.resourceReferenceKeys = [...new Set([...(portableComponent.resourceReferenceKeys ?? []), reference.key])];
     }
     if (component.type === "DashboardEmbed" && typeof component.properties.src === "string" && component.properties.src) {

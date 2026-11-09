@@ -109,7 +109,7 @@ describe("BuildSqlEditor", () => {
       /workspaceConnectionId|workspaceHost|accessToken/i,
     );
     expect(
-      screen.getByText(/current viewer’s forwarded Databricks token/i),
+      screen.getByText(/current viewer’s forwarded Databricks authorization/i),
     ).toBeInTheDocument();
   });
 
@@ -143,7 +143,7 @@ describe("BuildSqlEditor", () => {
       />,
     );
 
-    await user.click(screen.getByRole("combobox", { name: "Current-workspace Provisioned instance" }));
+    await user.click(screen.getByRole("combobox", { name: "Lakebase Provisioned instance" }));
     await user.click(await screen.findByRole("option", { name: "legacy-provisioned · AVAILABLE" }));
 
     await waitFor(() => expect(onUpdateNode).toHaveBeenCalledTimes(1));

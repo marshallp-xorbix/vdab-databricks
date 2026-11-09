@@ -98,11 +98,11 @@ export function assertGeneratedPreviewContracts(preview: unknown): void {
   );
   assert.match(
     readPreviewAppSource(preview),
-    /_vdab_render_genie_chat\('vdab_smokegeniechat', '0123456789abcdef0123456789abcdef', True, 600\)/,
+    /_vdab_render_genie_chat\('vdab_smokegeniechat', 'GENIE_SPACE_SALES_GENIE', True, 600\)/,
   );
   assert.match(
     readPreviewAppSource(preview),
-    /_vdab_render_model_chat\('vdab_smokemodelchat', 'sample-chat-endpoint'\)/,
+    /_vdab_render_model_chat\('vdab_smokemodelchat', 'SERVING_ENDPOINT_SAMPLE_CHAT_ENDPOINT'\)/,
   );
   assert.match(readPreviewAppSource(preview), /x-forwarded-access-token/);
   assert.match(readPreviewAppSource(preview), /\/api\/2\.0\/genie\/spaces/);

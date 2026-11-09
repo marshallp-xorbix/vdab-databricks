@@ -58,15 +58,15 @@ describe("projectCanvasAdapter", () => {
   });
 
   it.each([
-    [ComponentType.GenieChat, "genieSpaceAppResourceName"],
-    [ComponentType.ModelChat, "servingEndpointAppResourceName"],
-  ])("removes legacy App resource properties when adding %s", (type, legacyProperty) => {
+    [ComponentType.GenieChat, "genieSpaceId"],
+    [ComponentType.ModelChat, "servingEndpointName"],
+  ])("removes legacy workspace-id properties when adding %s", (type, legacyProperty) => {
     const canvasComponent: VdabComponent = {
       id: "workspace-chat",
       codeName: "workspaceChat1",
       type,
       category: ComponentCategory.Visualization,
-      props: { [legacyProperty]: "legacy-resource", title: "Workspace chat" },
+      props: { [legacyProperty]: "legacy-binding", title: "Workspace chat" },
       children: [],
       schemaVersion: 1,
     };

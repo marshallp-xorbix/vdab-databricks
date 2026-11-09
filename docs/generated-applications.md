@@ -4,7 +4,7 @@ VDAB generates Python/Streamlit source for child Databricks Apps. Generation is 
 
 ## Inputs and output
 
-The generator consumes a validated project snapshot: project metadata, ordered/nested component configuration, workflows, modules, theme, and resource references. It produces an inspectable app package such as `app.py`, runtime helpers, `requirements.txt`, `app.yaml`, and optional modules, styles, or story assets. The preview generator uses the same project contract while producing browser preview output.
+The generator consumes a validated project snapshot: project metadata, ordered/nested component configuration, workflows, modules, theme, and resource references. It produces an inspectable app package such as `app.py`, runtime helpers, `requirements.txt`, `app.yaml`, and optional modules, styles, or story assets. The preview generator uses the same project contract while producing browser preview output. `requirements.txt` always includes Streamlit, pandas, and numpy, then adds plotly, Databricks SDK/SQL connector, and pinned `asyncpg` when Lakebase is used.
 
 The component registry defines allowed types, versions, properties, binding schemas, and generation dispatch. Nested layout components preserve their child order. Resource keys are resolved to current-workspace App resources during deploy; display labels alone are not authority.
 

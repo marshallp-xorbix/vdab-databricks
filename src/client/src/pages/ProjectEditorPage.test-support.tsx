@@ -10,11 +10,12 @@ vi.mock("@monaco-editor/react", () => ({
   }: {
     value: string;
     onChange: (value: string | undefined) => void;
-    options: { ariaLabel?: string };
+    options: { ariaLabel?: string; readOnly?: boolean };
   }) => (
     <textarea
       aria-label={options.ariaLabel ?? "Editor content"}
       value={value}
+      readOnly={options.readOnly}
       onChange={(event) => onChange(event.target.value)}
     />
   ),
@@ -215,7 +216,20 @@ export async function renderProjectEditorPage(
   return { router, unmount: rendered.unmount };
 }
 
-export function createEditorFetch(aiBuilderStream?: string): typeof fetch {
+export function createEditorFetch(
+  aiBuilderStream?: string,
+  options: {
+    childApp?: {
+      appId: string | null;
+      appName: string;
+      mode: "createNew" | "linkExisting";
+      sourceCodePath: string | null;
+    } | null;
+    appResources?: unknown[];
+  } = {},
+): typeof fetch {
+  const childApp = options.childApp === undefined ? null : options.childApp;
+  const appResources = options.appResources ?? [];
   return vi.fn(async (input: RequestInfo | URL) => {
     const requestUrl = typeof input === "string"
       ? input
@@ -245,10 +259,30 @@ export function createEditorFetch(aiBuilderStream?: string): typeof fetch {
       });
     }
     if (requestPath.endsWith("/deployments/readiness")) {
-      return jsonResponse({ userApiScopes: ["sql"], appResources: [], blockers: [] });
+      return jsonResponse({ userApiScopes: ["sql"], appResources, blockers: [] });
+    }
+    if (requestPath.endsWith("/deployment-target")) {
+      return jsonResponse({
+        appId: childApp?.appId ?? "app-1",
+        name: childApp?.appName ?? "test-child-app",
+        description: null,
+        spaceName: null,
+        effectiveUserApiScopes: ["sql"],
+        appState: "ACTIVE",
+        computeState: "ACTIVE",
+        appUrl: "https://apps.example.invalid/test-child-app",
+        activeDeploymentId: null,
+        sourceCodePath: childApp?.sourceCodePath ?? null,
+        usesGitSource: false,
+        userApiScopes: ["sql"],
+        appResources,
+        secretResources: [],
+        unsupportedResourceCount: 0,
+        appUpdateTime: null,
+      });
     }
     if (requestPath.endsWith("/deployments")) {
-      return jsonResponse({ childApp: null, items: [] });
+      return jsonResponse({ childApp, items: [] });
     }
     return jsonResponse({ detail: "The editor test did not configure this request." }, 404);
   }) as typeof fetch;

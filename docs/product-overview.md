@@ -7,7 +7,7 @@ VDAB is installed as a Databricks App in one workspace. Workspace users use the 
 - Project creation, editing, archive/deletion, collaboration, and version conflict handling.
 - A typed component catalog with standard controls, layout components, data components, visualizations, Databricks integrations, and eight story visualizations.
 - Workflow definitions, custom Python modules, prebuilt modules, component bindings, and workspace resource references.
-- AI Builder backed by a ready chat model or AI Gateway endpoint the signed-in user can query. A proposal is applied to the open draft when that draft has not changed during generation.
+- AI Builder opened from the builder Prompt control on any section, backed by a ready chat model or AI Gateway endpoint the signed-in user can query. A proposal is applied to the open draft when that draft has not changed during generation.
 - Immediate deploy from the builder or Apps list. Deploy saves the draft, uploads source under the project's workspace folder, starts the child App deployment, and opens that App page. Missing App name or workspace folder opens App Details instead.
 - Workspace resource discovery and permission-aware operations using the current user's Databricks identity.
 - In-browser preview, project export/import between standalone VDAB installations, and child-App create/link/deploy/retry/rollback flows.

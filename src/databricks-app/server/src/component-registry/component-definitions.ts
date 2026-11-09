@@ -339,14 +339,13 @@ export const COMPONENT_DEFINITIONS: ComponentDefinition[] = [
     scrolling: true,
   }),
   definition("template-genie-chat", "templateGenieChat", "GenieChat", "Visualization", "MessageCircle", {
-    genieSpaceId: "",
-    genieSpaceTitle: "",
+    genieSpaceAppResourceName: "",
     title: "Genie Chat",
     showBorder: false,
     chatTotalHeightPixels: 600,
   }),
   definition("template-model-chat", "templateModelChat", "ModelChat", "Visualization", "Bot", {
-    servingEndpointName: "",
+    servingEndpointAppResourceName: "",
     title: "Model Chat",
     showBorder: false,
     chatTotalHeightPixels: 600,

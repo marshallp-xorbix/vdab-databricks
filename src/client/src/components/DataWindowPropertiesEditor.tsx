@@ -59,8 +59,10 @@ function DataWindowPropertiesEditor({
             value={readText(properties.numRows, "fixed")}
             onChange={(event) => changeProperty("numRows", event.target.value)}
           >
-            <option value="fixed">Edit existing rows</option>
-            <option value="dynamic">Allow adding and deleting rows</option>
+            <option value="fixed">Fixed</option>
+            <option value="dynamic">Dynamic</option>
+            <option value="add">Add</option>
+            <option value="delete">Delete</option>
           </select>
         </div>
       )}

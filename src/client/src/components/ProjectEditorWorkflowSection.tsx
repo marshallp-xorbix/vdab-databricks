@@ -22,7 +22,6 @@ interface IProjectEditorWorkflowSectionProps {
     | "replaceComponentsMutation"
     | "replaceWorkflowMutation"
     | "isWorkflowDirty"
-    | "handleComponentsChange"
     | "setWorkflow"
     | "handleReloadWorkflow"
     | "setCustomModulesDirty"
@@ -54,7 +53,6 @@ function ProjectEditorWorkflowSection({
     replaceComponentsMutation,
     replaceWorkflowMutation,
     isWorkflowDirty,
-    handleComponentsChange,
     setWorkflow,
     handleReloadWorkflow,
     setCustomModulesDirty,
@@ -92,13 +90,11 @@ function ProjectEditorWorkflowSection({
       {workflowDocument && componentsDocument && registryQuery.data && (
         <ProjectWorkflowEditor
           projectId={projectId}
-          version={workflowDocument.version}
           components={components}
           definitions={registryQuery.data.components}
           workflow={workflow}
           isDirty={isWorkflowDirty}
           isSaving={replaceWorkflowMutation.isPending}
-          onComponentsChange={handleComponentsChange}
           isDisabled={
             !canEdit ||
             isMetadataDirty ||

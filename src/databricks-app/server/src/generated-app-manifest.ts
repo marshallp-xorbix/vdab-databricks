@@ -6,6 +6,10 @@ import { ApplicationError } from "./application-error.ts";
 import { lakebaseResourceEnvironmentVariable } from "./lakebase-app-resource-binding.ts";
 import { DEFAULT_SQL_WAREHOUSE_ENVIRONMENT_VARIABLE } from "./sql-warehouse-app-resource-binding.ts";
 import { workspaceSecretEnvironmentVariable } from "./workspace-app-secret-resource-binding.ts";
+import {
+  genieSpaceEnvironmentVariableName,
+  servingEndpointEnvironmentVariableName,
+} from "./generation/app-resource-env-naming.ts";
 
 const STREAMLIT_COMMAND = "command: ['streamlit', 'run', 'app.py']";
 
@@ -55,5 +59,9 @@ function appResourceEnvironmentVariable(
   if ("secret" in resource) return workspaceSecretEnvironmentVariable(resource);
   if ("postgres" in resource || "database" in resource)
     return lakebaseResourceEnvironmentVariable(resource);
+  if ("genie_space" in resource)
+    return genieSpaceEnvironmentVariableName(resource.name);
+  if ("serving_endpoint" in resource)
+    return servingEndpointEnvironmentVariableName(resource.name);
   return `VDAB_RESOURCE_${resource.name.replaceAll("-", "_").toUpperCase()}`;
 }

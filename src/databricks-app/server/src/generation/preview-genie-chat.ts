@@ -2,8 +2,9 @@ import type { ProjectComponent } from "../db/project-components-contract.ts";
 import { readGenieChatProperties } from "../db/project-component-genie-chat.ts";
 import { invalidGenieChat } from "./preview-errors.ts";
 import { pythonString } from "./preview-python.ts";
+import { genieSpaceEnvironmentVariableName } from "./app-resource-env-naming.ts";
 
-/** Appends one standalone Genie chat bound to a current-workspace space ID. */
+/** Appends one Genie chat bound to a Genie space App resource env var. */
 export function appendGenieChat(
   lines: string[],
   component: ProjectComponent,
@@ -22,15 +23,18 @@ export function appendGenieChat(
   const properties = readGenieChatProperties(component.properties, invalidGenieChat);
   const componentKey = pythonString(variableName);
   const title = pythonString(properties.title);
-  const spaceId = pythonString(properties.genieSpaceId);
+  const resourceName = properties.genieSpaceAppResourceName;
+  const envVar = pythonString(
+    resourceName ? genieSpaceEnvironmentVariableName(resourceName) : "",
+  );
   const border = properties.showBorder ? "True" : "False";
   const height = properties.chatTotalHeightPixels;
 
   lines.push(
     `st.subheader(${title})`,
-    `if ${spaceId} == '':`,
-    "    st.info('Select a Genie space from the current workspace in the builder, then save and regenerate this app.')",
+    `if ${envVar} == '':`,
+    "    st.info('Bind this Genie Chat to a Genie space app resource in the builder, then save and regenerate this app.')",
     "else:",
-    `    _vdab_render_genie_chat(${componentKey}, ${spaceId}, ${border}, ${height})`,
+    `    _vdab_render_genie_chat(${componentKey}, ${envVar}, ${border}, ${height})`,
   );
 }

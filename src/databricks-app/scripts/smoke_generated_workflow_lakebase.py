@@ -18,7 +18,8 @@ from smoke_generated_workflow_assertions import _validate_workflow_contract
 
 def _run_lakebase_scenarios(sources: Mapping[str, str]) -> list[str]:
     """Exercise generated Lakebase reads, writes, identity, and SQL safety."""
-    if sources.get("requirements.txt") != "asyncpg==0.32.0\n":
+    requirements = sources.get("requirements.txt") or ""
+    if "asyncpg==0.32.0" not in requirements or "streamlit>=" not in requirements:
         raise AssertionError("Lakebase output omitted the approved runtime requirement.")
     with tempfile.TemporaryDirectory(prefix="vdab-lakebase-smoke-") as directory:
         bundle_directory = Path(directory)

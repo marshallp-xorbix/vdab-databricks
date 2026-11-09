@@ -42,7 +42,7 @@ describe("ProjectEditorPage component autosave", () => {
     expect(await screen.findByText("Components saved.")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
   });
 
   it("does not retry an autosave failure and keeps manual retry available", async () => {

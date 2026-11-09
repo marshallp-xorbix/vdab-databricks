@@ -6,13 +6,12 @@ const DEFAULT_HEIGHT_PIXELS = 600;
 const MIN_HEIGHT_PIXELS = 300;
 const MAX_HEIGHT_PIXELS = 2000;
 const MAX_TITLE_LENGTH = 500;
-const MAX_SPACE_TITLE_LENGTH = 512;
-const SPACE_ID_PATTERN = /^(?:[A-Fa-f0-9]{32}|[A-Fa-f0-9]{8}-(?:[A-Fa-f0-9]{4}-){3}[A-Fa-f0-9]{12})$/;
+const MAX_RESOURCE_NAME_LENGTH = 63;
+const APP_RESOURCE_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,62}$/;
 const invalidComponentAggregate = (_detail: string): Error => invalidComponents();
 
 export interface GenieChatProperties {
-  genieSpaceId: string;
-  genieSpaceTitle: string;
+  genieSpaceAppResourceName: string;
   title: string;
   showBorder: boolean;
   chatTotalHeightPixels: number;
@@ -24,8 +23,7 @@ export function normalizeGenieChatProperties(
 ): ProjectJsonObject {
   const properties = readProperties(value, invalidComponentAggregate);
   return {
-    genieSpaceId: properties.genieSpaceId,
-    genieSpaceTitle: properties.genieSpaceTitle,
+    genieSpaceAppResourceName: properties.genieSpaceAppResourceName,
     title: properties.title,
     showBorder: properties.showBorder,
     chatTotalHeightPixels: properties.chatTotalHeightPixels,
@@ -53,20 +51,40 @@ function readProperties(value: unknown, errorFactory: ErrorFactory): GenieChatPr
   };
 
   if (!isRecord(value) || hasUnexpectedProperties(value, [
-    "genieSpaceId",
-    "genieSpaceTitle",
+    "genieSpaceAppResourceName",
     "title",
     "showBorder",
     "chatTotalHeightPixels",
+    // Legacy keys accepted only so normalize can drop them via unexpected check failure;
+    // migrateLegacyProperties strips them before validation on import paths.
   ])) {
-    return invalid("GenieChat contains an unsupported component property.");
+    // Allow legacy keys during migration by stripping first.
+    const migrated = migrateLegacyGenieProperties(value);
+    if (
+      !isRecord(migrated) ||
+      hasUnexpectedProperties(migrated, [
+        "genieSpaceAppResourceName",
+        "title",
+        "showBorder",
+        "chatTotalHeightPixels",
+      ])
+    ) {
+      return invalid("GenieChat contains an unsupported component property.");
+    }
+    return readNormalizedProperties(migrated, invalid);
   }
 
-  const genieSpaceId = readSpaceId(value.genieSpaceId, invalid);
-  const genieSpaceTitle = readSpaceTitle(value.genieSpaceTitle, invalid);
-  if ((genieSpaceId === "") !== (genieSpaceTitle === "")) {
-    return invalid("Select a Genie space with a valid ID and title.");
-  }
+  return readNormalizedProperties(value, invalid);
+}
+
+function readNormalizedProperties(
+  value: Record<string, unknown>,
+  invalid: (detail: string) => never,
+): GenieChatProperties {
+  const genieSpaceAppResourceName = readResourceName(
+    value.genieSpaceAppResourceName,
+    invalid,
+  );
 
   const title = value.title === undefined ? "Genie Chat" : value.title;
   if (
@@ -97,35 +115,46 @@ function readProperties(value: unknown, errorFactory: ErrorFactory): GenieChatPr
   }
 
   return {
-    genieSpaceId,
-    genieSpaceTitle,
+    genieSpaceAppResourceName,
     title,
     showBorder,
     chatTotalHeightPixels,
   };
 }
 
-function readSpaceId(value: unknown, invalid: (detail: string) => never): string {
-  if (value === undefined || value === null || value === "") {
-    return "";
-  }
-  if (typeof value !== "string" || !SPACE_ID_PATTERN.test(value)) {
-    return invalid("GenieChat requires a valid Genie space ID from the current workspace.");
-  }
-  return value;
+/** Drops legacy workspace-space ID fields when migrating older saved components. */
+export function migrateLegacyGenieProperties(value: unknown): ProjectJsonObject {
+  if (!isRecord(value)) return {};
+  const {
+    genieSpaceId: _legacyId,
+    genieSpaceTitle: _legacyTitle,
+    ...rest
+  } = value;
+  const resourceName =
+    typeof rest.genieSpaceAppResourceName === "string"
+      ? rest.genieSpaceAppResourceName
+      : "";
+  return {
+    ...rest,
+    genieSpaceAppResourceName: resourceName,
+  };
 }
 
-function readSpaceTitle(value: unknown, invalid: (detail: string) => never): string {
+function readResourceName(
+  value: unknown,
+  invalid: (detail: string) => never,
+): string {
   if (value === undefined || value === null || value === "") {
     return "";
   }
   if (
     typeof value !== "string" ||
-    value.trim() !== value ||
-    value.length > MAX_SPACE_TITLE_LENGTH ||
-    /[\u0000-\u001f\u007f]/.test(value)
+    value.length > MAX_RESOURCE_NAME_LENGTH ||
+    !APP_RESOURCE_NAME_PATTERN.test(value)
   ) {
-    return invalid("GenieChat requires a valid Genie space title from the current workspace.");
+    return invalid(
+      "GenieChat requires a valid Genie space app resource name from App Settings.",
+    );
   }
   return value;
 }

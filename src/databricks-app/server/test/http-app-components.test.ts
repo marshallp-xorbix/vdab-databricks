@@ -204,7 +204,7 @@ test("HttpApp_ModelChatPreview_UsesCurrentWorkspaceViewerAuthorizationAndRejects
             type: "ModelChat",
             schemaVersion: 1,
             properties: {
-              servingEndpointName: "support-chat",
+              servingEndpointAppResourceName: "support-chat",
               title: "Support chat",
               showBorder: true,
               chatTotalHeightPixels: 720,

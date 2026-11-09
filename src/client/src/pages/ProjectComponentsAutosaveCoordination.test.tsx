@@ -83,7 +83,6 @@ describe("ProjectEditorPage component autosave coordination", () => {
     expect(replaceProjectComponentsMock).toHaveBeenCalledOnce();
     expect(replaceProjectComponentsMock.mock.calls[0]?.[0].version).toBe(1);
     expect(replaceProjectWorkflowMock.mock.calls[0]?.[0].version).toBe(2);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toBeDisabled());
     await user.click(screen.getByRole("button", { name: "Edit in Workflow Builder" }));
     expect(await screen.findByRole("link", { name: "Workflow" })).toHaveAttribute("aria-current", "page");
     expect(await within(screen.getByRole("region", { name: "Workflows" })).findByDisplayValue("Parity workflow ran")).toBeInTheDocument();

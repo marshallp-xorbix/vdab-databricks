@@ -212,9 +212,9 @@ test("ProjectComponentsService_AcceptsAllLegacyComponentTypesAndNormalizesDefaul
       : type === "DashboardEmbed"
       ? { src: "", height: 600, scrolling: true }
       : type === "GenieChat"
-      ? { genieSpaceId: "", genieSpaceTitle: "", title: "Genie Chat", showBorder: false, chatTotalHeightPixels: 600 }
+      ? { genieSpaceAppResourceName: "", title: "Genie Chat", showBorder: false, chatTotalHeightPixels: 600 }
       : type === "ModelChat"
-      ? { servingEndpointName: "", title: "Model Chat", showBorder: false, chatTotalHeightPixels: 600 }
+      ? { servingEndpointAppResourceName: "", title: "Model Chat", showBorder: false, chatTotalHeightPixels: 600 }
       : { order: index },
   }));
 

@@ -257,8 +257,13 @@ function toStandaloneProperties(
 ): ProjectJsonObject {
   const properties = { ...defaults, ...canvasProperties };
 
-  if (type === "GenieChat") delete properties.genieSpaceAppResourceName;
-  if (type === "ModelChat") delete properties.servingEndpointAppResourceName;
+  if (type === "GenieChat") {
+    delete properties.genieSpaceId;
+    delete properties.genieSpaceTitle;
+  }
+  if (type === "ModelChat") {
+    delete properties.servingEndpointName;
+  }
 
   return properties;
 }

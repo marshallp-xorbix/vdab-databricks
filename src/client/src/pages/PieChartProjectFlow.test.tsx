@@ -95,7 +95,7 @@ describe("PieChart standalone project flow", () => {
     await user.click(await screen.findByRole("button", { name: "Add Pie Chart" }));
     await user.clear(screen.getByLabelText("Title"));
     await user.type(screen.getByLabelText("Title"), "Revenue mix");
-    fireEvent.change(screen.getByLabelText("Series color"), { target: { value: "#2f77cc" } });
+    fireEvent.change(screen.getByLabelText("Palette base color"), { target: { value: "#2f77cc" } });
     await user.selectOptions(screen.getByLabelText("Current-workspace catalog"), "main");
     await waitFor(() => expect(screen.getByLabelText("Schema")).toBeEnabled());
     await user.selectOptions(screen.getByLabelText("Schema"), "sales");
@@ -140,7 +140,7 @@ describe("PieChart standalone project flow", () => {
     firstEditor.unmount();
     await renderProjectEditorPage({ selectFirstComponent: true });
     expect(await screen.findByLabelText("Title")).toHaveValue("Revenue mix");
-    expect(screen.getByLabelText("Series color")).toHaveValue("#2f77cc");
+    expect(screen.getByLabelText("Palette base color")).toHaveValue("#2f77cc");
     expect(screen.getByLabelText("Current-workspace catalog")).toHaveValue("main");
     expect(await screen.findByLabelText("Schema")).toHaveValue("sales");
     expect(await screen.findByLabelText("Table")).toHaveValue("orders");
