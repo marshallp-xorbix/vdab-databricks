@@ -52,16 +52,12 @@ function renderCard() {
   );
 }
 
-it("ProjectCard_RunningChildApp_OpensRuntimeAndReportsOnline", () => {
+it("ProjectCard_RunningChildApp_OpensBuilderCanvasAndReportsOnline", () => {
   renderCard();
   expect(screen.getByText("Online")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute(
     "href",
-    runtimeUrl,
-  );
-  expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute(
-    "rel",
-    "noopener noreferrer",
+    "/apps/project-one",
   );
   expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute(
     "href",
@@ -73,7 +69,7 @@ it("ProjectCard_RunningChildApp_OpensRuntimeAndReportsOnline", () => {
   );
 });
 
-it("ProjectCard_UndeployedChildApp_DisablesRuntimeOpen", () => {
+it("ProjectCard_UndeployedChildApp_StillOpensBuilderCanvas", () => {
   vi.mocked(useProjectAppStatus).mockReturnValue({
     childApp: undefined,
     app: undefined,
@@ -82,5 +78,11 @@ it("ProjectCard_UndeployedChildApp_DisablesRuntimeOpen", () => {
   });
   renderCard();
   expect(screen.getByText("Draft")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Open" })).toBeDisabled();
+  expect(screen.getByRole("link", { name: "Open" })).toHaveAttribute(
+    "href",
+    "/apps/project-one",
+  );
+  expect(screen.getByRole("link", { name: "Open" })).not.toHaveAttribute(
+    "disabled",
+  );
 });

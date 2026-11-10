@@ -83,8 +83,18 @@ export class ProjectDeploymentService {
     requestId: string,
     projectId: string,
   ): Promise<ProjectDeploymentHistory> {
-    await this.projectService.getProject(caller, requestId, projectId);
+    const project = await this.projectService.getProject(
+      caller,
+      requestId,
+      projectId,
+    );
     const actor = toProjectActor(caller, this.workspaceId, requestId);
+    await this.refreshActiveRemoteDeployments(
+      caller,
+      actor,
+      projectId,
+      canEdit(project.callerRole),
+    );
     const [childApp, items] = await Promise.all([
       this.repository.getChildApp(projectId, actor),
       this.repository.listDeployments(projectId, actor),
@@ -137,6 +147,8 @@ export class ProjectDeploymentService {
       projectId,
     );
     requireEditor(project.callerRole);
+    const actor = toProjectActor(caller, this.workspaceId, requestId);
+    await this.refreshActiveRemoteDeployments(caller, actor, projectId, true);
     const source = await this.previewService.generateDeploymentSource(
       caller,
       requestId,
@@ -164,6 +176,7 @@ export class ProjectDeploymentService {
     requireEditor(project.callerRole);
     const input = readStartProjectDeploymentInput(body);
     const actor = toProjectActor(caller, this.workspaceId, requestId);
+    await this.refreshActiveRemoteDeployments(caller, actor, projectId, true);
     const childApp = await this.repository.getChildApp(projectId, actor);
     if (childApp)
       requireOverwriteConfirmation({
@@ -178,12 +191,16 @@ export class ProjectDeploymentService {
       projectId,
     );
     if (source.requirements.blockers.length > 0) {
+      const blockerDetails = source.requirements.blockers
+        .map((blocker) => blocker.detail)
+        .join(" ");
       throw new ApplicationError(
         422,
         source.requirements.blockers[0]?.code ??
           "deployment_requirement_unavailable",
-        "Project needs a supported Databricks authorization path",
-        source.requirements.blockers.map((blocker) => blocker.detail).join(" "),
+        source.requirements.blockers[0]?.detail ??
+          "Deployment requirements are not met",
+        blockerDetails,
       );
     }
     const appSpaceName =
@@ -292,25 +309,13 @@ export class ProjectDeploymentService {
       (record.status === "pending" || record.status === "running") &&
       record.deploymentId
     ) {
-      const remote = await this.workspaceClient.getDeployment(
+      const refreshed = await this.refreshOneRemoteDeployment(
         caller,
-        record.appName,
-        record.deploymentId,
+        actor,
+        projectId,
+        record,
       );
-      if (remote.state !== record.status) {
-        const updated = await this.repository.updateDeployment(
-          projectId,
-          record.id,
-          actor,
-          {
-            action: "deployment.status.refreshed",
-            status: remote.state,
-            failureCode:
-              remote.state === "failed" ? "workspace_deployment_failed" : null,
-          },
-        );
-        if (updated) return toSummary(updated);
-      }
+      if (refreshed) return toSummary(refreshed);
     }
     return toSummary(record);
   }
@@ -489,6 +494,71 @@ export class ProjectDeploymentService {
     );
     if (!result) throw deploymentNotFound();
     return result;
+  }
+
+  /**
+   * Best-effort sync of Lakebase pending/running rows with Databricks so a
+   * SUCCEEDED remote no longer blocks redeploy with deployment_in_progress.
+   */
+  private async refreshActiveRemoteDeployments(
+    caller: CallerIdentity,
+    actor: ReturnType<typeof toProjectActor>,
+    projectId: string,
+    canRefresh: boolean,
+  ): Promise<void> {
+    if (!canRefresh) return;
+    const items = await this.repository.listDeployments(projectId, actor);
+    const active = items.filter(
+      (item) =>
+        (item.status === "pending" || item.status === "running") &&
+        item.deploymentId,
+    );
+    await Promise.all(
+      active.map(async (item) => {
+        const record = await this.repository.getDeployment(
+          projectId,
+          item.id,
+          actor,
+        );
+        if (!record) return;
+        try {
+          await this.refreshOneRemoteDeployment(
+            caller,
+            actor,
+            projectId,
+            record,
+          );
+        } catch {
+          // Keep the local status when Databricks refresh is unavailable.
+        }
+      }),
+    );
+  }
+
+  private async refreshOneRemoteDeployment(
+    caller: CallerIdentity,
+    actor: ReturnType<typeof toProjectActor>,
+    projectId: string,
+    record: ProjectDeploymentRecord,
+  ): Promise<ProjectDeploymentRecord | null> {
+    if (
+      !(record.status === "pending" || record.status === "running") ||
+      !record.deploymentId
+    ) {
+      return null;
+    }
+    const remote = await this.workspaceClient.getDeployment(
+      caller,
+      record.appName,
+      record.deploymentId,
+    );
+    if (remote.state === record.status) return null;
+    return this.repository.updateDeployment(projectId, record.id, actor, {
+      action: "deployment.status.refreshed",
+      status: remote.state,
+      failureCode:
+        remote.state === "failed" ? "workspace_deployment_failed" : null,
+    });
   }
 }
 

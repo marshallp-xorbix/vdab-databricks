@@ -3,7 +3,11 @@
  */
 
 import { useState, useMemo, useEffect, useCallback, type FC } from "react";
-import { applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
+import {
+  applyNodeChanges,
+  applyEdgeChanges,
+  useReactFlow,
+} from "@xyflow/react";
 import type {
   Node,
   Edge,
@@ -24,12 +28,32 @@ import { getModalChildComponents } from "../../../utils/componentOrganization";
 import { useModalDeletion } from "../../../hooks/useModalDeletion";
 import ThemedReactFlow from "./ThemedReactFlow";
 
+const MAIN_FLOW_FIT_VIEW = {
+  padding: 0.2,
+  maxZoom: 1,
+  minZoom: 0.35,
+} as const;
+
 interface MainFlowViewProps {
   formComponents: VdabComponent[];
   workflowDefinition: WorkflowDefinition;
   onNodeClick: (nodeId: string, nodeType: "page" | "modal") => void;
   onSelectComponent?: (id: string | null) => void;
   onDeleteModal?: (modalId: string) => void;
+}
+
+/** Re-centers the graph when pages or modals are added or removed. */
+function FitMainFlowOnStructureChange({
+  structureKey,
+}: Readonly<{ structureKey: string }>) {
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      void fitView(MAIN_FLOW_FIT_VIEW);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [fitView, structureKey]);
+  return null;
 }
 
 const MainFlowView: FC<MainFlowViewProps> = ({
@@ -122,6 +146,11 @@ const MainFlowView: FC<MainFlowViewProps> = ({
     [],
   );
 
+  const structureKey = useMemo(
+    () => workflowNodes.map((node) => node.id).join("|"),
+    [workflowNodes],
+  );
+
   return (
     <>
       <ThemedReactFlow
@@ -136,10 +165,15 @@ const MainFlowView: FC<MainFlowViewProps> = ({
         onNodeDoubleClick={handleNodeDoubleClick}
         nodeTypes={nodeTypes}
         fitView
+        fitViewOptions={MAIN_FLOW_FIT_VIEW}
+        minZoom={MAIN_FLOW_FIT_VIEW.minZoom}
+        maxZoom={MAIN_FLOW_FIT_VIEW.maxZoom}
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
-      />
+      >
+        <FitMainFlowOnStructureChange structureKey={structureKey} />
+      </ThemedReactFlow>
 
       {/* Delete confirmation dialog */}
       {modalToDelete && (

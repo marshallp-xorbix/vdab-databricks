@@ -202,18 +202,24 @@ export function useProjectEditor() {
   }
 
   async function handleSaveCanvas(): Promise<boolean> {
-    if (!isMetadataDirty && !isComponentsDirty && !isWorkflowDirty && !isThemeDirty && !isDeploymentSettingsDirty) {
-      return Boolean(project && canEdit && !isCustomModulesDirty);
+    if (
+      !isMetadataDirty &&
+      !isComponentsDirty &&
+      !isWorkflowDirty &&
+      !isThemeDirty &&
+      !isDeploymentSettingsDirty
+    ) {
+      return Boolean(project && canEdit);
     }
     if (
       !project ||
       !componentsDocument ||
       (isWorkflowDirty && !workflowDocument) ||
       !canEdit ||
-      isCustomModulesDirty ||
       isCanvasSaving
-    )
+    ) {
       return false;
+    }
     setCanvasSaving(true);
     try {
       let version = isMetadataDirty

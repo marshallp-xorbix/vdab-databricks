@@ -50,7 +50,7 @@ Skip this section when updating an existing `vdab-builder` installation. For a n
 2. Create/select a dedicated customer-owned Lakebase Autoscaling project, branch, and database for this installation.
 3. Bind the database under **App resources** with resource key `postgres` and permission **Can connect and create**. The App deployment receives its `PG*` environment values from this binding. Do not copy credentials into source or `app.yaml`.
 4. Give trusted maintainers `CAN_MANAGE` and app users `CAN_USE`. Give the App service principal read access to its source folder and parent folders as required by workspace policy.
-5. In **User authorization**, configure only the organization-approved scopes needed by your features. Child-App discovery/deployment needs `apps` and `workspace.workspace`; AI Builder needs `model-serving`; other features may need `sql`, `postgres`, `files`, `genie`, or supported catalog read scopes. An App scope must also be allowed by workspace/Space policy and consented to by each user.
+5. In **User authorization**, configure only the organization-approved scopes needed by your features. Child-App discovery/deployment needs `apps` and `workspace.workspace`; AI Builder needs `model-serving`; Unity Catalog table pickers need a supported catalog-read scope (for example `catalog.catalogs:read` where policy allows it—Apps may still deny direct UC REST even when `sql` is present); Jobs pickers need Jobs API authorization allowed by your Apps/Space policy; other features may need `sql`, `postgres`, `files`, or `genie`. An App scope must also be allowed by workspace/Space policy and consented to by each user. Empty or 403 resource pickers usually mean missing scope, missing consent, or missing object permission—not a free-text fallback.
 
 Check the effective scope policy read-only from the terminal:
 
@@ -179,7 +179,8 @@ The setup diagnostics page may say it cannot verify consent if the workspace blo
 | Existing database object says `must be owner` | Inspect table ownership; have the database owner review the existing installation. Do not drop tables or grant broad ownership. |
 | Sync succeeds but deployed UI is stale | Confirm explicit includes, uploaded files, profile, source folder, and deployment status. |
 | Deployment already in progress | Wait for current/automatic deployment to finish before retrying. |
-| Empty resource picker or 403 | Check both caller consent and that caller's resource permissions, plus resource bindings on the target child App. |
+| Empty resource picker or 403 | Builder App User authorization scopes + user consent + caller object permission. For catalogs, confirm a supported catalog-read scope is requested, effective, and consented; for Jobs, confirm Jobs listing is allowed by policy/consent. Check Workspace setup, then retry the picker—do not treat free-text entry as the primary fix. |
+| `child_app_scopes_missing` (`files` / `genie` / `model-serving`) | File Upload, Genie Chat, and Model Chat require those child App user scopes. Create-new Deploy attaches required scopes; linked Apps must already include them. Bind Genie/Model resources under Settings → Resources before Deploy. |
 
 ## 6. Use VDAB to build and deploy a child app
 
@@ -195,14 +196,14 @@ The setup diagnostics page may say it cannot verify consent if the workspace blo
 1. In **Canvas**, drag components from the catalog onto the page. Select a component to change labels, properties, layout, and data bindings.
 2. In **Workflow**, add a workflow and actions. For a button, select its `onClick` trigger and connect it to the workflow event/action. Save and check validation messages.
 3. Optionally choose **Prompt** from the builder toolbar to open AI Builder on the current section (Canvas, Workflow, Code, or Settings). Pick a ready chat endpoint you can query (not an embedding endpoint). A successful proposal is applied to the current draft automatically when the draft has not changed during generation; if the draft changed during generation, use **Apply proposal to draft**. In a real workspace, confirm this with a chat endpoint you can query. Local-test mode uses `sample-chat-endpoint`, which returns a tool call and applies a title to the draft.
-4. In **Settings → App Details**, set the child App's workspace folder and confirm the saved target. Reopen the project to verify persistence.
+4. In **Settings → App Details**, set the child App name and optionally a workspace folder (leave blank to use the default VDAB folder under your user home). Reopen the project to verify persistence.
 5. In **Settings → Resources**, manage the child App's resource grants. The acting user needs permission to use the resources; the child App has its own identity and grants.
 6. Save before previewing or deploying. Deployment uses the saved project version.
 
 ### Deploy and run the generated child App
 
 1. Select **Deploy** in the builder header or on an Apps card. VDAB saves the current draft, writes the generated source to `<workspacePath>/.vdab/deployments/<projectId>/<deploymentId>`, and starts the Databricks App deployment. When the App URL is available, the current window opens that App page.
-2. If the child App name or workspace folder is missing, Deploy opens App Details and focuses those fields. Genie Chat and Model Chat block deploy until each component is bound to a matching App resource under **Settings → Resources** (Genie space or serving endpoint with CAN_QUERY/CAN_MANAGE). **Settings → Deployment** remains the place for history, retry, and rollback. Start Databricks Job workflows deploy with the other workflow actions.
+2. If the child App name is missing, Deploy opens App Details and focuses that field (workspace folder may stay blank for the default VDAB path). Genie Chat and Model Chat block deploy until each component is bound to a matching App resource under **Settings → Resources** (Genie space or serving endpoint with CAN_QUERY/CAN_MANAGE). File Upload requires the child App `files` scope—see Deployment readiness. **Settings → Deployment** remains the place for history, retry, and rollback. Start Databricks Job workflows deploy with the other workflow actions.
 3. Return to VDAB's Apps dashboard to check the child App status. **Open** launches the live App URL, **Edit** reopens Settings, and **Deploy** starts the same deployment.
 
 ### Update and recover

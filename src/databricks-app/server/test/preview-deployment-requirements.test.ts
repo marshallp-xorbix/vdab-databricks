@@ -169,6 +169,43 @@ test("ProjectDeploymentRequirements_RequiresViewerFilesScopeForFileUpload", () =
   assert.deepEqual(requirements.blockers, []);
 });
 
+test("ProjectDeploymentRequirements_UnboundGenieAndModelChat_AddDeployBlockers", () => {
+  const requirements = getProjectDeploymentRequirements(
+    [
+      {
+        key: "genie-chat",
+        type: "GenieChat",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: "genieChat",
+        description: null,
+        properties: { genieSpaceAppResourceName: "" },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+      {
+        key: "model-chat",
+        type: "ModelChat",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: "modelChat",
+        description: null,
+        properties: { servingEndpointAppResourceName: "" },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+    ],
+    { version: 1, workflows: [] },
+  );
+
+  assert.deepEqual(requirements.userApiScopes, ["genie", "model-serving"]);
+  assert.equal(requirements.blockers.length, 2);
+  assert.equal(requirements.blockers[0]?.code, "genie_chat_unbound");
+  assert.equal(requirements.blockers[1]?.code, "model_chat_unbound");
+});
+
 function createUnityCatalogComponent(): ProjectComponent {
   return {
     key: "data-window",

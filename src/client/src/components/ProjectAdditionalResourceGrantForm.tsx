@@ -83,16 +83,86 @@ export default function ProjectAdditionalResourceGrantForm({ existingNames, disa
       </label>
       <label className="space-y-1 text-sm"><span>App resource key</span><Input value={name} maxLength={30} onChange={(event) => setName(event.target.value)} /></label>
       <label className="space-y-1 text-sm"><span>{primaryLabel(kind)}</span>
-        {kind === "job" && jobs.data?.items.length ? (
-          <select className="h-10 w-full rounded-md border border-input bg-background px-3" value={primary} onChange={(event) => setPrimary(event.target.value)}><option value="">Select a Job…</option>{jobs.data.items.map((item) => <option key={item.jobId} value={item.jobId}>{item.name}</option>)}</select>
-        ) : kind === "genie_space" && genieSpaces.data?.items.length ? (
-          <select className="h-10 w-full rounded-md border border-input bg-background px-3" value={secondary} onChange={(event) => chooseGenieSpace(event.target.value)}><option value="">Select a Genie space…</option>{genieSpaces.data.items.map((item) => <option key={item.spaceId} value={item.spaceId}>{item.title}</option>)}</select>
-        ) : kind === "serving_endpoint" && servingEndpoints.data?.items.length ? (
-          <select className="h-10 w-full rounded-md border border-input bg-background px-3" value={primary} onChange={(event) => setPrimary(event.target.value)}><option value="">Select an endpoint…</option>{servingEndpoints.data.items.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select>
-        ) : <Input value={primary} maxLength={255} onChange={(event) => setPrimary(event.target.value)} />}
+        {kind === "job" ? (
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3"
+            value={primary}
+            disabled={jobs.isLoading || jobs.isError || !(jobs.data?.items.length)}
+            onChange={(event) => setPrimary(event.target.value)}
+          >
+            <option value="">
+              {jobs.isLoading
+                ? "Loading jobs…"
+                : jobs.isError
+                  ? "Jobs unavailable"
+                  : (jobs.data?.items.length ?? 0) === 0
+                    ? "No jobs found"
+                    : "Select a Job…"}
+            </option>
+            {(jobs.data?.items ?? []).map((item) => (
+              <option key={item.jobId} value={item.jobId}>{item.name}</option>
+            ))}
+          </select>
+        ) : kind === "genie_space" ? (
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3"
+            value={secondary}
+            disabled={genieSpaces.isLoading || genieSpaces.isError || !(genieSpaces.data?.items.length)}
+            onChange={(event) => chooseGenieSpace(event.target.value)}
+          >
+            <option value="">
+              {genieSpaces.isLoading
+                ? "Loading Genie spaces…"
+                : genieSpaces.isError
+                  ? "Genie spaces unavailable"
+                  : (genieSpaces.data?.items.length ?? 0) === 0
+                    ? "No Genie spaces found"
+                    : "Select a Genie space…"}
+            </option>
+            {(genieSpaces.data?.items ?? []).map((item) => (
+              <option key={item.spaceId} value={item.spaceId}>{item.title}</option>
+            ))}
+          </select>
+        ) : kind === "serving_endpoint" ? (
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3"
+            value={primary}
+            disabled={servingEndpoints.isLoading || servingEndpoints.isError || !(servingEndpoints.data?.items.length)}
+            onChange={(event) => setPrimary(event.target.value)}
+          >
+            <option value="">
+              {servingEndpoints.isLoading
+                ? "Loading endpoints…"
+                : servingEndpoints.isError
+                  ? "Endpoints unavailable"
+                  : (servingEndpoints.data?.items.length ?? 0) === 0
+                    ? "No endpoints found"
+                    : "Select an endpoint…"}
+            </option>
+            {(servingEndpoints.data?.items ?? []).map((item) => (
+              <option key={item.name} value={item.name}>{item.name}</option>
+            ))}
+          </select>
+        ) : (
+          <Input value={primary} maxLength={255} onChange={(event) => setPrimary(event.target.value)} />
+        )}
       </label>
       {requiresSecondary && kind !== "genie_space" && <label className="space-y-1 text-sm"><span>Database name</span><Input value={secondary} maxLength={128} onChange={(event) => setSecondary(event.target.value)} /></label>}
-      {([jobs, genieSpaces, servingEndpoints].some((query) => query.isError)) && <p role="alert" className="text-sm text-destructive sm:col-span-2">A workspace resource list could not be loaded. You can enter its identifier manually.</p>}
+      {kind === "job" && jobs.isError && (
+        <p role="alert" className="text-sm text-destructive sm:col-span-2">
+          {jobs.error.message}
+        </p>
+      )}
+      {kind === "genie_space" && genieSpaces.isError && (
+        <p role="alert" className="text-sm text-destructive sm:col-span-2">
+          {genieSpaces.error.message}
+        </p>
+      )}
+      {kind === "serving_endpoint" && servingEndpoints.isError && (
+        <p role="alert" className="text-sm text-destructive sm:col-span-2">
+          {servingEndpoints.error.message}
+        </p>
+      )}
       {kind === "uc_securable" && <label className="space-y-1 text-sm"><span>Securable type</span>
         <select className="h-10 w-full rounded-md border border-input bg-background px-3" value={securableType} onChange={(event) => setSecurableType(event.target.value as typeof securableType)}>
           {["TABLE", "VOLUME", "FUNCTION", "CONNECTION", "MODEL_SERVICE"].map((value) => <option key={value} value={value}>{value}</option>)}

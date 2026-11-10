@@ -134,7 +134,7 @@ test("WorkspaceResourcesClient_MapsDeniedScopeOrPermission_WithoutAppIdentityFal
       error.code === "databricks_resource_access_denied" &&
       error.status === 403 &&
       error.message ===
-        "Confirm the app has the required user authorization scope and that you can access this Unity Catalog resource.",
+        "Confirm the builder App User authorization includes a supported Unity Catalog catalog-read scope (for example catalog.catalogs:read where your workspace policy allows it), that you consented to it, and that you can list these Unity Catalog resources.",
   );
 
   assert.deepEqual(authorizationHeaders, [`Bearer ${FORWARDED_TOKEN}`]);

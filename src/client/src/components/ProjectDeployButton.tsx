@@ -7,8 +7,11 @@ import { deploySavedProjectAndOpen } from "../utils/deploySavedProject";
 import { getChatDeployBlockingMessage } from "../utils/chatDeployBlocking";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectDeploymentSettings } from "../models/ProjectDeploymentSettings";
+import type { IWorkspaceSecretResourceSelection } from "../models/ProjectDeployments";
+import { useProjectDeploymentReadiness } from "../hooks/useProjectDeploymentReadiness";
 import { useProjectDeployments } from "../hooks/useProjectDeployments";
 import { useWorkspaceAppDeploymentTarget } from "../hooks/useWorkspaceAppDeploymentTarget";
+import { getProjectDeploymentReadiness } from "../api/projectDeploymentsApi";
 
 interface IProjectDeployButtonProps {
   projectId: string;
@@ -37,44 +40,26 @@ function ProjectDeployButton({
   const navigate = useNavigate();
   const [isDeploying, setDeploying] = useState(false);
   const deploymentsQuery = useProjectDeployments(projectId);
+  const readinessQuery = useProjectDeploymentReadiness(
+    canEdit ? projectId : undefined,
+  );
   const targetQuery = useWorkspaceAppDeploymentTarget(
     deploymentsQuery.data?.childApp?.appName ?? deploymentSettings?.appName,
   );
-  const missingTarget =
-    !deploymentSettings?.appName || !deploymentSettings.workspacePath;
+  const missingTarget = !deploymentSettings?.appName;
 
   async function deploy(): Promise<void> {
-    if (!canEdit || isSaving || isDeploying) return;
+    if (!canEdit || isSaving || isDeploying || !deploymentSettings) return;
     if (missingTarget) {
       navigate(`/apps/${projectId}?section=settings&focus=deployment-target`);
       toast({
         title: "Deployment needs a target",
         description:
-          "Set the child App name and workspace folder, then choose Deploy again.",
+          "Set the child App name, then choose Deploy again. Leave the workspace folder blank to use the default VDAB folder.",
       });
       return;
     }
-    const blocker = getChatDeployBlockingMessage(
-      components,
-      targetQuery.data?.appResources ?? [],
-    );
-    if (blocker) {
-      toast({
-        title: "Deployment blocked",
-        description: blocker,
-        variant: "destructive",
-      });
-      return;
-    }
-    if (isCustomModulesDirty) {
-      toast({
-        title: "Save custom modules first",
-        description: "Save the custom Python module before deploying this App.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges || isCustomModulesDirty) {
       const saved = await onSave();
       if (!saved) {
         toast({
@@ -86,13 +71,58 @@ function ProjectDeployButton({
         return;
       }
     }
+    let readiness = readinessQuery.data;
+    try {
+      readiness = await getProjectDeploymentReadiness(projectId);
+    } catch (error) {
+      toast({
+        title: "Deployment readiness unavailable",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Deployment prerequisites could not be checked.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (readiness.blockers.length > 0) {
+      navigate(`/apps/${projectId}?section=settings&settings=deployment`);
+      toast({
+        title: "Deployment blocked",
+        description: readiness.blockers.map((blocker) => blocker.detail).join(" "),
+        variant: "destructive",
+      });
+      return;
+    }
+    const blocker = getChatDeployBlockingMessage(
+      components,
+      targetQuery.data?.appResources ?? readiness.appResources,
+    );
+    if (blocker) {
+      toast({
+        title: "Deployment blocked",
+        description: blocker,
+        variant: "destructive",
+      });
+      return;
+    }
     setDeploying(true);
     try {
-      await deploySavedProjectAndOpen({
+      const result = await deploySavedProjectAndOpen({
         projectId,
         mode: deploymentSettings.mode,
         appName: deploymentSettings.appName,
+        secretResources: secretSelectionsFromTarget(
+          targetQuery.data?.secretResources ?? [],
+        ),
       });
+      if (result.status === "started_without_url") {
+        toast({
+          title: "Deployment started",
+          description:
+            "The App upload started, but its page is not available yet. Use Open app when it comes online.",
+        });
+      }
     } catch (error) {
       toast({
         title: "Deployment failed",
@@ -102,6 +132,7 @@ function ProjectDeployButton({
             : "The App deployment could not be started.",
         variant: "destructive",
       });
+    } finally {
       setDeploying(false);
     }
   }
@@ -123,6 +154,19 @@ function ProjectDeployButton({
       {isDeploying ? "Deploying…" : "Deploy"}
     </Button>
   );
+}
+
+function secretSelectionsFromTarget(
+  secrets: ReadonlyArray<{
+    name: string;
+    secret: { scope: string; key: string };
+  }>,
+): IWorkspaceSecretResourceSelection[] {
+  return secrets.map((resource) => ({
+    name: resource.name,
+    scope: resource.secret.scope,
+    key: resource.secret.key,
+  }));
 }
 
 export default ProjectDeployButton;

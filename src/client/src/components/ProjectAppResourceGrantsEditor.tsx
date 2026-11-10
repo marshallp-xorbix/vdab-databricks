@@ -104,10 +104,25 @@ function ProjectAppResourceGrantsEditor({
       <header>
         <h3 id="resource-grants-heading" className="text-base font-semibold">App resources</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Specify what resources the App service principal can access. Click Edit to change resources; Save resources writes updates to Databricks. Current project bindings are required.{" "}
-          <a className="underline underline-offset-4" href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/resources" target="_blank" rel="noopener noreferrer">Databricks Apps resources</a>
+          Specify what resources the App service principal can access. Click Edit
+          to change resources; Save resources writes updates to Databricks.
+          Current project bindings are required.
         </p>
-        {target?.computeState && <p className="mt-2 text-sm text-muted-foreground">Compute: {target.computeState}</p>}
+        <p className="mt-1 text-sm">
+          <a
+            className="underline underline-offset-4"
+            href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/resources"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Databricks Apps resources
+          </a>
+        </p>
+        {target?.computeState && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Compute: {target.computeState}
+          </p>
+        )}
       </header>
 
       {!target ? (
@@ -135,9 +150,17 @@ function ProjectAppResourceGrantsEditor({
             </div>
           )}
           <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[44rem] table-fixed text-left text-sm">
               <thead className="bg-muted text-xs uppercase text-muted-foreground">
-                <tr><th className="px-3 py-2">Key</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Details</th><th className="px-3 py-2">Permission</th><th className="px-3 py-2"><span className="sr-only">Actions</span></th></tr>
+                <tr>
+                  <th className="w-[7.5rem] px-3 py-2">Key</th>
+                  <th className="w-[8.5rem] px-3 py-2">Type</th>
+                  <th className="min-w-[14rem] px-3 py-2">Details</th>
+                  <th className="w-[12rem] px-3 py-2">Permission</th>
+                  <th className="w-[5.5rem] px-3 py-2">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
               </thead>
               <tbody>
                 {resources.map((resource) => {
@@ -145,29 +168,87 @@ function ProjectAppResourceGrantsEditor({
                   const type = resourceType(resource);
                   return (
                     <tr key={resource.name} className="border-t border-border align-top">
-                      <td className="px-3 py-3 font-medium">{resource.name}{required && <span className="ml-2 text-xs text-muted-foreground">Required</span>}</td>
+                      <td className="px-3 py-3 font-medium">
+                        {resource.name}
+                        {required && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            Required
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-3">{type}</td>
-                      <td className="px-3 py-3">
+                      <td className="min-w-0 px-3 py-3">
                         {isEditing ? (
-                          <ProjectAppResourceTargetFields resource={resource} onChange={(next) => replaceResource(resource.name, next)} />
-                        ) : resourceDetails(resource)}
+                          <ProjectAppResourceTargetFields
+                            resource={resource}
+                            onChange={(next) =>
+                              replaceResource(resource.name, next)
+                            }
+                          />
+                        ) : (
+                          <span className="break-all">
+                            {resourceDetails(resource)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         {permissionOptions(resource).length > 1 ? (
-                          <select aria-label={`Permission for ${resource.name}`} className="h-9 rounded-md border border-input bg-background px-2" value={resourcePermission(resource)} disabled={!canEdit || !isEditing || required} onChange={(event) => updatePermission(resource.name, event.target.value)}>
-                            {permissionOptions(resource).map((value) => <option key={value} value={value}>{formatPermissionLabel(value)}</option>)}
+                          <select
+                            aria-label={`Permission for ${resource.name}`}
+                            className="h-9 w-full min-w-[10rem] rounded-md border border-input bg-background px-2"
+                            value={resourcePermission(resource)}
+                            disabled={!canEdit || !isEditing || required}
+                            onChange={(event) =>
+                              updatePermission(
+                                resource.name,
+                                event.target.value,
+                              )
+                            }
+                          >
+                            {permissionOptions(resource).map((value) => (
+                              <option key={value} value={value}>
+                                {formatPermissionLabel(value)}
+                              </option>
+                            ))}
                           </select>
-                        ) : resourcePermission(resource)}
+                        ) : (
+                          <span className="whitespace-normal break-words">
+                            {formatPermissionLabel(resourcePermission(resource))}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-right">
                         {!required && isEditing && (
-                          <Button type="button" variant="ghost" size="sm" disabled={!canEdit} onClick={() => setResources((current) => current.filter((item) => item.name !== resource.name))}>Remove</Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={!canEdit}
+                            onClick={() =>
+                              setResources((current) =>
+                                current.filter(
+                                  (item) => item.name !== resource.name,
+                                ),
+                              )
+                            }
+                          >
+                            Remove
+                          </Button>
                         )}
                       </td>
                     </tr>
                   );
                 })}
-                {resources.length === 0 && <tr><td colSpan={5} className="px-3 py-5 text-center text-muted-foreground">No resource grants are configured.</td></tr>}
+                {resources.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-3 py-5 text-center text-muted-foreground"
+                    >
+                      No resource grants are configured.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

@@ -7,6 +7,25 @@ interface IProjectDeploymentReadinessProps {
   errorMessage: string;
 }
 
+const SCOPE_GUIDANCE: ReadonlyArray<{ scope: string; detail: string }> = [
+  {
+    scope: "files",
+    detail:
+      "File Upload requires the child App user authorization scope files. New Apps created by Deploy receive required scopes automatically; linked Apps must already include files, and each user must consent.",
+  },
+  {
+    scope: "genie",
+    detail:
+      "Genie Chat requires the child App user authorization scope genie and a bound Genie space resource under Settings → Resources.",
+  },
+  {
+    scope: "model-serving",
+    detail:
+      "Model Chat requires the child App user authorization scope model-serving and a bound serving endpoint resource with CAN_QUERY or CAN_MANAGE.",
+  },
+];
+
+/** Shows saved-project deployment requirements, blockers, and scope guidance. */
 function ProjectDeploymentReadiness({
   readiness,
   isPending,
@@ -14,6 +33,9 @@ function ProjectDeploymentReadiness({
   errorMessage,
 }: Readonly<IProjectDeploymentReadinessProps>) {
   const appResources = readiness?.appResources ?? [];
+  const scopeNotes = SCOPE_GUIDANCE.filter((entry) =>
+    readiness?.userApiScopes.includes(entry.scope),
+  );
   return (
     <>
       {isPending && <p role="status">Checking saved project requirements…</p>}
@@ -26,6 +48,11 @@ function ProjectDeploymentReadiness({
               ? readiness.userApiScopes.join(", ")
               : "No additional user scopes are required by this project."}
           </p>
+          {scopeNotes.map((entry) => (
+            <p className="text-sm text-muted-foreground" key={entry.scope}>
+              {entry.detail}
+            </p>
+          ))}
           {appResources.length > 0 && (
             <div className="space-y-1">
               <h4 className="text-sm font-medium">Required child App resources</h4>
@@ -54,7 +81,7 @@ function ProjectDeploymentReadiness({
             remaining App capacity apply.
           </p>
           {readiness.blockers.map((blocker) => (
-            <p key={blocker.code} role="alert">
+            <p key={`${blocker.code}-${blocker.detail}`} role="alert">
               {blocker.detail}
             </p>
           ))}

@@ -52,7 +52,7 @@ export default function InstalledWorkspaceUnityCatalogTableSelectorFields({
         value={selectedCatalog}
         placeholder="Select a catalog"
         options={catalogsQuery.data?.items.map((item) => ({ value: item.name, label: item.name })) ?? []}
-        loading={catalogsQuery.isPending}
+        loading={catalogsQuery.isLoading}
         error={catalogsQuery.error}
         onChange={updateCatalog}
       />
@@ -61,7 +61,7 @@ export default function InstalledWorkspaceUnityCatalogTableSelectorFields({
         value={selectedSchema}
         placeholder={selectedCatalog ? "Select a schema" : "Select a catalog first"}
         options={schemasQuery.data?.items.map((item) => ({ value: item.name, label: item.name })) ?? []}
-        loading={schemasQuery.isPending}
+        loading={Boolean(selectedCatalog) && schemasQuery.isLoading}
         error={schemasQuery.error}
         disabled={!selectedCatalog}
         onChange={updateSchema}
@@ -71,7 +71,7 @@ export default function InstalledWorkspaceUnityCatalogTableSelectorFields({
         value={value.table}
         placeholder={selectedSchema ? "Select a table" : "Select a schema first"}
         options={tablesQuery.data?.items.map((item: IWorkspaceTable) => ({ value: item.name, label: item.name })) ?? []}
-        loading={tablesQuery.isPending}
+        loading={Boolean(selectedSchema) && tablesQuery.isLoading}
         error={tablesQuery.error}
         disabled={!selectedSchema}
         onChange={updateTable}

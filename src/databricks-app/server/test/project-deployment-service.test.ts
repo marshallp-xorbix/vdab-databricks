@@ -496,3 +496,62 @@ test("ProjectDeploymentService_CreateNewAtWorkspaceLimit_BlocksBeforeRecordingOr
   assert.equal(harness.workspace.createdApps.length, 0);
   assert.equal(harness.workspace.uploads.length, 0);
 });
+
+test("ProjectDeploymentService_RequirementBlockers_UseBlockerDetailAsTitle", async () => {
+  const harness = createHarness({
+    requirements: {
+      userApiScopes: ["sql"],
+      appResources: [],
+      blockers: [
+        {
+          code: "default_sql_warehouse_unavailable",
+          detail: "Bind a SQL warehouse App resource before deploying.",
+        },
+      ],
+    },
+  });
+
+  await assert.rejects(
+    harness.service.deploy(CALLER, "request-blockers", PROJECT_ID, {
+      mode: "createNew",
+      appName: "project-child",
+      confirmOverwrite: false,
+    }),
+    (error: unknown) =>
+      error instanceof ApplicationError &&
+      error.status === 422 &&
+      error.code === "default_sql_warehouse_unavailable" &&
+      error.title === "Bind a SQL warehouse App resource before deploying." &&
+      error.message === "Bind a SQL warehouse App resource before deploying.",
+  );
+
+  assert.equal(harness.repository.records.length, 0);
+  assert.equal(harness.workspace.createdApps.length, 0);
+});
+
+test("ProjectDeploymentService_ListHistory_RefreshesStaleRunningRemoteSucceeded", async () => {
+  const harness = createHarness();
+  const initial = await harness.service.deploy(CALLER, "request-1", PROJECT_ID, {
+    mode: "createNew",
+    appName: "project-child",
+    confirmOverwrite: false,
+  });
+  assert.equal(initial.status, "succeeded");
+  assert.ok(initial.deploymentId);
+
+  const record = harness.repository.records[0];
+  assert.ok(record);
+  record.status = "running";
+  record.completedAt = null;
+  harness.workspace.setRemoteDeploymentState(initial.deploymentId!, "succeeded");
+
+  const history = await harness.service.listHistory(
+    CALLER,
+    "request-2",
+    PROJECT_ID,
+  );
+  assert.equal(history.items[0]?.status, "succeeded");
+  assert.ok(
+    harness.repository.auditActions.includes("deployment.status.refreshed"),
+  );
+});

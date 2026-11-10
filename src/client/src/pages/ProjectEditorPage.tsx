@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/button";
+import { toast } from "../components/ui/use-toast";
 import ProjectEditorUnsavedChangesDialog from "../components/ProjectEditorUnsavedChangesDialog";
 import ProjectEditorToolbar from "../components/ProjectEditorToolbar";
 import ProjectEditorSettingsSection from "../components/ProjectEditorSettingsSection";
@@ -19,6 +20,7 @@ import { ComponentRegistryProvider } from "../context/ComponentRegistryContext";
 import { BuilderLayoutProvider } from "../context/BuilderLayoutContext";
 import { useProjectDeployments } from "../hooks/useProjectDeployments";
 import { useProjectCustomModules } from "../hooks/useProjectCustomModules";
+import { useReplaceProjectCustomModules } from "../hooks/useReplaceProjectCustomModules";
 import { useWorkspaceServingEndpoints } from "../hooks/useWorkspaceServingEndpoints";
 
 interface IProjectEditorPageProps {
@@ -43,6 +45,7 @@ function ProjectEditorPageContent({
   const [searchParams, setSearchParams] = useSearchParams();
   const projectDeploymentsQuery = useProjectDeployments(editor.project?.id);
   const customModulesQuery = useProjectCustomModules(editor.project?.id);
+  const replaceCustomModulesMutation = useReplaceProjectCustomModules();
   const servingEndpointsQuery = useWorkspaceServingEndpoints();
   const [showAiChat, setShowAiChat] = useState(false);
   const [customModulesState, setCustomModulesState] = useState({
@@ -64,10 +67,8 @@ function ProjectEditorPageContent({
     isWorkflowDirty,
     previewMutation,
     navigationBlocker,
-    handleSave,
     handleSaveCanvas,
     isCanvasSaving,
-    handleSaveWorkflow,
     handlePreview,
   } = editor;
   const hasLoadedCustomModulesSource =
@@ -141,20 +142,54 @@ function ProjectEditorPageContent({
     );
   }
 
-  const isActiveSectionDirty =
-    activeEditorSection === "components"
-      ? (isMetadataDirty || isComponentsDirty || isWorkflowDirty) &&
-        !isCustomModulesDirty
-      : activeEditorSection === "workflows"
-        ? isWorkflowDirty
-        : activeEditorSection === "settings"
-          ? isMetadataDirty
-          : false;
-
-  async function handleSaveActiveSection(): Promise<boolean> {
-    if (activeEditorSection === "components") return handleSaveCanvas();
-    if (activeEditorSection === "workflows") return handleSaveWorkflow();
-    return handleSave();
+  async function handleSaveAll(): Promise<boolean> {
+    if (!canEdit) return false;
+    const needsProjectAggregates =
+      isMetadataDirty || isComponentsDirty || isWorkflowDirty;
+    if (!needsProjectAggregates && !isCustomModulesDirty) return true;
+    try {
+      if (needsProjectAggregates) {
+        const saved = await handleSaveCanvas();
+        if (!saved) {
+          toast({
+            title: "Save failed",
+            description:
+              "Project metadata, components, or workflow could not be saved.",
+            variant: "destructive",
+          });
+          return false;
+        }
+      }
+      if (isCustomModulesDirty) {
+        const document = customModulesQuery.data;
+        if (!document) {
+          toast({
+            title: "Save failed",
+            description: "Custom Python modules are still loading.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        const saved = await replaceCustomModulesMutation.mutateAsync({
+          projectId: project.id,
+          version: document.version,
+          source: customModulesSource,
+        });
+        handleCustomModulesSourceChange(saved.source);
+        setCustomModulesDirty(false);
+      }
+      return true;
+    } catch (error) {
+      toast({
+        title: "Save failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The project could not be saved.",
+        variant: "destructive",
+      });
+      return false;
+    }
   }
 
   const builderActions = (
@@ -167,22 +202,24 @@ function ProjectEditorPageContent({
         isCanvasSaving ||
         updateProjectMutation.isPending ||
         replaceComponentsMutation.isPending ||
-        replaceWorkflowMutation.isPending
+        replaceWorkflowMutation.isPending ||
+        replaceCustomModulesMutation.isPending
       }
-      hasUnsavedChanges={editor.isDirty || isActiveSectionDirty}
+      hasUnsavedChanges={editor.isDirty}
       isCustomModulesDirty={isCustomModulesDirty}
       deploymentSettings={editor.deploymentSettings}
       components={editor.components}
       isAiOpen={showAiChat}
       onToggleAi={() => setShowAiChat((open) => !open)}
-      onSaveForDeploy={handleSaveCanvas}
-      onSave={handleSaveActiveSection}
+      onSaveForDeploy={handleSaveAll}
+      onSave={handleSaveAll}
       onRefresh={() => {
         void Promise.all([
           projectQuery.refetch(),
           editor.componentsQuery.refetch(),
           editor.workflowQuery.refetch(),
           editor.registryQuery.refetch(),
+          customModulesQuery.refetch(),
         ]);
       }}
     />

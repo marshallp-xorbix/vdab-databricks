@@ -129,10 +129,12 @@ function DataWindowTableBindingEditor({
             unityCatalogSelection.catalog,
           ).map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
-        {catalogs.isPending && <p role="status" className="text-xs text-muted-foreground">Loading catalogs…</p>}
+        {catalogs.isLoading && <p role="status" className="text-xs text-muted-foreground">Loading catalogs…</p>}
         {catalogs.isError && <p role="alert" className="text-xs text-destructive">{catalogs.error.message}</p>}
-        {!catalogs.isPending && !catalogs.isError && (catalogs.data?.items.length ?? 0) === 0 && (
-          <p role="status" className="text-xs text-muted-foreground">No catalogs are visible to this user.</p>
+        {!catalogs.isLoading && !catalogs.isError && (catalogs.data?.items.length ?? 0) === 0 && (
+          <p role="status" className="text-xs text-muted-foreground">
+            No catalogs are visible. Confirm builder User authorization includes supported catalog read scopes, that you consented, and that you can list Unity Catalog catalogs in this workspace.
+          </p>
         )}
       </div>
       {unityCatalogSelection.catalog && (

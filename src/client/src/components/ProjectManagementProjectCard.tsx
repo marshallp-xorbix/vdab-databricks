@@ -37,23 +37,34 @@ function ProjectManagementProjectCard({
     ? status === "Error" || status === "Checking" ? status : "Draft"
     : presentation?.shortLabel ?? status;
   const settings = project.deploymentSettings;
-  const canDeployNow = Boolean(settings?.appName && settings.workspacePath);
+  const canDeployNow = Boolean(settings?.appName);
 
   async function deploy(): Promise<void> {
-    if (!settings?.appName || !settings.workspacePath || isDeploying) return;
+    if (!settings?.appName || isDeploying) return;
     setDeploying(true);
     try {
-      await deploySavedProjectAndOpen({
+      const result = await deploySavedProjectAndOpen({
         projectId: project.id,
         mode: settings.mode,
         appName: settings.appName,
       });
+      if (result.status === "started_without_url") {
+        toast({
+          title: "Deployment started",
+          description:
+            "The App upload started, but its page is not available yet. Open the builder and use Open app when it comes online.",
+        });
+      }
     } catch (error) {
       toast({
         title: "Deployment failed",
-        description: error instanceof Error ? error.message : "The App deployment could not be started.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "The App deployment could not be started.",
         variant: "destructive",
       });
+    } finally {
       setDeploying(false);
     }
   }
@@ -95,29 +106,15 @@ function ProjectManagementProjectCard({
             >
               <Link to={`/apps/${project.id}?section=settings`}>Edit</Link>
             </Button>
-            {app?.url ? (
-              <Button
-                className="flex-1"
-                type="button"
-                size="sm"
-                variant="outline"
-                asChild
-              >
-                <a href={app.url} target="_blank" rel="noopener noreferrer">
-                  Open
-                </a>
-              </Button>
-            ) : (
-              <Button
-                className="flex-1"
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled
-              >
-                Open
-              </Button>
-            )}
+            <Button
+              className="flex-1"
+              type="button"
+              size="sm"
+              variant="outline"
+              asChild
+            >
+              <Link to={`/apps/${project.id}`}>Open</Link>
+            </Button>
             {canDeployNow ? (
               <Button className="flex-1 shadow-md hover:opacity-90" type="button" size="sm" disabled={isDeploying} onClick={() => void deploy()}>
                 {isDeploying ? "Deploying…" : "Deploy"}

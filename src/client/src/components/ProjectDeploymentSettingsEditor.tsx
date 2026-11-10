@@ -116,7 +116,7 @@ function ProjectDeploymentSettingsEditor({
             <option key={name} value={name} />
           ))}
         </datalist>
-        {appsQuery.isPending ? (
+        {appsQuery.isLoading ? (
           <p role="status" className="text-xs text-muted-foreground">
             Loading Databricks Apps in this workspace…
           </p>

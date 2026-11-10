@@ -214,6 +214,7 @@ class MemoryWorkspaceAppsClient implements WorkspaceAppDeploymentClient {
   readonly submittedPaths: string[] = [];
   nextDeploymentState: ProjectDeploymentStatus = "succeeded";
   private deploymentIndex = 0;
+  private readonly deploymentStates = new Map<string, ProjectDeploymentStatus>();
 
   constructor(appSpaceName: string | null) {
     this.appSpaceName = appSpaceName;
@@ -290,6 +291,7 @@ class MemoryWorkspaceAppsClient implements WorkspaceAppDeploymentClient {
       deploymentId: `deployment-${this.deploymentIndex}`,
       state: this.nextDeploymentState,
     };
+    this.deploymentStates.set(status.deploymentId, status.state);
     this.nextDeploymentState = "succeeded";
     return status;
   }
@@ -299,10 +301,18 @@ class MemoryWorkspaceAppsClient implements WorkspaceAppDeploymentClient {
     _appName: string,
     deploymentId: string,
   ): Promise<WorkspaceAppDeploymentStatus> {
-    const state: ProjectDeploymentStatus = deploymentId.endsWith("1")
-      ? "failed"
-      : "succeeded";
-    return { deploymentId, state };
+    return {
+      deploymentId,
+      state: this.deploymentStates.get(deploymentId) ?? "succeeded",
+    };
+  }
+
+  /** Test helper: force the remote Databricks deployment state used by refresh. */
+  setRemoteDeploymentState(
+    deploymentId: string,
+    state: ProjectDeploymentStatus,
+  ): void {
+    this.deploymentStates.set(deploymentId, state);
   }
 }
 

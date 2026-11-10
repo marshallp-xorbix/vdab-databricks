@@ -69,6 +69,8 @@ export function getProjectDeploymentRequirements(
   if (components.some((component) => component.type === "FileUpload"))
     userApiScopes.add("files");
 
+  blockers.push(...getChatBindingBlockers(components));
+
   const appResources: WorkspaceAppResource[] = [
     ...lakebaseRequirements.appResources,
   ];
@@ -94,6 +96,43 @@ export function getProjectDeploymentRequirements(
     appResources,
     blockers,
   };
+}
+
+/** Blocks deploy until Genie Chat and Model Chat bind a matching App resource. */
+function getChatBindingBlockers(
+  components: ProjectComponent[],
+): ProjectDeploymentRequirements["blockers"] {
+  const blockers: ProjectDeploymentRequirements["blockers"] = [];
+  for (const component of components) {
+    const label = component.codeName || component.key;
+    if (component.type === "GenieChat") {
+      const selected = readBoundResourceName(
+        component.properties.genieSpaceAppResourceName,
+      );
+      if (!selected) {
+        blockers.push({
+          code: "genie_chat_unbound",
+          detail: `Genie Chat "${label}" is not bound to a Genie space. Open App Settings → Resources, add a Genie space, then select it in the component properties.`,
+        });
+      }
+    }
+    if (component.type === "ModelChat") {
+      const selected = readBoundResourceName(
+        component.properties.servingEndpointAppResourceName,
+      );
+      if (!selected) {
+        blockers.push({
+          code: "model_chat_unbound",
+          detail: `Model Chat "${label}" is not bound to a serving endpoint. Open App Settings → Resources, add a Serving endpoint with CAN_QUERY permission, then select it in the component properties.`,
+        });
+      }
+    }
+  }
+  return blockers;
+}
+
+function readBoundResourceName(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function isUnityCatalogTable(value: unknown): boolean {

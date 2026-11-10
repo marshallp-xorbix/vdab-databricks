@@ -136,7 +136,7 @@ async function listResources(
       endpoint,
       caller,
       fetchImplementation,
-      undefined,
+      "Confirm the builder App User authorization includes a supported Unity Catalog catalog-read scope (for example catalog.catalogs:read where your workspace policy allows it), that you consented to it, and that you can list these Unity Catalog resources.",
       signal,
     );
     const body = await readWorkspaceResourceResponse(response, signal);
@@ -180,6 +180,7 @@ async function listTables(
       endpoint,
       caller,
       fetchImplementation,
+      "Confirm the builder App User authorization includes a supported Unity Catalog table-read scope, that you consented to it, and that you can list tables in this schema.",
     );
     const body = await readWorkspaceResourceResponse(response);
     if (!Array.isArray(body.tables)) throw invalidWorkspaceResourceResponse();
@@ -240,7 +241,7 @@ async function listTableSummaries(
       endpoint,
       caller,
       fetchImplementation,
-      "Confirm the app's Unity Catalog user authorization and your permission to view these tables.",
+      "Confirm the builder App User authorization includes a supported Unity Catalog catalog-read scope, that you consented to it, and that you can list these tables.",
       signal,
     );
     const body = await readWorkspaceResourceResponse(response, signal);

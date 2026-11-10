@@ -1,35 +1,45 @@
 import { startProjectDeployment } from "../api/projectDeploymentsApi";
 import { getWorkspaceApp } from "../api/workspaceAppsApi";
-import type { ProjectChildAppMode } from "../models/ProjectDeployments";
+import type {
+  IWorkspaceSecretResourceSelection,
+  ProjectChildAppMode,
+} from "../models/ProjectDeployments";
 
-const APP_URL_ATTEMPTS = 8;
-const APP_URL_DELAY_MS = 400;
+const APP_URL_ATTEMPTS = 30;
+const APP_URL_DELAY_MS = 2_000;
 
-/** Uploads the saved snapshot and opens the child App page once Databricks returns its URL. */
+export type DeploySavedProjectResult =
+  | { status: "opened"; url: string }
+  | { status: "started_without_url" };
+
+/** Uploads the saved snapshot and opens the child App in a new tab when ready. */
 export async function deploySavedProjectAndOpen(input: {
   projectId: string;
   mode: ProjectChildAppMode;
   appName: string;
-}): Promise<void> {
+  secretResources?: IWorkspaceSecretResourceSelection[];
+}): Promise<DeploySavedProjectResult> {
   await startProjectDeployment({
     projectId: input.projectId,
     mode: input.mode,
     appName: input.appName,
-    confirmOverwrite: input.mode === "linkExisting",
+    // Toolbar and Apps-list Deploy are explicit redeploy actions.
+    confirmOverwrite: true,
+    secretResources: input.secretResources ?? [],
   });
   const url = await waitForAppUrl(input.appName);
-  window.location.assign(url);
+  if (!url) return { status: "started_without_url" };
+  window.open(url, "_blank", "noopener,noreferrer");
+  return { status: "opened", url };
 }
 
-async function waitForAppUrl(appName: string): Promise<string> {
+async function waitForAppUrl(appName: string): Promise<string | null> {
   for (let attempt = 0; attempt < APP_URL_ATTEMPTS; attempt += 1) {
     const app = await getWorkspaceApp(appName);
     if (app.url) return app.url;
     await delay(APP_URL_DELAY_MS);
   }
-  throw new Error(
-    "The Databricks App deployment started, but its page is not available yet.",
-  );
+  return null;
 }
 
 function delay(milliseconds: number): Promise<void> {

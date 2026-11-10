@@ -69,7 +69,7 @@ async function listJobs(
       endpoint,
       caller,
       fetchImplementation,
-      "Confirm the app's Jobs authorization and your permission to view these jobs.",
+      "Confirm the builder App User authorization allows Jobs listing for your workspace policy, that you consented to the required Apps scopes, and that you can view these jobs. Open Workspace setup if the Jobs picker stays empty.",
       signal,
     );
     const body = await readWorkspaceResourceResponse(response, signal);
