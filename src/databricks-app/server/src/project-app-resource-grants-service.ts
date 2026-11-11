@@ -67,10 +67,18 @@ export class ProjectAppResourceGrantsService {
     const expectedUpdateTime = readExpectedUpdateTime(body);
     validateWorkspaceAppResources(resources);
 
+    const currentApp = await this.workspaceClient.getApp(
+      caller,
+      childApp.appName,
+    );
+    if (!currentApp || (childApp.appId && currentApp.appId !== childApp.appId)) {
+      throw childAppTargetConflict();
+    }
     const source = await this.previewService.generateDeploymentSource(
       caller,
       requestId,
       projectId,
+      currentApp.resources,
     );
     if (
       !containsWorkspaceAppResources(
@@ -84,14 +92,6 @@ export class ProjectAppResourceGrantsService {
         "Project resource grant is required",
         "Keep the Databricks App resources required by the current project bindings.",
       );
-    }
-
-    const currentApp = await this.workspaceClient.getApp(
-      caller,
-      childApp.appName,
-    );
-    if (!currentApp || (childApp.appId && currentApp.appId !== childApp.appId)) {
-      throw childAppTargetConflict();
     }
     if ((currentApp.unsupportedResourceCount ?? 0) > 0) {
       throw new ApplicationError(

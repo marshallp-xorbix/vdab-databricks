@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import os
+import re
 import urllib.parse
 
 st.set_page_config(page_title='Quarterly overview', layout='wide')
@@ -11,7 +12,9 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 ui_overrides = {'labels': {}}
-_vdab_dashboard_workspace_host = os.environ.get('DATABRICKS_HOST', '')
+_vdab_dashboard_workspace_host = os.environ.get('DATABRICKS_HOST', '').strip()
+if _vdab_dashboard_workspace_host and not re.match(r'^[A-Za-z][A-Za-z0-9+.-]*://', _vdab_dashboard_workspace_host):
+    _vdab_dashboard_workspace_host = f'https://{_vdab_dashboard_workspace_host}'
 _vdab_dashboard_workspace = urllib.parse.urlsplit(_vdab_dashboard_workspace_host)
 _vdab_dashboard_workspace_id = os.environ.get('DATABRICKS_WORKSPACE_ID', '')
 if (_vdab_dashboard_workspace.scheme != 'https' or not _vdab_dashboard_workspace.hostname or _vdab_dashboard_workspace.username or _vdab_dashboard_workspace.password or _vdab_dashboard_workspace.path not in ('', '/') or _vdab_dashboard_workspace.query or _vdab_dashboard_workspace.fragment or not _vdab_dashboard_workspace_id.isascii() or not _vdab_dashboard_workspace_id.isdigit() or len(_vdab_dashboard_workspace_id) > 32):

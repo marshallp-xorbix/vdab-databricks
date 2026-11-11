@@ -38,7 +38,9 @@ def _vdab_sql_request(method: str, path: str, body: dict[str, object] | None = N
     user_token = st.context.headers.get('x-forwarded-access-token')
     if not user_token:
         raise RuntimeError('The current viewer did not grant Databricks SQL user authorization.')
-    workspace_host = os.environ.get('DATABRICKS_HOST', '')
+    workspace_host = os.environ.get('DATABRICKS_HOST', '').strip()
+    if workspace_host and not re.match(r'^[A-Za-z][A-Za-z0-9+.-]*://', workspace_host):
+        workspace_host = f'https://{workspace_host}'
     parsed_host = urllib.parse.urlsplit(workspace_host)
     if parsed_host.scheme != 'https' or not parsed_host.netloc or parsed_host.username or parsed_host.password or parsed_host.path not in ('', '/') or parsed_host.query or parsed_host.fragment:
         raise RuntimeError('The Databricks workspace host is not configured safely.')

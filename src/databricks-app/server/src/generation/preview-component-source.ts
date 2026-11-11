@@ -63,6 +63,7 @@ export function generateProjectSource(
   }
   if (components.some((component) => component.type === "DashboardEmbed")) {
     imports.add("import os");
+    imports.add("import re");
     imports.add("import urllib.parse");
   }
   if (components.some((component) => component.type === "GenieChat")) {
@@ -83,6 +84,7 @@ export function generateProjectSource(
     for (const sourceImport of [
       "import json",
       "import os",
+      "import re",
       "import urllib.error",
       "import urllib.parse",
       "import urllib.request",

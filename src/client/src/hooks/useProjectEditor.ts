@@ -12,6 +12,8 @@ import { useProjectComponentsAutosave } from "./useProjectComponentsAutosave";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
 import type { IProjectDeploymentSettings } from "../models/ProjectDeploymentSettings";
+import { toast } from "../components/ui/use-toast";
+import { validateProjectComponentsForSave } from "../utils/projectComponentSaveValidation";
 
 type ProjectEditorSection =
   | "components"
@@ -191,6 +193,18 @@ export function useProjectEditor() {
     }
 
     try {
+      validateProjectComponentsForSave(components);
+    } catch (error) {
+      toast({
+        title: "Cannot save components",
+        description:
+          error instanceof Error ? error.message : "Component layout is invalid.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
       await replaceComponentsMutation.mutateAsync({
         projectId: project.id,
         version: componentsDocument.version,
@@ -219,6 +233,9 @@ export function useProjectEditor() {
       isCanvasSaving
     ) {
       return false;
+    }
+    if (isComponentsDirty) {
+      validateProjectComponentsForSave(components);
     }
     setCanvasSaving(true);
     try {

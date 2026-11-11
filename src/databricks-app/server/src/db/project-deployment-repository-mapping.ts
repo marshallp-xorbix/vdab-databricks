@@ -286,7 +286,58 @@ function readDeploymentAppResource(value: unknown): WorkspaceAppResource {
       },
     };
   }
+  if (
+    isRecord(value.genie_space) &&
+    exactKeys(value, ["name", "description", "genie_space"]) &&
+    exactKeys(value.genie_space, ["name", "space_id", "permission"]) &&
+    typeof value.genie_space.name === "string" &&
+    isBoundedResourceLabel(value.genie_space.name) &&
+    typeof value.genie_space.space_id === "string" &&
+    /^[A-Za-z0-9_-]{1,128}$/.test(value.genie_space.space_id) &&
+    (value.genie_space.permission === "CAN_VIEW" ||
+      value.genie_space.permission === "CAN_RUN" ||
+      value.genie_space.permission === "CAN_EDIT" ||
+      value.genie_space.permission === "CAN_MANAGE")
+  ) {
+    return {
+      name: value.name,
+      description: value.description,
+      genie_space: {
+        name: value.genie_space.name,
+        space_id: value.genie_space.space_id,
+        permission: value.genie_space.permission,
+      },
+    };
+  }
+  if (
+    isRecord(value.serving_endpoint) &&
+    exactKeys(value, ["name", "description", "serving_endpoint"]) &&
+    exactKeys(value.serving_endpoint, ["name", "permission"]) &&
+    typeof value.serving_endpoint.name === "string" &&
+    isBoundedResourceLabel(value.serving_endpoint.name) &&
+    (value.serving_endpoint.permission === "CAN_VIEW" ||
+      value.serving_endpoint.permission === "CAN_QUERY" ||
+      value.serving_endpoint.permission === "CAN_MANAGE")
+  ) {
+    return {
+      name: value.name,
+      description: value.description,
+      serving_endpoint: {
+        name: value.serving_endpoint.name,
+        permission: value.serving_endpoint.permission,
+      },
+    };
+  }
   throw new Error("Deployment App resource snapshot is invalid.");
+}
+
+function isBoundedResourceLabel(value: string): boolean {
+  return (
+    value.length > 0 &&
+    value.length <= 255 &&
+    value.trim() === value &&
+    !/[\u0000-\u001f\u007f]/.test(value)
+  );
 }
 
 function isBoundedSecretIdentifier(value: string): boolean {

@@ -58,11 +58,7 @@ function ProjectDeploymentReadiness({
               <h4 className="text-sm font-medium">Required child App resources</h4>
               {appResources.map((resource, index) => (
                 <p className="text-sm" key={`${resource.name}-${index}`}>
-                  {resource.name}: {"postgres" in resource
-                    ? `${resource.postgres.database} — CAN_CONNECT_AND_CREATE`
-                    : "database" in resource
-                      ? `${resource.database.instance_name}/${resource.database.database_name} — CAN_CONNECT_AND_CREATE`
-                      : `SQL warehouse ${resource.sql_warehouse.id} — ${resource.sql_warehouse.permission}`}
+                  {resource.name}: {formatRequiredResourceDetail(resource)}
                 </p>
               ))}
             </div>
@@ -89,6 +85,39 @@ function ProjectDeploymentReadiness({
       )}
     </>
   );
+}
+
+function formatRequiredResourceDetail(
+  resource: IProjectDeploymentReadinessModel["appResources"][number],
+): string {
+  if ("postgres" in resource) {
+    return `${resource.postgres.database} — CAN_CONNECT_AND_CREATE`;
+  }
+  if ("database" in resource) {
+    return `${resource.database.instance_name}/${resource.database.database_name} — CAN_CONNECT_AND_CREATE`;
+  }
+  if ("sql_warehouse" in resource) {
+    return `SQL warehouse ${resource.sql_warehouse.id} — ${resource.sql_warehouse.permission}`;
+  }
+  if ("genie_space" in resource) {
+    return `Genie space ${resource.genie_space.name || resource.genie_space.space_id} — ${resource.genie_space.permission}`;
+  }
+  if ("serving_endpoint" in resource) {
+    return `Serving endpoint ${resource.serving_endpoint.name} — ${resource.serving_endpoint.permission}`;
+  }
+  if ("secret" in resource) {
+    return `Secret ${resource.secret.scope}/${resource.secret.key} — ${resource.secret.permission}`;
+  }
+  if ("job" in resource) {
+    return `Job ${resource.job.id} — ${resource.job.permission}`;
+  }
+  if ("experiment" in resource) {
+    return `Experiment ${resource.experiment.experiment_id} — ${resource.experiment.permission}`;
+  }
+  if ("uc_securable" in resource) {
+    return `${resource.uc_securable.securable_type} ${resource.uc_securable.securable_full_name} — ${resource.uc_securable.permission}`;
+  }
+  return "Required App resource";
 }
 
 export default ProjectDeploymentReadiness;

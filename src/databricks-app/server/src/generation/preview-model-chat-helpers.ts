@@ -35,6 +35,8 @@ export function appendModelChatHelpers(lines: string[]): void {
     "",
     "def _vdab_model_chat_request(endpoint_name: str, messages: list[dict[str, str]]) -> tuple[str | None, str | None]:",
     "    workspace_host = os.environ.get('DATABRICKS_HOST', '').strip()",
+    "    if workspace_host and not re.match(r'^[A-Za-z][A-Za-z0-9+.-]*://', workspace_host):",
+    "        workspace_host = f'https://{workspace_host}'",
     "    access_token = st.context.headers.get('x-forwarded-access-token', '')",
     "    if workspace_host == '' or access_token == '':",
     "        return None, 'Open this app through Databricks and sign in before using ModelChat.'",

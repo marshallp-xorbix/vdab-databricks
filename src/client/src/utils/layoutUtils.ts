@@ -198,8 +198,8 @@ export function validateTabsChildLayouts(
  *
  * Enforces Tabs child layout integrity (each Tabs child must have numeric
  * `tabIndex` and `y` fields) and chart value-axis rules (line/bar Y, pie/donut
- * Value) when column metadata is available. Rows/Columns slot occupancy and Form
- * layout ordering are not yet validated here.
+ * Value) when column metadata is available. Project-editor Rows/Columns/Form/
+ * Modal integrity lives in `validateProjectComponentsForSave`.
  */
 export function validateComponentsForSave(
   components: VdabComponent[],

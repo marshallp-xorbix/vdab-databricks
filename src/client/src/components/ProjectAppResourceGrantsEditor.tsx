@@ -68,11 +68,28 @@ function ProjectAppResourceGrantsEditor({
     );
   }
 
+  const missingRequired = requiredResources.filter(
+    (required) =>
+      !resources.some((resource) => sameResourceBinding(required, resource)),
+  );
+
   function addSelectedKind() {
     if (!addKind) return;
     const name = nextAppResourceKey(addKind, resources);
     setResources((current) => [...current, createEmptyAppResource(addKind, name)]);
     setAddKind("");
+  }
+
+  function restoreMissingRequired(resource: IWorkspaceAppResource) {
+    setResources((current) => {
+      if (current.some((item) => item.name === resource.name)) {
+        return current.map((item) =>
+          item.name === resource.name ? resource : item,
+        );
+      }
+      return [...current, resource];
+    });
+    setIsEditing(true);
   }
 
   function updatePermission(name: string, permission: string) {
@@ -139,7 +156,7 @@ function ProjectAppResourceGrantsEditor({
             <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
               {isEditing ? (
                 <>
-                  <Button type="button" disabled={!isDirty || saveMutation.isPending || duplicateKeys.length > 0} onClick={() => void save()}>
+                  <Button type="button" disabled={!isDirty || saveMutation.isPending || duplicateKeys.length > 0 || missingRequired.length > 0} onClick={() => void save()}>
                     {saveMutation.isPending ? "Saving…" : "Save resources"}
                   </Button>
                   <Button type="button" variant="outline" disabled={saveMutation.isPending} onClick={cancelEditing}>Cancel</Button>
@@ -147,6 +164,43 @@ function ProjectAppResourceGrantsEditor({
               ) : (
                 <Button type="button" variant="secondary" onClick={() => setIsEditing(true)}>Edit</Button>
               )}
+            </div>
+          )}
+          {missingRequired.length > 0 && (
+            <div
+              role="alert"
+              className="space-y-2 rounded-md border border-warning/50 bg-warning/10 p-3 text-sm"
+            >
+              <p>
+                {missingRequired.length} required project resource
+                {missingRequired.length === 1 ? " is" : "s are"} missing from
+                this App. Restore {missingRequired.length === 1 ? "it" : "them"}
+                before deploying.
+              </p>
+              <ul className="space-y-2">
+                {missingRequired.map((resource) => (
+                  <li
+                    key={`missing-${resource.name}`}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <span>
+                      <span className="font-medium">{resource.name}</span>
+                      {" — "}
+                      {resourceType(resource)}: {resourceDetails(resource)}
+                    </span>
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => restoreMissingRequired(resource)}
+                      >
+                        Add required
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           <div className="overflow-x-auto rounded-md border border-border">

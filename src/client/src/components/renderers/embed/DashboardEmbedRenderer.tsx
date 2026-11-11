@@ -1,7 +1,10 @@
 import type { FC } from "react";
 import type { VdabCanvasRendererProps } from "../../../types/vdabCanvasRendererProps";
 import { normalizeHeightPixelsValue } from "../../../utils/componentProps/heightPixelsUtils";
-import { validateDatabricksDashboardEmbedUrl } from "../../../utils/validateDatabricksDashboardEmbedUrl";
+import {
+  resolveDashboardEmbedPreviewUrl,
+  validateDatabricksDashboardEmbedUrl,
+} from "../../../utils/validateDatabricksDashboardEmbedUrl";
 
 interface DashboardEmbedProps {
   src?: string;
@@ -42,10 +45,25 @@ const DashboardEmbedRenderer: FC<Readonly<VdabCanvasRendererProps>> = ({
     );
   }
 
+  const iframeSrc = resolveDashboardEmbedPreviewUrl(src, workspaceUrl);
+  if (!iframeSrc) {
+    return (
+      <div className="rounded-md border border-dashed border-input bg-muted px-3 py-6 text-center text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Dashboard embed ready</p>
+        <p className="mt-1 text-xs">
+          Saved hostless path{" "}
+          <code className="rounded bg-background px-1">{src}</code>. Preview
+          needs the workspace host at runtime; the deployed child App rebuilds
+          the full URL from Databricks App environment.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <iframe
       title="Databricks dashboard"
-      src={src}
+      src={iframeSrc}
       height={height}
       className={`w-full max-w-full rounded-md border border-border bg-card${
         isBuilderCanvas ? " pointer-events-none" : ""

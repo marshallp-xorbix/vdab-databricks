@@ -17,6 +17,7 @@ import {
   validateWorkspaceAppName,
 } from "./db/project-deployment-input.ts";
 import type {
+  ProjectChildAppRecord,
   ProjectDeploymentRecord,
   ProjectDeploymentRepository,
 } from "./db/project-deployment-repository.ts";
@@ -149,10 +150,17 @@ export class ProjectDeploymentService {
     requireEditor(project.callerRole);
     const actor = toProjectActor(caller, this.workspaceId, requestId);
     await this.refreshActiveRemoteDeployments(caller, actor, projectId, true);
+    const childApp = await this.repository.getChildApp(projectId, actor);
+    const availableAppResources = await this.readAvailableChildAppResources(
+      caller,
+      childApp,
+      project.deploymentSettings?.appName ?? childApp?.appName ?? null,
+    );
     const source = await this.previewService.generateDeploymentSource(
       caller,
       requestId,
       projectId,
+      availableAppResources,
     );
     return {
       userApiScopes: source.requirements.userApiScopes,
@@ -185,10 +193,22 @@ export class ProjectDeploymentService {
     if (childApp && childApp.appName !== input.appName)
       throw childAppTargetConflict();
     const mode = childApp?.mode ?? input.mode;
+    const appSpaceName =
+      await this.workspaceClient.getInstalledAppSpace(caller);
+    const existingApp = await this.targetService.getCurrentTargetApp(
+      caller,
+      input.appName,
+      mode,
+      childApp,
+    );
+    const availableAppResources =
+      existingApp?.resources ??
+      (childApp || mode === "linkExisting" ? [] : null);
     const source = await this.previewService.generateDeploymentSource(
       caller,
       requestId,
       projectId,
+      availableAppResources,
     );
     if (source.requirements.blockers.length > 0) {
       const blockerDetails = source.requirements.blockers
@@ -203,14 +223,6 @@ export class ProjectDeploymentService {
         blockerDetails,
       );
     }
-    const appSpaceName =
-      await this.workspaceClient.getInstalledAppSpace(caller);
-    const existingApp = await this.targetService.getCurrentTargetApp(
-      caller,
-      input.appName,
-      mode,
-      childApp,
-    );
     const selectedSecretResources = resolveWorkspaceSecretResources(
       input.secretResources,
       existingApp?.resources ?? null,
@@ -509,9 +521,7 @@ export class ProjectDeploymentService {
     if (!canRefresh) return;
     const items = await this.repository.listDeployments(projectId, actor);
     const active = items.filter(
-      (item) =>
-        (item.status === "pending" || item.status === "running") &&
-        item.deploymentId,
+      (item) => item.status === "pending" || item.status === "running",
     );
     await Promise.all(
       active.map(async (item) => {
@@ -522,6 +532,16 @@ export class ProjectDeploymentService {
         );
         if (!record) return;
         try {
+          if (!record.deploymentId) {
+            // Local rows that never reached Databricks (for example a crash
+            // after createDeployment) must not block redeploy forever.
+            await this.repository.updateDeployment(projectId, record.id, actor, {
+              action: "deployment.failed",
+              status: "failed",
+              failureCode: "deployment_interrupted",
+            });
+            return;
+          }
           await this.refreshOneRemoteDeployment(
             caller,
             actor,
@@ -559,6 +579,26 @@ export class ProjectDeploymentService {
       failureCode:
         remote.state === "failed" ? "workspace_deployment_failed" : null,
     });
+  }
+
+  /**
+   * Loads child-App resource grants when a target App is known so Genie/Model
+   * bindings can merge into required deploy resources and readiness blockers.
+   */
+  private async readAvailableChildAppResources(
+    caller: CallerIdentity,
+    childApp: ProjectChildAppRecord | null,
+    preferredAppName: string | null,
+  ): Promise<readonly WorkspaceAppResource[] | null> {
+    const appName = preferredAppName?.trim() || childApp?.appName || null;
+    if (!appName) return childApp ? [] : null;
+    try {
+      const app = await this.workspaceClient.getApp(caller, appName);
+      if (!app) return childApp ? [] : null;
+      return app.resources;
+    } catch {
+      return childApp ? [] : null;
+    }
   }
 }
 

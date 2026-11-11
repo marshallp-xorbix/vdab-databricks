@@ -75,14 +75,10 @@ export const FORM_CHILD_TYPES = [
 
 export type FormChildComponentType = (typeof FORM_CHILD_TYPES)[number];
 
-export const MODAL_CHILD_TYPES = [
-  ...LAYOUT_CHILD_TYPES,
-  "Expander",
-  "Columns",
-  "Rows",
-  "Tabs",
-  "Form",
-] as const;
+/** Matches server MODAL_CHILD_COMPONENT_TYPES: every component except nested Modal. */
+export const MODAL_CHILD_TYPES = PROJECT_COMPONENT_ADD_TYPES.filter(
+  (type) => type !== "Modal",
+);
 
 export type ModalChildComponentType = (typeof MODAL_CHILD_TYPES)[number];
 

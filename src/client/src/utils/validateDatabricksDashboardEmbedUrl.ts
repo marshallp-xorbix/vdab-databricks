@@ -1,7 +1,9 @@
 /**
  * Client-side validation for Databricks Lakeview dashboard embed URLs.
- * Mirrors `DatabricksDashboardEmbedUrlValidator` on the server.
+ * Accepts absolute workspace URLs or hostless `/embed/dashboardsv3/...` paths.
  */
+
+import { normalizeDashboardEmbedReference } from "./dashboardEmbedConfiguration";
 
 const ALLOWED_WORKSPACE_HOST_SUFFIXES: readonly string[] = [
   ".cloud.databricks.com",
@@ -24,6 +26,8 @@ export type ValidateDatabricksDashboardEmbedUrlResult =
 
 /**
  * Validates `src` when non-empty; empty or whitespace-only `src` is valid.
+ * Hostless embed paths are accepted without a workspace URL. Absolute URLs
+ * must match the configured workspace host.
  * @param workspaceUrl The app's configured Databricks workspace URL (HTTPS), or null/empty if unset.
  */
 export function validateDatabricksDashboardEmbedUrl(
@@ -35,6 +39,14 @@ export function validateDatabricksDashboardEmbedUrl(
   }
 
   const trimmedSrc = src.trim();
+  if (trimmedSrc.startsWith(EMBED_PATH_PREFIX) || trimmedSrc.startsWith("/embed/dashboardsv3/")) {
+    const normalized = normalizeDashboardEmbedReference(trimmedSrc);
+    if (!normalized.ok) {
+      return { ok: false, message: normalized.message };
+    }
+    return { ok: true };
+  }
+
   const trimmedWorkspace = workspaceUrl?.trim() ?? "";
 
   if (!trimmedWorkspace) {
@@ -116,4 +128,45 @@ export function validateDatabricksDashboardEmbedUrl(
   }
 
   return { ok: true };
+}
+
+/**
+ * Builds an iframe URL for canvas preview from a hostless or absolute embed reference.
+ * Returns null when a hostless path cannot be resolved without a workspace URL.
+ */
+export function resolveDashboardEmbedPreviewUrl(
+  src: string,
+  workspaceUrl: string | null | undefined,
+): string | null {
+  const trimmedSrc = src.trim();
+  if (!trimmedSrc) return null;
+
+  const normalized = normalizeDashboardEmbedReference(trimmedSrc);
+  if (!normalized.ok || !normalized.reference) {
+    return /^https:\/\//i.test(trimmedSrc) ? trimmedSrc : null;
+  }
+
+  if (/^https:\/\//i.test(trimmedSrc)) {
+    return trimmedSrc;
+  }
+
+  const trimmedWorkspace = workspaceUrl?.trim() ?? "";
+  if (!trimmedWorkspace) return null;
+
+  let workspaceUri: URL;
+  try {
+    workspaceUri = new URL(trimmedWorkspace);
+  } catch {
+    return null;
+  }
+  if (workspaceUri.protocol !== "https:" || !workspaceUri.hostname) {
+    return null;
+  }
+
+  const referenceUrl = new URL(normalized.reference, "https://vdab.invalid");
+  const query = new URLSearchParams();
+  const widgetId = referenceUrl.searchParams.get("fullscreenWidget");
+  if (widgetId) query.set("fullscreenWidget", widgetId);
+  const queryText = query.toString();
+  return `${workspaceUri.origin}${referenceUrl.pathname}${queryText ? `?${queryText}` : ""}`;
 }

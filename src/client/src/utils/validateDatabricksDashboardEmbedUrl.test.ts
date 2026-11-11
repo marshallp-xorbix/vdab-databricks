@@ -17,6 +17,29 @@ describe("validateDatabricksDashboardEmbedUrl", () => {
     });
   });
 
+  it("accepts hostless embed paths without a workspace URL", () => {
+    expect(
+      validateDatabricksDashboardEmbedUrl(
+        "/embed/dashboardsv3/dashboard_12",
+        null,
+      ),
+    ).toEqual({ ok: true });
+    expect(
+      validateDatabricksDashboardEmbedUrl(
+        "/embed/dashboardsv3/dashboard_12?fullscreenWidget=page_1~chart_2",
+        WORKSPACE,
+      ),
+    ).toEqual({ ok: true });
+  });
+
+  it("rejects invalid hostless embed paths", () => {
+    const result = validateDatabricksDashboardEmbedUrl(
+      "/embed/dashboardsv3/dashboard_12/extra",
+      null,
+    );
+    expect(result.ok).toBe(false);
+  });
+
   it("rejects non-empty src when workspace URL is missing", () => {
     const result = validateDatabricksDashboardEmbedUrl(embedPath("abc"), null);
     expect(result.ok).toBe(false);

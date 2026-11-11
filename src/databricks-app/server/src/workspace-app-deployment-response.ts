@@ -172,11 +172,18 @@ function readAdditionalAppResource(entry: ApiObject): WorkspaceAppResource {
     experiment_id: requireText(entry.experiment.experiment_id),
     permission: readPermission(entry.experiment.permission, ["CAN_READ", "CAN_EDIT", "CAN_MANAGE"]),
   } };
-  if (isRecord(entry.genie_space)) return { name, description, genie_space: {
-    name: requireText(entry.genie_space.name),
-    space_id: requireText(entry.genie_space.space_id),
-    permission: readPermission(entry.genie_space.permission, ["CAN_VIEW", "CAN_RUN", "CAN_EDIT", "CAN_MANAGE"]),
-  } };
+  if (isRecord(entry.genie_space)) {
+    const spaceId = requireNonEmptyText(entry.genie_space.space_id);
+    // Databricks may return an empty display name; fall back to the space id.
+    const spaceName = typeof entry.genie_space.name === "string" && entry.genie_space.name.trim() !== ""
+      ? entry.genie_space.name
+      : spaceId;
+    return { name, description, genie_space: {
+      name: spaceName,
+      space_id: spaceId,
+      permission: readPermission(entry.genie_space.permission, ["CAN_VIEW", "CAN_RUN", "CAN_EDIT", "CAN_MANAGE"]),
+    } };
+  }
   if (isRecord(entry.serving_endpoint)) return { name, description, serving_endpoint: {
     name: requireText(entry.serving_endpoint.name),
     permission: readPermission(entry.serving_endpoint.permission, ["CAN_VIEW", "CAN_QUERY", "CAN_MANAGE"]),
@@ -191,6 +198,11 @@ function readAdditionalAppResource(entry: ApiObject): WorkspaceAppResource {
 
 function requireText(value: unknown): string {
   if (typeof value !== "string") throw invalidDatabricksResponse();
+  return value;
+}
+
+function requireNonEmptyText(value: unknown): string {
+  if (typeof value !== "string" || value.trim() === "") throw invalidDatabricksResponse();
   return value;
 }
 

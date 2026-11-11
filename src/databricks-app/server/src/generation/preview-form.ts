@@ -173,7 +173,13 @@ function appendFormChildren(
     return;
   }
 
-  for (const childKey of component.children) {
+  const orderedChildren = [...component.children].sort((leftKey, rightKey) => {
+    const left = componentsByKey.get(leftKey);
+    const right = componentsByKey.get(rightKey);
+    return readLayoutY(left) - readLayoutY(right);
+  });
+
+  for (const childKey of orderedChildren) {
     const child = componentsByKey.get(childKey);
     const componentIndex = componentIndexes.get(childKey);
 
@@ -231,4 +237,11 @@ function toPythonBoolean(value: boolean): string {
 
 function indentPythonLine(line: string): string {
   return line === "" ? "" : `    ${line}`;
+}
+
+function readLayoutY(component: ProjectComponent | undefined): number {
+  const value = component?.layout?.y;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : Number.MAX_SAFE_INTEGER;
 }

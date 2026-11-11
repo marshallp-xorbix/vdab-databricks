@@ -1,5 +1,5 @@
 import { ApplicationError } from "../application-error.ts";
-import type { CallerIdentity } from "../contracts.ts";
+import type { CallerIdentity, WorkspaceAppResource } from "../contracts.ts";
 import type { ProjectComponentsService } from "../db/project-components-service.ts";
 import type { ProjectService } from "../db/project-service.ts";
 import type { ProjectWorkflowService } from "../db/project-workflow-service.ts";
@@ -61,6 +61,7 @@ export class ProjectPreviewService {
     caller: CallerIdentity,
     requestId: string,
     projectId: string,
+    availableAppResources: readonly WorkspaceAppResource[] | null = null,
   ): Promise<ProjectDeploymentSource> {
     const project = await this.projectService.getProject(
       caller,
@@ -131,6 +132,7 @@ export class ProjectPreviewService {
         components.components,
         workflows.workflow,
         this.defaultSqlWarehouseId,
+        availableAppResources,
       ),
     };
   }

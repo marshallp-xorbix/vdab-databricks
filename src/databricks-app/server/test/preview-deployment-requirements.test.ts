@@ -206,6 +206,140 @@ test("ProjectDeploymentRequirements_UnboundGenieAndModelChat_AddDeployBlockers",
   assert.equal(requirements.blockers[1]?.code, "model_chat_unbound");
 });
 
+test("ProjectDeploymentRequirements_BoundChatResources_MergeFromChildAppGrants", () => {
+  const genieGrant = {
+    name: "claims-genie",
+    description: "Claims Genie",
+    genie_space: {
+      name: "Claims",
+      space_id: "space-1",
+      permission: "CAN_RUN" as const,
+    },
+  };
+  const servingGrant = {
+    name: "claims-endpoint",
+    description: "Claims endpoint",
+    serving_endpoint: {
+      name: "claims-endpoint",
+      permission: "CAN_QUERY" as const,
+    },
+  };
+  const requirements = getProjectDeploymentRequirements(
+    [
+      {
+        key: "genie-chat",
+        type: "GenieChat",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: "genieChat",
+        description: null,
+        properties: { genieSpaceAppResourceName: "claims-genie" },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+      {
+        key: "model-chat",
+        type: "ModelChat",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: "modelChat",
+        description: null,
+        properties: { servingEndpointAppResourceName: "claims-endpoint" },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+    ],
+    { version: 1, workflows: [] },
+    null,
+    [genieGrant, servingGrant],
+  );
+
+  assert.deepEqual(requirements.userApiScopes, ["genie", "model-serving"]);
+  assert.deepEqual(requirements.appResources, [genieGrant, servingGrant]);
+  assert.deepEqual(requirements.blockers, []);
+});
+
+test("DeploymentAppResourceSnapshot_RoundTripsGenieAndServingResources", async () => {
+  const { readDeploymentAppResourceArray } = await import(
+    "../src/db/project-deployment-repository-mapping.ts"
+  );
+  const resources = [
+    {
+      name: "claims-genie",
+      description: "Claims Genie",
+      genie_space: {
+        name: "Claims",
+        space_id: "space-1",
+        permission: "CAN_RUN" as const,
+      },
+    },
+    {
+      name: "claims-endpoint",
+      description: "Claims endpoint",
+      serving_endpoint: {
+        name: "claims-endpoint",
+        permission: "CAN_QUERY" as const,
+      },
+    },
+  ];
+  assert.deepEqual(
+    readDeploymentAppResourceArray(JSON.stringify(resources)),
+    resources,
+  );
+});
+
+test("ProjectDeploymentRequirements_MissingOrWeakChatGrants_BlockDeploy", () => {
+  const requirements = getProjectDeploymentRequirements(
+    [
+      {
+        key: "genie-chat",
+        type: "GenieChat",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: "genieChat",
+        description: null,
+        properties: { genieSpaceAppResourceName: "missing-genie" },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+      {
+        key: "model-chat",
+        type: "ModelChat",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: "modelChat",
+        description: null,
+        properties: { servingEndpointAppResourceName: "view-only" },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+    ],
+    { version: 1, workflows: [] },
+    null,
+    [
+      {
+        name: "view-only",
+        description: "View only endpoint",
+        serving_endpoint: {
+          name: "view-only",
+          permission: "CAN_VIEW" as const,
+        },
+      },
+    ],
+  );
+
+  assert.equal(requirements.blockers[0]?.code, "genie_chat_resource_missing");
+  assert.equal(
+    requirements.blockers[1]?.code,
+    "model_chat_resource_permission",
+  );
+  assert.deepEqual(requirements.appResources, []);
+});
+
 function createUnityCatalogComponent(): ProjectComponent {
   return {
     key: "data-window",

@@ -33,6 +33,35 @@ const target = {
 } as IWorkspaceAppDeploymentTarget;
 
 describe("ProjectAppResourceGrantsEditor", () => {
+  it("shows missing required resources with restore action", async () => {
+    const user = userEvent.setup();
+    const requiredWarehouse = {
+      name: "vdab-wh-0123456789abcdef",
+      sql_warehouse: {
+        id: "warehouse-123",
+        permission: "CAN_USE" as const,
+      },
+    };
+    render(
+      <ProjectAppResourceGrantsEditor
+        projectId="project-one"
+        target={target}
+        requiredResources={[requiredWarehouse]}
+        canEdit
+        isLinked
+      />,
+    );
+
+    expect(
+      screen.getByText(/1 required project resource is missing/i),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add required" }));
+    expect(screen.getByText("vdab-wh-0123456789abcdef")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/required project resource is missing/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("starts read only, cancels draft changes, and saves from edit mode", async () => {
     const user = userEvent.setup();
     render(
