@@ -11,3 +11,4 @@ src/databricks-app/.build/
 src/databricks-app/.env
 src/databricks-app/.env.*
 !src/databricks-app/.env.example
+build-and-deploy-commands.md

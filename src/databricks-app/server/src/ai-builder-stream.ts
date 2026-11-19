@@ -1,16 +1,17 @@
 import { ApplicationError } from "./application-error.ts";
-import type { AiBuilderCompletion } from "./ai-builder-contract.ts";
-import { AI_BUILDER_TOOL_NAME } from "./ai-builder-tool.ts";
+import type { AiBuilderCompletion, AiBuilderToolCall } from "./ai-builder-contract.ts";
 
 const MAX_STREAM_BYTES = 2_000_000;
 const MAX_TOOL_ARGUMENTS_BYTES = 300_000;
+const MAX_TOOL_CALLS = 20;
 
-interface StreamToolCall {
+interface StreamToolCallBuilder {
+  id: string;
   name: string;
   arguments: string;
 }
 
-/** Reads OpenAI-compatible SSE chunks and returns one bounded tool proposal. */
+/** Reads OpenAI-compatible SSE chunks and returns assistant text plus tool calls. */
 export async function readAiBuilderCompletion(
   response: Response,
   signal: AbortSignal,
@@ -22,7 +23,7 @@ export async function readAiBuilderCompletion(
   let buffer = "";
   let bytesRead = 0;
   let assistantMessage = "";
-  const toolCall: StreamToolCall = { name: "", arguments: "" };
+  const toolCalls = new Map<number, StreamToolCallBuilder>();
 
   try {
     while (!signal.aborted) {
@@ -35,7 +36,7 @@ export async function readAiBuilderCompletion(
       while (frameBoundary && frameBoundary.index !== undefined) {
         const frame = buffer.slice(0, frameBoundary.index);
         buffer = buffer.slice(frameBoundary.index + frameBoundary[0].length);
-        readFrame(frame, toolCall, (text) => {
+        readFrame(frame, toolCalls, (text) => {
           assistantMessage = appendBoundedText(assistantMessage, text);
           reportProgress(assistantMessage);
         });
@@ -44,7 +45,7 @@ export async function readAiBuilderCompletion(
     }
     buffer += decoder.decode();
     if (buffer.trim()) {
-      readFrame(buffer, toolCall, (text) => {
+      readFrame(buffer, toolCalls, (text) => {
         assistantMessage = appendBoundedText(assistantMessage, text);
         reportProgress(assistantMessage);
       });
@@ -58,22 +59,20 @@ export async function readAiBuilderCompletion(
     reader.releaseLock();
   }
 
-  if (signal.aborted) throw new ApplicationError(499, "ai_request_cancelled", "Request cancelled", "The AI Builder request was cancelled.");
-  if (toolCall.name && toolCall.name !== AI_BUILDER_TOOL_NAME) throw invalidModelResponse();
-  if (toolCall.name) {
-    return {
-      assistantMessage,
-      toolName: toolCall.name,
-      toolArgumentsJson: toolCall.arguments,
-    };
+  if (signal.aborted) {
+    throw new ApplicationError(499, "ai_request_cancelled", "Request cancelled", "The AI Builder request was cancelled.");
   }
-  if (assistantMessage.trim().length === 0) throw invalidModelResponse();
-  return { assistantMessage, toolName: null, toolArgumentsJson: null };
+
+  const parsedToolCalls = [...toolCalls.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([, toolCall], index) => toToolCall(toolCall, index));
+  if (parsedToolCalls.length > MAX_TOOL_CALLS) throw invalidModelResponse();
+  return { assistantMessage, toolCalls: parsedToolCalls };
 }
 
 function readFrame(
   frame: string,
-  toolCall: StreamToolCall,
+  toolCalls: Map<number, StreamToolCallBuilder>,
   appendAssistantText: (text: string) => void,
 ): void {
   const payload = frame.split(/\r?\n/)
@@ -88,11 +87,14 @@ function readFrame(
   } catch {
     throw invalidModelResponse();
   }
-  if (!isRecord(value)) {
-    throw invalidModelResponse();
-  }
+  if (!isRecord(value)) throw invalidModelResponse();
   if (value.error !== undefined) {
-    throw new ApplicationError(502, "ai_endpoint_stream_failed", "Model generation failed", "The selected model endpoint failed while generating a response.");
+    throw new ApplicationError(
+      502,
+      "ai_endpoint_stream_failed",
+      "Model generation failed",
+      "The selected model endpoint failed while generating a response.",
+    );
   }
   if (!Array.isArray(value.choices)) return;
   const choice = value.choices[0];
@@ -102,17 +104,34 @@ function readFrame(
   if (!Array.isArray(delta.tool_calls)) return;
 
   for (const candidate of delta.tool_calls) {
-    if (!isRecord(candidate) || (candidate.index !== undefined && candidate.index !== 0)) {
+    if (!isRecord(candidate)) continue;
+    const index = typeof candidate.index === "number" ? candidate.index : 0;
+    if (!Number.isSafeInteger(index) || index < 0 || index >= MAX_TOOL_CALLS) {
       throw invalidModelResponse();
     }
-    if (!isRecord(candidate.function)) continue;
-    if (typeof candidate.function.name === "string") {
-      toolCall.name += candidate.function.name;
+    const current = toolCalls.get(index) ?? { id: "", name: "", arguments: "" };
+    if (typeof candidate.id === "string") current.id += candidate.id;
+    if (isRecord(candidate.function)) {
+      if (typeof candidate.function.name === "string") current.name += candidate.function.name;
+      if (typeof candidate.function.arguments === "string") {
+        current.arguments = appendBoundedText(
+          current.arguments,
+          candidate.function.arguments,
+          MAX_TOOL_ARGUMENTS_BYTES,
+        );
+      }
     }
-    if (typeof candidate.function.arguments === "string") {
-      toolCall.arguments = appendBoundedText(toolCall.arguments, candidate.function.arguments, MAX_TOOL_ARGUMENTS_BYTES);
-    }
+    toolCalls.set(index, current);
   }
+}
+
+function toToolCall(builder: StreamToolCallBuilder, index: number): AiBuilderToolCall {
+  if (!builder.name.trim()) throw invalidModelResponse();
+  return {
+    id: builder.id.trim() || `tool_call_${index + 1}`,
+    name: builder.name,
+    argumentsJson: builder.arguments,
+  };
 }
 
 function appendBoundedText(current: string, next: string, maximumBytes = MAX_STREAM_BYTES): string {
@@ -126,5 +145,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function invalidModelResponse(): ApplicationError {
-  return new ApplicationError(502, "invalid_ai_endpoint_response", "Model response invalid", "The selected endpoint returned an unsupported or oversized chat completion. Try a supported endpoint or a smaller project change.");
+  return new ApplicationError(
+    502,
+    "invalid_ai_endpoint_response",
+    "Model response invalid",
+    "The selected endpoint returned an unsupported or oversized chat completion. Try a supported endpoint or a smaller project change.",
+  );
 }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AiBuilderService } from "../src/ai-builder-service.ts";
 import type { AiBuilderResourceContext, AiBuilderResourceContextService } from "../src/ai-builder-resource-context.ts";
-import type { AiBuilderEvent } from "../src/ai-builder-contract.ts";
+import type { AiBuilderEvent, AiBuilderModelMessage } from "../src/ai-builder-contract.ts";
 import { ComponentRegistryService } from "../src/component-registry/component-registry-service.ts";
 import type { CallerIdentity, ProjectSummary, WorkspaceServingEndpointsPage } from "../src/contracts.ts";
 import type { ProjectComponentsService } from "../src/db/project-components-service.ts";
@@ -11,7 +11,7 @@ import type { ProjectWorkflowService } from "../src/db/project-workflow-service.
 import type { ProjectCustomModulesService } from "../src/db/project-custom-modules-service.ts";
 import type { ProjectService } from "../src/db/project-service.ts";
 import type { WorkspaceResourcesService } from "../src/workspace-resources-service.ts";
-import { AiBuilderWorkspaceClient } from "../src/ai-builder-workspace-client.ts";
+import type { AiBuilderWorkspaceClient } from "../src/ai-builder-workspace-client.ts";
 
 const CALLER: CallerIdentity = {
   userId: "ai-owner",
@@ -23,15 +23,29 @@ const CALLER: CallerIdentity = {
   databricksAccessToken: "viewer-token",
 };
 
-test("AiBuilderService_StreamsValidatedProposalWithoutPersistingIt", async () => {
+test("AiBuilderService_StreamsValidatedProposalFromTypedToolLoop", async () => {
   let invokeCount = 0;
-  let requestMessages: Array<{ role: string; content: string }> = [];
   const workspaceClient = {
-    invoke: async (_caller: CallerIdentity, endpointName: string, messages: Array<{ role: "system" | "user" | "assistant"; content: string }>) => {
+    invoke: async (_caller: CallerIdentity, endpointName: string, messages: AiBuilderModelMessage[]) => {
       invokeCount += 1;
       assert.equal(endpointName, "customer-model");
-      requestMessages = messages;
-      return createProposalStreamResponse();
+      if (invokeCount === 1) {
+        assert.equal(messages.at(-1)?.role, "user");
+        return createToolStreamResponse([
+          {
+            id: "label-1",
+            name: "addLabel",
+            arguments: {
+              text: "Dashboard title",
+              codeName: "titleLabel",
+              fontSize: "medium",
+              bold: false,
+            },
+          },
+        ], "Adding a title");
+      }
+      assert.ok(messages.some((message) => message.role === "tool"));
+      return createTextStreamResponse("Added a title.");
     },
   } as unknown as AiBuilderWorkspaceClient;
   const service = createService({ workspaceClient });
@@ -42,30 +56,13 @@ test("AiBuilderService_StreamsValidatedProposalWithoutPersistingIt", async () =>
     events.push(event);
   });
 
-  assert.equal(invokeCount, 1);
-  assert.equal(requestMessages.at(-1)?.content, "Add a title");
-  assert.match(requestMessages[0]?.content ?? "", /main\.default\.customers/);
-  assert.equal(events[0]?.event, "progress");
+  assert.equal(invokeCount, 2);
   const result = events.find((event) => event.event === "result");
   assert.ok(result?.event === "result");
   assert.equal(result.data.assistantMessage, "Added a title.");
-  assert.deepEqual(result.data.proposal, {
-    components: [{
-      key: "title-label",
-      type: "Label",
-      schemaVersion: 1,
-      componentVersion: 1,
-      codeName: null,
-      description: null,
-      properties: { text: "Dashboard title", fontSize: "medium", bold: false },
-      bindings: null,
-      children: [],
-      layout: null,
-    }],
-    workflow: { version: 1, workflows: [] },
-    customModulesSource: DEFAULT_CUSTOM_MODULES_SOURCE,
-  });
-  assert.equal(result.data.version, 1);
+  assert.equal(result.data.outcome, "completed");
+  assert.equal(result.data.proposal?.components[0]?.codeName, "titleLabel");
+  assert.equal(result.data.proposal?.components[0]?.properties.text, "Dashboard title");
 });
 
 test("AiBuilderService_RejectsViewersAndUnqueryableEndpointsBeforeModelCall", async () => {
@@ -73,7 +70,7 @@ test("AiBuilderService_RejectsViewersAndUnqueryableEndpointsBeforeModelCall", as
   const workspaceClient = {
     invoke: async () => {
       invokeCount += 1;
-      return createProposalStreamResponse();
+      return createTextStreamResponse("should not run");
     },
   } as unknown as AiBuilderWorkspaceClient;
   const viewerService = createService({ workspaceClient, callerRole: "viewer" });
@@ -98,13 +95,30 @@ test("AiBuilderService_EmbeddingEndpoint_RejectsBeforeModelInvocation", async ()
   await assert.rejects(service.prepare(CALLER, "request-1", "project-1", createRequest()), (error: unknown) => isApplicationError(error, 422));
 });
 
-test("AiBuilderService_RepairsInvalidOperationsThenStreamsProposal", async () => {
+test("AiBuilderService_RecoversFromToolErrorsThenCompletes", async () => {
   let invokeCount = 0;
   const workspaceClient = {
     invoke: async () => {
       invokeCount += 1;
-      if (invokeCount === 1) return createInvalidProposalStreamResponse();
-      return createProposalStreamResponse();
+      if (invokeCount === 1) {
+        return createToolStreamResponse([
+          {
+            id: "bad-1",
+            name: "addShowModalAction",
+            arguments: {
+              workflowCodeName: "missing",
+              nodeId: "show1",
+              modalCodeName: "workflowModal",
+            },
+          },
+          {
+            id: "label-1",
+            name: "addLabel",
+            arguments: { text: "Recovered", codeName: "recoveredLabel" },
+          },
+        ]);
+      }
+      return createTextStreamResponse("Recovered after a tool error.");
     },
   } as unknown as AiBuilderWorkspaceClient;
   const service = createService({ workspaceClient });
@@ -118,17 +132,12 @@ test("AiBuilderService_RepairsInvalidOperationsThenStreamsProposal", async () =>
   const result = events.find((event) => event.event === "result");
   assert.ok(result?.event === "result");
   assert.equal(result.data.outcome, "completed");
-  assert.equal(result.data.assistantMessage, "Added a title.");
-  assert.ok(result.data.proposal);
+  assert.equal(result.data.proposal?.components[0]?.codeName, "recoveredLabel");
 });
 
-test("AiBuilderService_StreamsUnableToCompleteWhenRepairStillInvalid", async () => {
-  let invokeCount = 0;
+test("AiBuilderService_StreamsNeedsClarificationWhenNoToolsAndNoChanges", async () => {
   const workspaceClient = {
-    invoke: async () => {
-      invokeCount += 1;
-      return createInvalidProposalStreamResponse();
-    },
+    invoke: async () => createTextStreamResponse("NEEDS_CLARIFICATION: Which button should open the modal?"),
   } as unknown as AiBuilderWorkspaceClient;
   const service = createService({ workspaceClient });
   const prepared = await service.prepare(CALLER, "request-1", "project-1", createRequest());
@@ -137,13 +146,10 @@ test("AiBuilderService_StreamsUnableToCompleteWhenRepairStillInvalid", async () 
     events.push(event);
   });
 
-  assert.equal(invokeCount, 2);
   const result = events.find((event) => event.event === "result");
   assert.ok(result?.event === "result");
-  assert.equal(result.data.outcome, "unableToComplete");
+  assert.equal(result.data.outcome, "needsClarification");
   assert.equal(result.data.proposal, null);
-  assert.match(result.data.assistantMessage, /Validation:/);
-  assert.match(result.data.assistantMessage, /conflicts with existing component key|missing component key|not valid JSON|operationsJson/i);
 });
 
 test("AiBuilderService_RejectsStaleProjectBeforeContactingEndpoint", async () => {
@@ -209,7 +215,7 @@ function createService(overrides: ServiceOverrides = {}): AiBuilderService {
     }),
   } as unknown as WorkspaceResourcesService;
   const workspaceClient = overrides.workspaceClient ?? {
-    invoke: async () => createProposalStreamResponse(),
+    invoke: async () => createTextStreamResponse("ok"),
   } as unknown as AiBuilderWorkspaceClient;
   const resourceContext = {
     getContext: async () => TEST_RESOURCE_CONTEXT,
@@ -239,79 +245,34 @@ function createRequest(): Record<string, unknown> {
   };
 }
 
-function createProposalStreamResponse(): Response {
-  return createToolStreamResponse({
-    assistantMessage: "Added a title.",
-    operationsJson: JSON.stringify([{
-      type: "addComponent",
-      component: {
-        key: "title-label",
-        type: "Label",
-        schemaVersion: 1,
-        componentVersion: 1,
-        codeName: null,
-        description: null,
-        properties: { text: "Dashboard title", fontSize: "medium", bold: false },
-        bindings: null,
-        children: [],
-        layout: null,
-      },
-    }]),
-  });
-}
-
-function createInvalidProposalStreamResponse(): Response {
-  return createToolStreamResponse({
-    assistantMessage: "Tried to rebuild the page.",
-    operationsJson: JSON.stringify([{
-      type: "addComponent",
-      component: {
-        key: "title-label",
-        type: "Label",
-        schemaVersion: 1,
-        componentVersion: 1,
-        codeName: null,
-        description: null,
-        properties: { text: "Dashboard title", fontSize: "medium", bold: false },
-        bindings: null,
-        children: [],
-        layout: null,
-      },
-    }, {
-      type: "addComponent",
-      component: {
-        key: "title-label",
-        type: "Label",
-        schemaVersion: 1,
-        componentVersion: 1,
-        codeName: null,
-        description: null,
-        properties: { text: "Duplicate title", fontSize: "medium", bold: false },
-        bindings: null,
-        children: [],
-        layout: null,
-      },
-    }]),
-  }, "Planning a large rebuild");
-}
-
 function createToolStreamResponse(
-  argumentsObject: Record<string, unknown>,
+  toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }>,
   content?: string,
 ): Response {
-  const argumentsValue = JSON.stringify(argumentsObject);
   const frames = [
     ...(content
       ? [`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`]
       : []),
     `data: ${JSON.stringify({
-      choices: [{ delta: { tool_calls: [{
-        index: 0,
-        function: { name: "apply_project_operations", arguments: argumentsValue },
-      }] } }],
+      choices: [{ delta: { tool_calls: toolCalls.map((toolCall, index) => ({
+        index,
+        id: toolCall.id,
+        function: { name: toolCall.name, arguments: JSON.stringify(toolCall.arguments) },
+      })) } }],
     })}\n\n`,
     "data: [DONE]\n\n",
   ];
+  return createStream(frames);
+}
+
+function createTextStreamResponse(content: string): Response {
+  return createStream([
+    `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`,
+    "data: [DONE]\n\n",
+  ]);
+}
+
+function createStream(frames: string[]): Response {
   return new Response(new ReadableStream<Uint8Array>({
     start(controller) {
       for (const frame of frames) {

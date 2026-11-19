@@ -36,7 +36,7 @@ function resolveNode(
   existingKeys: Set<string>,
 ): unknown {
   if (!isRecord(value) || !isRecord(value.params)) return value;
-  const node = { ...value, params: { ...value.params } };
+  const node: Record<string, unknown> = { ...value, params: { ...value.params } };
   const params = node.params as Record<string, unknown>;
   const actionType = typeof node.actionType === "string" ? node.actionType : "";
 

@@ -40,9 +40,29 @@ export type AiBuilderEvent =
       data: { title: string; status: number; detail: string };
     };
 
+/** One tool call parsed from a Databricks OpenAI-compatible stream. */
+export interface AiBuilderToolCall {
+  id: string;
+  name: string;
+  argumentsJson: string;
+}
+
 /** Raw completion parsed from a Databricks OpenAI-compatible stream. */
 export interface AiBuilderCompletion {
   assistantMessage: string;
-  toolName: string | null;
-  toolArgumentsJson: string | null;
+  toolCalls: AiBuilderToolCall[];
 }
+
+/** Messages accepted by the serving-endpoint invoke path, including tool rounds. */
+export type AiBuilderModelMessage =
+  | { role: "system" | "user"; content: string }
+  | {
+      role: "assistant";
+      content: string | null;
+      tool_calls?: Array<{
+        id: string;
+        type: "function";
+        function: { name: string; arguments: string };
+      }>;
+    }
+  | { role: "tool"; tool_call_id: string; content: string };

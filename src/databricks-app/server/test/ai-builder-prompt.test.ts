@@ -7,6 +7,7 @@ import { ComponentRegistryService } from "../src/component-registry/component-re
 import { PROJECT_WORKFLOW_ACTION_TYPES } from "../src/db/project-workflow-contract.ts";
 import { readProjectWorkflowInput } from "../src/db/project-workflow-input.ts";
 import { DEFAULT_CUSTOM_MODULES_SOURCE } from "../src/generation/custom-modules-template.ts";
+import { AI_BUILDER_TOOLS } from "../src/ai-builder-tool.ts";
 
 const componentDefinitions = new ComponentRegistryService().getRegistry().components;
 const resourceContext: AiBuilderResourceContext = {
@@ -16,7 +17,7 @@ const resourceContext: AiBuilderResourceContext = {
   lakebaseAutoscaling: { status: "available", items: [] },
 };
 
-test("AiBuilderPrompt_IncludesActiveWorkflowEventsStoriesAndModuleSignatures", () => {
+test("AiBuilderPrompt_IncludesTypedToolRecipesAndRejectsPartialDefault", () => {
   const messages = buildAiBuilderMessages(
     readAiBuilderInput(createRequest(), componentDefinitions),
     componentDefinitions,
@@ -24,10 +25,12 @@ test("AiBuilderPrompt_IncludesActiveWorkflowEventsStoriesAndModuleSignatures", (
   );
   const systemMessage = messages[0]?.content ?? "";
 
-  assert.match(systemMessage, /apply_project_operations/);
-  assert.match(systemMessage, /preserve every unrelated component, workflow, and module/i);
-  assert.match(systemMessage, /stream a short plain-language plan/i);
-  assert.match(systemMessage, /outcome to partial/i);
+  assert.match(systemMessage, /createWorkflow/);
+  assert.match(systemMessage, /addShowModalAction/);
+  assert.match(systemMessage, /addTriggerToastAction/);
+  assert.match(systemMessage, /Completing a coherent multi-part request in one turn is required/i);
+  assert.doesNotMatch(systemMessage, /complete a coherent first slice/i);
+  assert.doesNotMatch(systemMessage, /apply_project_operations/);
   for (const actionType of PROJECT_WORKFLOW_ACTION_TYPES) {
     assert.ok(systemMessage.includes(actionType), `Prompt omitted ${actionType}.`);
   }
@@ -37,22 +40,11 @@ test("AiBuilderPrompt_IncludesActiveWorkflowEventsStoriesAndModuleSignatures", (
   for (const event of ["TextInput: onChange", "Button: onClick", "Form: onSubmit"]) {
     assert.ok(systemMessage.includes(event), `Prompt omitted trigger event ${event}.`);
   }
-  for (const story of [
-    "AmoebaStory", "FlowFieldStory", "HeatMapStory", "HoneycombStory",
-    "NetworkWebStory", "PulseWaveStory", "SpiralStory", "TerrainStory",
-  ]) {
-    assert.ok(systemMessage.includes(story), `Prompt omitted story type ${story}.`);
-  }
-  assert.match(systemMessage, /change_text\(ctx, component, new_label\)/);
-  assert.match(systemMessage, /never invent catalog, schema, table, Volume, warehouse, Lakebase, endpoint, Genie space, or Job/i);
-  assert.match(systemMessage, /Workspace resource context/);
-  assert.match(systemMessage, /unavailable list is not empty/i);
-  assert.match(systemMessage, /partial lists may omit resources/i);
-  assert.match(systemMessage, /main\.default\.customers/);
-  assert.match(systemMessage, /permission_required/);
-  assert.match(systemMessage, /users name components by codeName/i);
-  assert.match(systemMessage, /Button onClick to showModal/i);
   assert.match(systemMessage, /Toast Triggered!/);
+  assert.match(systemMessage, /never invent catalog, schema, table, Volume, warehouse, Lakebase, endpoint, Genie space, or Job/i);
+  assert.match(systemMessage, /main\.default\.customers/);
+  assert.ok(AI_BUILDER_TOOLS.some((tool) => tool.function.name === "addModal"));
+  assert.ok(AI_BUILDER_TOOLS.some((tool) => tool.function.name === "createWorkflow"));
 });
 
 test("AiBuilderPrompt_ActiveActionExamplesPassWorkflowValidation", () => {

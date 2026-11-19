@@ -1,20 +1,29 @@
 import { ApplicationError } from "./application-error.ts";
-import type { AiBuilderEvent, AiBuilderInput, AiBuilderProposal } from "./ai-builder-contract.ts";
+import { AiBuilderCanvasSession } from "./ai-builder-canvas-session.ts";
+import type {
+  AiBuilderEvent,
+  AiBuilderInput,
+  AiBuilderModelMessage,
+  AiBuilderProposal,
+  AiBuilderToolCall,
+} from "./ai-builder-contract.ts";
 import { readAiBuilderInput } from "./ai-builder-input.ts";
-import { applyAiBuilderOperations } from "./ai-builder-operations.ts";
 import { buildAiBuilderMessages } from "./ai-builder-prompt.ts";
-import { readAiBuilderCompletion } from "./ai-builder-stream.ts";
-import { AI_BUILDER_TOOL_NAME } from "./ai-builder-tool.ts";
 import type { AiBuilderResourceContextService } from "./ai-builder-resource-context.ts";
+import { readAiBuilderCompletion } from "./ai-builder-stream.ts";
+import { AI_BUILDER_TOOL_NAMES } from "./ai-builder-tool.ts";
+import { buildAiBuilderToolProgressMessage } from "./ai-builder-tool-progress.ts";
+import type { AiBuilderModelClient } from "./ai-builder-workspace-client.ts";
 import type { ComponentRegistryService } from "./component-registry/component-registry-service.ts";
 import type { CallerIdentity, WorkspaceServingEndpointResource } from "./contracts.ts";
 import { WORKSPACE_CHAT_ENDPOINT_TASK } from "./contracts.ts";
-import type { ProjectService } from "./db/project-service.ts";
-import type { ProjectComponentsService } from "./db/project-components-service.ts";
-import type { ProjectWorkflowService } from "./db/project-workflow-service.ts";
 import type { ProjectCustomModulesService } from "./db/project-custom-modules-service.ts";
+import type { ProjectComponentsService } from "./db/project-components-service.ts";
+import type { ProjectService } from "./db/project-service.ts";
+import type { ProjectWorkflowService } from "./db/project-workflow-service.ts";
 import type { WorkspaceResourcesService } from "./workspace-resources-service.ts";
-import type { AiBuilderModelClient } from "./ai-builder-workspace-client.ts";
+
+const MAX_TOOL_ROUNDS = 12;
 
 export interface PreparedAiBuilderRequest {
   execute(
@@ -22,17 +31,6 @@ export interface PreparedAiBuilderRequest {
     emit: (event: AiBuilderEvent) => Promise<void>,
   ): Promise<void>;
 }
-
-type AiBuilderResultData = {
-  assistantMessage: string;
-  proposal: AiBuilderProposal | null;
-  version: number;
-  outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
-};
-
-type CompletionParse =
-  | { kind: "result"; data: AiBuilderResultData }
-  | { kind: "repairable"; assistantMessage: string; detail: string };
 
 /** Validates project and endpoint authority before invoking a customer model. */
 export class AiBuilderService {
@@ -139,85 +137,194 @@ export class AiBuilderService {
   ): Promise<void> {
     await emit({ event: "progress", data: { message: "Checking current-workspace resources…" } });
     const resourceContext = await this.resourceContext.getContext(caller, signal);
-    const messages = buildAiBuilderMessages(input, definitions, resourceContext);
-    const first = await this.completeOnce(
-      caller,
-      endpoint,
-      messages,
+    const messages: AiBuilderModelMessage[] = buildAiBuilderMessages(
       input,
       definitions,
-      signal,
-      emit,
-      `Generating a proposal with ${endpoint.name}…`,
+      resourceContext,
     );
-    if (first.kind === "result") {
-      await emit({ event: "result", data: first.data });
-      return;
+    const session = new AiBuilderCanvasSession(input.proposalContext, definitions);
+    let latestAssistantMessage = "";
+
+    for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+      await emit({
+        event: "progress",
+        data: {
+          message: round === 0
+            ? `Generating a proposal with ${endpoint.name}…`
+            : "Continuing the multi-step proposal…",
+        },
+      });
+      const response = await this.workspaceClient.invoke(caller, endpoint.name, messages, signal);
+      let progressEvents = Promise.resolve();
+      const completion = await readAiBuilderCompletion(response, signal, (message) => {
+        progressEvents = progressEvents.then(() => emit({ event: "progress", data: { message } }));
+      });
+      await progressEvents;
+      latestAssistantMessage = completion.assistantMessage.trim() || latestAssistantMessage;
+
+      if (completion.toolCalls.length === 0) {
+        await emit({
+          event: "result",
+          data: await this.finalizeWithoutTools(
+            session,
+            input,
+            definitions,
+            latestAssistantMessage,
+          ),
+        });
+        return;
+      }
+
+      const toolResults = await this.applyToolCalls(session, completion.toolCalls, emit);
+      messages.push({
+        role: "assistant",
+        content: completion.assistantMessage.trim() || null,
+        tool_calls: completion.toolCalls.map((toolCall) => ({
+          id: toolCall.id,
+          type: "function",
+          function: { name: toolCall.name, arguments: toolCall.argumentsJson },
+        })),
+      });
+      for (const result of toolResults) {
+        messages.push({
+          role: "tool",
+          tool_call_id: result.id,
+          content: result.content,
+        });
+      }
     }
 
-    await emit({ event: "progress", data: { message: "Refining the proposal after validation feedback…" } });
-    const repairMessages = [
-      ...messages,
-      {
-        role: "assistant" as const,
-        content: first.assistantMessage || "I proposed project operations for your request.",
-      },
-      {
-        role: "user" as const,
-        content: [
-          "The server rejected those project operations:",
-          first.detail,
-          "Return corrected apply_project_operations with a smaller coherent set of operations, or explain what you need clarified in ordinary assistant text without calling the tool.",
-        ].join("\n"),
-      },
-    ];
-    const second = await this.completeOnce(
-      caller,
-      endpoint,
-      repairMessages,
-      input,
-      definitions,
-      signal,
-      emit,
-      "Generating a revised proposal…",
-    );
-    if (second.kind === "result") {
-      await emit({ event: "result", data: second.data });
-      return;
-    }
     await emit({
       event: "result",
-      data: {
-        assistantMessage: buildUnableToCompleteMessage(second.assistantMessage, second.detail),
-        proposal: null,
-        version: input.version,
-        outcome: "unableToComplete",
-      },
+      data: await this.finalizeAfterMaxRounds(session, input, definitions, latestAssistantMessage),
     });
   }
 
-  private async completeOnce(
-    caller: CallerIdentity,
-    endpoint: WorkspaceServingEndpointResource,
-    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  private async applyToolCalls(
+    session: AiBuilderCanvasSession,
+    toolCalls: AiBuilderToolCall[],
+    emit: (event: AiBuilderEvent) => Promise<void>,
+  ): Promise<Array<{ id: string; content: string }>> {
+    const results: Array<{ id: string; content: string }> = [];
+    for (const toolCall of toolCalls) {
+      if (!AI_BUILDER_TOOL_NAMES.has(toolCall.name)) {
+        results.push({
+          id: toolCall.id,
+          content: `ERROR: Unsupported tool "${toolCall.name}". Use one of the registered canvas tools.`,
+        });
+        continue;
+      }
+      let args: Record<string, unknown> = {};
+      try {
+        const parsed: unknown = JSON.parse(toolCall.argumentsJson || "{}");
+        if (!isRecord(parsed)) throw new Error("Tool arguments must be a JSON object.");
+        args = parsed;
+      } catch (error) {
+        results.push({
+          id: toolCall.id,
+          content: `ERROR: ${error instanceof Error ? error.message : "Invalid tool arguments JSON."}`,
+        });
+        continue;
+      }
+      await emit({
+        event: "progress",
+        data: { message: buildAiBuilderToolProgressMessage(toolCall.name, args) },
+      });
+      results.push({
+        id: toolCall.id,
+        content: session.executeTool(toolCall.name, args),
+      });
+    }
+    return results;
+  }
+
+  private async finalizeWithoutTools(
+    session: AiBuilderCanvasSession,
     input: AiBuilderInput,
     definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
-    signal: AbortSignal,
-    emit: (event: AiBuilderEvent) => Promise<void>,
-    progressMessage: string,
-  ): Promise<CompletionParse> {
-    await emit({ event: "progress", data: { message: progressMessage } });
-    const response = await this.workspaceClient.invoke(caller, endpoint.name, messages, signal);
-    let progressEvents = Promise.resolve();
-    const completion = await readAiBuilderCompletion(
-      response,
-      signal,
-      (message) => {
-        progressEvents = progressEvents.then(() => emit({ event: "progress", data: { message } }));
-      },
-    );
-    await progressEvents;
-    return readCompletionResult(completion, input, definitions);
+    assistantMessage: string,
+  ): Promise<{
+    assistantMessage: string;
+    proposal: AiBuilderProposal | null;
+    version: number;
+    outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
+  }> {
+    const tagged = readTaggedOutcome(assistantMessage);
+    if (!session.hasChanges()) {
+      return {
+        assistantMessage: assistantMessage.slice(0, 4_000) || "I need more information before making changes.",
+        proposal: null,
+        version: input.version,
+        outcome: tagged === "unableToComplete" ? "unableToComplete" : "needsClarification",
+      };
+    }
+    const outcome = tagged === "partial" || tagged === "unableToComplete" ? tagged : "completed";
+    return this.buildValidatedResult(session, input, definitions, assistantMessage, outcome);
+  }
+
+  private async finalizeAfterMaxRounds(
+    session: AiBuilderCanvasSession,
+    input: AiBuilderInput,
+    definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
+    assistantMessage: string,
+  ): Promise<{
+    assistantMessage: string;
+    proposal: AiBuilderProposal | null;
+    version: number;
+    outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
+  }> {
+    if (!session.hasChanges()) {
+      return {
+        assistantMessage: [
+          assistantMessage || "I could not finish the request within the tool-call limit.",
+          "",
+          "Try a narrower request, or tell me which part to do first.",
+        ].join("\n").slice(0, 4_000),
+        proposal: null,
+        version: input.version,
+        outcome: "unableToComplete",
+      };
+    }
+    return this.buildValidatedResult(session, input, definitions, assistantMessage, "partial");
+  }
+
+  private buildValidatedResult(
+    session: AiBuilderCanvasSession,
+    input: AiBuilderInput,
+    definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
+    assistantMessage: string,
+    preferredOutcome: "completed" | "partial" | "unableToComplete",
+  ): {
+    assistantMessage: string;
+    proposal: AiBuilderProposal | null;
+    version: number;
+    outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
+  } {
+    try {
+      const proposal = session.buildProposal(input.version, definitions);
+      return {
+        assistantMessage: (assistantMessage || "Applied the requested project changes.").slice(0, 4_000),
+        proposal,
+        version: input.version,
+        outcome: preferredOutcome === "unableToComplete" ? "completed" : preferredOutcome,
+      };
+    } catch (error) {
+      const detail = error instanceof ApplicationError
+        ? error.message
+        : "The proposed project changes could not be validated.";
+      return {
+        assistantMessage: [
+          assistantMessage || "I could not apply a valid set of project changes for that request.",
+          "",
+          `Validation: ${detail}`,
+          "",
+          "Try a narrower slice of the request, or tell me which part to do first.",
+        ].join("\n").slice(0, 4_000),
+        proposal: null,
+        version: input.version,
+        outcome: "unableToComplete",
+      };
+    }
   }
 }
 
@@ -227,117 +334,14 @@ function requireEditorRole(role: string): void {
   }
 }
 
-function readCompletionResult(
-  completion: Awaited<ReturnType<typeof readAiBuilderCompletion>>,
-  input: AiBuilderInput,
-  definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
-): CompletionParse {
-  if (completion.toolArgumentsJson === null) {
-    return {
-      kind: "result",
-      data: {
-        assistantMessage: completion.assistantMessage.slice(0, 4_000),
-        proposal: null,
-        version: input.version,
-        outcome: "needsClarification",
-      },
-    };
-  }
-  if (completion.toolName !== AI_BUILDER_TOOL_NAME) {
-    return {
-      kind: "repairable",
-      assistantMessage: completion.assistantMessage,
-      detail: "The model called an unsupported tool. It must use apply_project_operations.",
-    };
-  }
-
-  let argumentsValue: unknown;
-  try {
-    argumentsValue = JSON.parse(completion.toolArgumentsJson);
-  } catch {
-    return {
-      kind: "repairable",
-      assistantMessage: preferredAssistantMessage(completion.assistantMessage, null),
-      detail: "The model returned tool arguments that are not valid JSON.",
-    };
-  }
-  if (!isRecord(argumentsValue)) {
-    return {
-      kind: "repairable",
-      assistantMessage: preferredAssistantMessage(completion.assistantMessage, null),
-      detail: "The model returned tool arguments that are not a JSON object.",
-    };
-  }
-  const outcome = argumentsValue.outcome === "partial" ? "partial" : "completed";
-  if (!hasExactKeys(argumentsValue, argumentsValue.outcome === undefined
-        ? ["assistantMessage", "operationsJson"]
-        : ["assistantMessage", "operationsJson", "outcome"]) ||
-      typeof argumentsValue.assistantMessage !== "string" || argumentsValue.assistantMessage.length > 4_000 ||
-      typeof argumentsValue.operationsJson !== "string" ||
-      (argumentsValue.outcome !== undefined && argumentsValue.outcome !== "partial" && argumentsValue.outcome !== "completed")) {
-    return {
-      kind: "repairable",
-      assistantMessage: preferredAssistantMessage(
-        completion.assistantMessage,
-        typeof argumentsValue.assistantMessage === "string" ? argumentsValue.assistantMessage : null,
-      ),
-      detail: "The model tool call must include assistantMessage and operationsJson, with optional outcome of completed or partial.",
-    };
-  }
-
-  try {
-    return {
-      kind: "result",
-      data: {
-        assistantMessage: preferredAssistantMessage(
-          completion.assistantMessage,
-          argumentsValue.assistantMessage,
-        ),
-        proposal: applyAiBuilderOperations(
-          input.proposalContext,
-          argumentsValue.operationsJson,
-          input.version,
-          definitions,
-        ),
-        version: input.version,
-        outcome,
-      },
-    };
-  } catch (error) {
-    const detail = error instanceof ApplicationError
-      ? error.message
-      : "The proposed project operations could not be applied.";
-    return {
-      kind: "repairable",
-      assistantMessage: preferredAssistantMessage(
-        completion.assistantMessage,
-        argumentsValue.assistantMessage,
-      ),
-      detail,
-    };
-  }
-}
-
-function preferredAssistantMessage(streamed: string, toolMessage: string | null): string {
-  const preferred = (toolMessage?.trim() || streamed).trim();
-  return preferred.slice(0, 4_000);
-}
-
-function buildUnableToCompleteMessage(assistantMessage: string, detail: string): string {
-  const summary = assistantMessage.trim();
-  const parts = [
-    summary.length > 0 ? summary : "I could not apply a valid set of project operations for that request.",
-    "",
-    `Validation: ${detail}`,
-    "",
-    "Try a narrower slice of the request, or tell me which part to do first.",
-  ];
-  return parts.join("\n").slice(0, 4_000);
-}
-
-function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
-  const actual = Object.keys(value);
-  return actual.length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+function readTaggedOutcome(
+  assistantMessage: string,
+): "partial" | "unableToComplete" | "needsClarification" | null {
+  const text = assistantMessage.trim();
+  if (/^NEEDS_CLARIFICATION:/i.test(text)) return "needsClarification";
+  if (/^PARTIAL(?:\[|$)/i.test(text)) return "partial";
+  if (/^UNABLE_TO_COMPLETE(?:\[|$)/i.test(text)) return "unableToComplete";
+  return null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,6 +1,7 @@
 import { ApplicationError } from "./application-error.ts";
-import type { CallerIdentity } from "./contracts.ts";
+import type { AiBuilderModelMessage } from "./ai-builder-contract.ts";
 import { AI_BUILDER_TOOLS } from "./ai-builder-tool.ts";
+import type { CallerIdentity } from "./contracts.ts";
 import { normalizeWorkspaceHost } from "./workspace-host.ts";
 
 const INVOCATION_TIMEOUT_MS = 120_000;
@@ -11,7 +12,7 @@ export interface AiBuilderModelClient {
   invoke(
     caller: CallerIdentity,
     endpointName: string,
-    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+    messages: AiBuilderModelMessage[],
     signal: AbortSignal,
   ): Promise<Response>;
 }
@@ -29,7 +30,7 @@ export class AiBuilderWorkspaceClient implements AiBuilderModelClient {
   async invoke(
     caller: CallerIdentity,
     endpointName: string,
-    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+    messages: AiBuilderModelMessage[],
     signal: AbortSignal,
   ): Promise<Response> {
     const accessToken = caller.authenticationMode === "databricks"

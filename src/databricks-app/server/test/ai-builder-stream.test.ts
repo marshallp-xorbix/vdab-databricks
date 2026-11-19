@@ -3,43 +3,69 @@ import test from "node:test";
 import { readAiBuilderCompletion } from "../src/ai-builder-stream.ts";
 import { LocalTestAiBuilderWorkspaceClient } from "../src/local-test-ai-builder-client.ts";
 
-test("AiBuilderStream_ParsesChunkedToolArgumentsAndStreamsProgress", async () => {
-  const args = JSON.stringify({
-    assistantMessage: "Added a title.",
-    operationsJson: JSON.stringify([{ type: "deleteWorkflow", codeName: "obsolete" }]),
-  });
-  const chunks = [
-    `data: ${JSON.stringify({ choices: [{ delta: { content: "Working" } }] })}\r\n\r\n`,
-    `data: ${JSON.stringify({ choices: [{ delta: { content: " on it" } }] })}\r\n\r\n`,
-    `data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "apply_project_operations", arguments: args } }] } }] })}\r\n\r\n`,
-    "data: [DONE]\r\n\r\n",
-  ];
+test("AiBuilderStream_ParsesMultipleToolCallsAndStreamsProgress", async () => {
   const progress: string[] = [];
   const result = await readAiBuilderCompletion(
-    createStreamResponse(chunks),
+    createStreamResponse([
+      `data: ${JSON.stringify({ choices: [{ delta: { content: "Working" } }] })}\r\n\r\n`,
+      `data: ${JSON.stringify({ choices: [{ delta: { content: " on it" } }] })}\r\n\r\n`,
+      `data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [{
+        index: 0,
+        id: "call-1",
+        function: { name: "addModal", arguments: "{\"codeName\":\"workflowModal\"}" },
+      }, {
+        index: 1,
+        id: "call-2",
+        function: { name: "createWorkflow", arguments: "{\"workflowCodeName\":\"openModal\"}" },
+      }] } }] })}\r\n\r\n`,
+      "data: [DONE]\r\n\r\n",
+    ]),
     new AbortController().signal,
     (message) => progress.push(message),
   );
 
   assert.equal(result.assistantMessage, "Working on it");
-  assert.equal(result.toolName, "apply_project_operations");
-  assert.equal(result.toolArgumentsJson, args);
+  assert.deepEqual(result.toolCalls.map((toolCall) => toolCall.name), ["addModal", "createWorkflow"]);
   assert.deepEqual(progress, ["Working", "Working on it"]);
 });
 
-test("LocalTestAiBuilder_ReturnsAnApplyToolCall", async () => {
-  const response = await new LocalTestAiBuilderWorkspaceClient().invoke(
-    { authenticationMode: "local-test", userId: "local-editor" } as never,
-    "sample-chat-endpoint",
-    [],
+test("LocalTestAiBuilder_ReturnsTypedToolCallsThenStops", async () => {
+  const client = new LocalTestAiBuilderWorkspaceClient();
+  const first = await readAiBuilderCompletion(
+    await client.invoke(
+      { authenticationMode: "local-test", userId: "local-editor" } as never,
+      "sample-chat-endpoint",
+      [],
+      new AbortController().signal,
+    ),
     new AbortController().signal,
+    () => undefined,
   );
-  const result = await readAiBuilderCompletion(response, new AbortController().signal, () => undefined);
-  assert.equal(result.toolName, "apply_project_operations");
-  assert.match(result.toolArgumentsJson ?? "", /local-test-title/);
+  assert.equal(first.toolCalls[0]?.name, "addLabel");
+  assert.match(first.toolCalls[0]?.argumentsJson ?? "", /localTestTitle/);
+
+  const second = await readAiBuilderCompletion(
+    await client.invoke(
+      { authenticationMode: "local-test", userId: "local-editor" } as never,
+      "sample-chat-endpoint",
+      [
+        { role: "assistant", content: null, tool_calls: [{
+          id: "local-add-label",
+          type: "function",
+          function: { name: "addLabel", arguments: "{}" },
+        }] },
+        { role: "tool", tool_call_id: "local-add-label", content: "local-test-title" },
+      ],
+      new AbortController().signal,
+    ),
+    new AbortController().signal,
+    () => undefined,
+  );
+  assert.deepEqual(second.toolCalls, []);
+  assert.match(second.assistantMessage, /local test title/i);
 });
 
-test("AiBuilderStream_ReturnsTextOnlyAnswerWithoutAProposal", async () => {
+test("AiBuilderStream_ReturnsTextOnlyAnswerWithoutToolCalls", async () => {
   const result = await readAiBuilderCompletion(
     createStreamResponse([
       `data: ${JSON.stringify({ choices: [{ delta: { content: "No edits needed." } }] })}\n\n`,
@@ -49,29 +75,13 @@ test("AiBuilderStream_ReturnsTextOnlyAnswerWithoutAProposal", async () => {
     () => undefined,
   );
 
-  assert.deepEqual(result, { assistantMessage: "No edits needed.", toolName: null, toolArgumentsJson: null });
+  assert.deepEqual(result, { assistantMessage: "No edits needed.", toolCalls: [] });
 });
 
-test("AiBuilderStream_RejectsParallelToolCallsAndInvalidEvents", async () => {
-  const parallel = createStreamResponse([
-    `data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 1, function: { name: "apply_project_operations" } }] } }] })}\n\n`,
-  ]);
-  await assert.rejects(
-    readAiBuilderCompletion(parallel, new AbortController().signal, () => undefined),
-    (error: unknown) => isApplicationError(error, 502),
-  );
-
+test("AiBuilderStream_RejectsMalformedEvents", async () => {
   const malformed = createStreamResponse(["data: {not-json}\n\n"]);
   await assert.rejects(
     readAiBuilderCompletion(malformed, new AbortController().signal, () => undefined),
-    (error: unknown) => isApplicationError(error, 502),
-  );
-
-  const unsupportedTool = createStreamResponse([
-    `data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "propose_project_changes" } }] } }] })}\n\n`,
-  ]);
-  await assert.rejects(
-    readAiBuilderCompletion(unsupportedTool, new AbortController().signal, () => undefined),
     (error: unknown) => isApplicationError(error, 502),
   );
 });

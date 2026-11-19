@@ -1,18 +1,39 @@
-import type { AiBuilderInput, AiBuilderMessage } from "./ai-builder-contract.ts";
+import type { AiBuilderInput, AiBuilderMessage, AiBuilderModelMessage } from "./ai-builder-contract.ts";
 import type { ComponentDefinition } from "./component-registry/contracts.ts";
 import { buildAiBuilderContractGuidance } from "./ai-builder-guidance.ts";
-import { AI_BUILDER_TOOLS } from "./ai-builder-tool.ts";
 import type { AiBuilderResourceContext } from "./ai-builder-resource-context.ts";
 
-const SYSTEM_INSTRUCTIONS = `You are the Visual Databricks App Builder assistant. Help edit only the supplied standalone project. The app runs in the Databricks workspace where VDAB is installed. Do not invent a workspace, account, tenant, host, token, credential, or external workspace connection. Preserve project-local component keys unless a change requires a new component. Use only component types and properties in the supplied registry. When a user asks for a heading or header, use a visible Label component with its supported text and appearance properties and place it in the requested canvas order; do not answer with an explanation in place of the requested component. Keep the existing workflow graph valid and custom Python source free of secrets. Resource references must remain hostless and belong to the installed workspace. The workspace resource context is advisory: each section says whether its list is available, empty, partial, or unavailable. An unavailable list is not empty, and partial lists may omit resources. Refer only to listed resources or references already in the project; server validation and the acting user's Databricks permissions remain authoritative. Do not claim that generated code, permissions, or resources were tested. Stream a short plain-language plan in ordinary assistant text before any tool call so the user can follow progress. When edits are appropriate, call apply_project_operations with a compact ordered list containing only the changed records. The server merges and validates operations against the current snapshot; preserve every unrelated component, workflow, and module. Do not serialize the entire project. Resolve user-facing component names through the snapshot codeName fields, then write workflow.trigger.componentKey and showModal modalComponentKey using those components' key values. Creating a Modal and wiring Button onClick workflows for showModal and triggerToast in one turn is expected and should complete when the named buttons already exist. For large multi-part requests that need new resources or many unrelated edits, complete a coherent first slice and set outcome to partial with a clear next step instead of attempting every change at once. Prefer asking a clarifying question in ordinary assistant text over inventing missing resources, keys, or workflow links. For a question that needs no changes, answer in ordinary assistant text.`;
+const SYSTEM_INSTRUCTIONS = `You are the Visual Databricks App Builder assistant. Help edit only the supplied standalone project in the Databricks workspace where VDAB is installed. Do not invent a workspace, account, tenant, host, token, credential, or external workspace connection.
+
+Use the available typed tools to add/modify/delete components and to create workflows that wire actions to component events. Prefer tool calls over explanation. Stream a short plain-language plan in ordinary assistant text before tool calls so the user can follow progress.
+
+COMPONENT RULES:
+- Always use typed parameters (label, text, title, etc.).
+- When nesting inside Form, Columns, Rows, Tabs, Expander, or Modal, pass that container's returned key or codeName as parentId.
+- Modals are root-level. Call addModal before addShowModalAction.
+- For addRows/addColumns, set rowCount/columnCount to the exact number of children you will add.
+
+WORKFLOW RULES:
+- Always call createWorkflow before adding any actions or edges.
+- Users name components by codeName. Use triggerComponentCodeName and modalCodeName values from the snapshot or from tools you just called.
+- Each Button/Form/control event may have only one workflow. If replacing, deleteWorkflow first, then recreate.
+- Single-action workflows do not need edges. For two or more actions, call connectWorkflowNodes for every consecutive pair.
+- Completing a coherent multi-part request in one turn is required. Example: create workflowModal, createWorkflow for modalButton onClick + addShowModalAction, and createWorkflow for toastButton onClick + addTriggerToastAction with body "Toast Triggered!" — finish all of those tools before stopping.
+
+OUTCOME RULES:
+- If required details are missing, do not guess. Reply exactly: NEEDS_CLARIFICATION: <one concise question>.
+- If the request is truly too large or unsupported after using tools for the safe part, reply exactly: PARTIAL[TooComplex]: <what completed and what remains> or UNABLE_TO_COMPLETE[UnsupportedWorkflow]: <reason>.
+- Do not stop after only the first UI piece when the user also asked to wire workflows, bindings, or modules in the same prompt.
+
+Resource references must remain hostless and belong to the installed workspace. The workspace resource context is advisory: unavailable lists are not empty, and partial lists may omit resources. Refer only to listed resources or references already in the project. Never invent catalog, schema, table, Volume, warehouse, Lakebase, endpoint, Genie space, or Job IDs/names.`;
 
 /** Builds bounded, OpenAI-compatible messages for one customer endpoint request. */
 export function buildAiBuilderMessages(
   input: AiBuilderInput,
   componentDefinitions: ComponentDefinition[],
   resourceContext: AiBuilderResourceContext,
-): Array<{ role: "system" | "user" | "assistant"; content: string }> {
-  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+): AiBuilderModelMessage[] {
+  const messages: AiBuilderModelMessage[] = [
     {
       role: "system",
       content: `${SYSTEM_INSTRUCTIONS}\n\nWorkspace resource context (bounded and caller-visible):\n${JSON.stringify(resourceContext)}\n\nComponent registry:\n${JSON.stringify(componentDefinitions)}\n\n${buildAiBuilderContractGuidance(componentDefinitions)}\n\nCurrent editable project snapshot:\n${JSON.stringify(input.proposalContext)}`,
@@ -25,11 +46,9 @@ export function buildAiBuilderMessages(
   return messages;
 }
 
-function toModelMessage(
-  message: AiBuilderMessage,
-): { role: "user" | "assistant"; content: string } {
+function toModelMessage(message: AiBuilderMessage): { role: "user" | "assistant"; content: string } {
   return { role: message.role, content: message.content };
 }
 
 /** OpenAI-compatible tool declaration keeps the model output schema shallow. */
-export { AI_BUILDER_TOOLS };
+export { AI_BUILDER_TOOLS } from "./ai-builder-tool.ts";
