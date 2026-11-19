@@ -2,6 +2,7 @@ import { ApplicationError } from "./application-error.ts";
 import type { AiBuilderProposal } from "./ai-builder-contract.ts";
 import type { ComponentDefinition } from "./component-registry/contracts.ts";
 import { readAiBuilderProposal } from "./ai-builder-input.ts";
+import { resolveAiBuilderWorkflowReferences } from "./ai-builder-reference-resolution.ts";
 
 const MAX_AI_BUILDER_OPERATIONS = 100;
 const MAX_AI_BUILDER_OPERATIONS_BYTES = 280_000;
@@ -67,10 +68,12 @@ export function applyAiBuilderOperations(
     }
   }
 
+  const resolvedWorkflows = resolveAiBuilderWorkflowReferences(workflows, components);
+
   try {
     return readAiBuilderProposal({
       components,
-      workflow: { version: 1, workflows },
+      workflow: { version: 1, workflows: resolvedWorkflows },
       customModulesSource,
     }, version, componentDefinitions);
   } catch (error) {

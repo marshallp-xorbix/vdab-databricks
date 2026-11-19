@@ -87,8 +87,14 @@ export function readAiBuilderProposal(
     validateProjectWorkflowComponentReferences(workflow, components, componentDefinitions);
     resolveWorkflowModuleFiles(workflow, customModulesSource);
     return { components, workflow, customModulesSource };
-  } catch {
-    throw invalidAiProposal();
+  } catch (error) {
+    if (error instanceof ApplicationError && error.code === "invalid_ai_builder_proposal") {
+      throw error;
+    }
+    const detail = error instanceof ApplicationError
+      ? error.message
+      : "The model returned changes that do not satisfy the active project component, workflow, or module contracts. Try a smaller request.";
+    throw invalidAiProposal(detail);
   }
 }
 
@@ -131,11 +137,12 @@ function invalidAiBuilderRequest(detail: string): ApplicationError {
   return new ApplicationError(400, "invalid_ai_builder_request", "Invalid AI Builder request", detail);
 }
 
-function invalidAiProposal(): ApplicationError {
+function invalidAiProposal(detail?: string): ApplicationError {
   return new ApplicationError(
     422,
     "invalid_ai_builder_proposal",
     "The proposed changes need review",
-    "The model returned changes that do not satisfy the active project component, workflow, or module contracts. Try a smaller request.",
+    detail ??
+      "The model returned changes that do not satisfy the active project component, workflow, or module contracts. Try a smaller request.",
   );
 }

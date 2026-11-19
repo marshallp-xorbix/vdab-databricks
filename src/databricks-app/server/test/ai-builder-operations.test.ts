@@ -54,6 +54,91 @@ test("AiBuilderOperations_AppliesComponentWorkflowAndModuleOperationsInOrder", (
   assert.deepEqual(deletedWorkflow.workflow.workflows, []);
 });
 
+test("AiBuilderOperations_WiresModalAndToastWorkflowsUsingButtonCodeNames", () => {
+  const modalButton = {
+    ...createComponent("uuid-modal-button", "Button", definitions),
+    codeName: "modalButton",
+  };
+  const toastButton = {
+    ...createComponent("uuid-toast-button", "Button", definitions),
+    codeName: "toastButton",
+  };
+  const current = readAiBuilderProposal({
+    components: [modalButton, toastButton],
+    workflow: { version: 1, workflows: [] },
+    customModulesSource: DEFAULT_CUSTOM_MODULES_SOURCE,
+  }, 1, definitions);
+  const modalDefinition = definitions.find((definition) => definition.type === "Modal");
+  assert.ok(modalDefinition);
+
+  const result = applyAiBuilderOperations(current, JSON.stringify([
+    {
+      type: "addComponent",
+      component: {
+        key: "workflowModal",
+        type: "Modal",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: "workflowModal",
+        description: null,
+        properties: { ...modalDefinition.props },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+    },
+    {
+      type: "upsertWorkflow",
+      workflow: {
+        codeName: "openWorkflowModal",
+        trigger: { componentKey: "modalButton", eventKey: "onClick" },
+        nodes: [{
+          id: "show-modal",
+          actionType: "showModal",
+          schemaVersion: 1,
+          params: { modalComponentKey: "workflowModal" },
+        }],
+        edges: [],
+      },
+    },
+    {
+      type: "upsertWorkflow",
+      workflow: {
+        codeName: "toastTriggered",
+        trigger: { componentCodeName: "toastButton", eventKey: "onClick" },
+        nodes: [{
+          id: "toast-1",
+          actionType: "triggerToast",
+          schemaVersion: 1,
+          params: { body: "Toast Triggered!", duration: { kind: "preset", value: "short" } },
+        }],
+        edges: [],
+      },
+    },
+  ]), 1, definitions);
+
+  assert.equal(result.components.some((component) => component.key === "workflowModal"), true);
+  assert.deepEqual(result.workflow.workflows.map((workflow) => ({
+    codeName: workflow.codeName,
+    trigger: workflow.trigger,
+    actionType: workflow.nodes[0]?.actionType,
+    params: workflow.nodes[0]?.params,
+  })), [
+    {
+      codeName: "openWorkflowModal",
+      trigger: { componentKey: "uuid-modal-button", eventKey: "onClick" },
+      actionType: "showModal",
+      params: { modalComponentKey: "workflowModal" },
+    },
+    {
+      codeName: "toastTriggered",
+      trigger: { componentKey: "uuid-toast-button", eventKey: "onClick" },
+      actionType: "triggerToast",
+      params: { body: "Toast Triggered!", duration: { kind: "preset", value: "short" } },
+    },
+  ]);
+});
+
 test("AiBuilderOperations_RejectsConflictsMalformedListsAndDanglingReferences", () => {
   const current = createProject(definitions, 1, 0);
   const duplicateComponent = current.components[0];

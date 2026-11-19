@@ -71,6 +71,42 @@ test("AiBuilderProposal_RejectsInvalidComponentAndSecretLikeModuleSource", () =>
   );
 });
 
+test("AiBuilderProposal_SurfacesSpecificWorkflowValidationDetail", () => {
+  assert.throws(
+    () => readAiBuilderProposal({
+      components: [{
+        key: "button-1",
+        type: "Button",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: "toastButton",
+        description: null,
+        properties: { label: "Toast", variant: "primary", disabled: false, help: "" },
+        bindings: null,
+        children: [],
+        layout: null,
+      }],
+      workflow: {
+        version: 1,
+        workflows: [{
+          codeName: "openMissingModal",
+          trigger: { componentKey: "button-1", eventKey: "onClick" },
+          nodes: [{
+            id: "show-1",
+            actionType: "showModal",
+            schemaVersion: 1,
+            params: { modalComponentKey: "missing-modal" },
+          }],
+          edges: [],
+        }],
+      },
+      customModulesSource: DEFAULT_CUSTOM_MODULES_SOURCE,
+    }, 1, registry.components),
+    (error: unknown) => isApplicationError(error, 422)
+      && /ShowModal must reference a Modal component/i.test((error as Error).message),
+  );
+});
+
 function createRequest(): Record<string, unknown> {
   return {
     version: 1,

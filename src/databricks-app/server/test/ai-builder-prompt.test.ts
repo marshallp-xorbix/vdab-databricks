@@ -50,6 +50,9 @@ test("AiBuilderPrompt_IncludesActiveWorkflowEventsStoriesAndModuleSignatures", (
   assert.match(systemMessage, /partial lists may omit resources/i);
   assert.match(systemMessage, /main\.default\.customers/);
   assert.match(systemMessage, /permission_required/);
+  assert.match(systemMessage, /users name components by codeName/i);
+  assert.match(systemMessage, /Button onClick to showModal/i);
+  assert.match(systemMessage, /Toast Triggered!/);
 });
 
 test("AiBuilderPrompt_ActiveActionExamplesPassWorkflowValidation", () => {

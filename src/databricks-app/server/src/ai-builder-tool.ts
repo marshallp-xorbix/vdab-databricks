@@ -17,7 +17,7 @@ export const AI_BUILDER_TOOLS = [
           },
           operationsJson: {
             type: "string",
-            description: "A JSON array with 1 to 100 operations. Supported types: addComponent {component}; replaceComponent {key, component}; deleteComponent {key}; reorderComponents {keys}; upsertWorkflow {workflow}; deleteWorkflow {codeName}; replaceCustomModulesSource {source}. Send only changed records, and do not return a complete project snapshot. Never addComponent with an existing key; never delete or replace a missing key; keep workflow triggers and routes consistent with remaining components.",
+            description: "A JSON array with 1 to 100 operations. Supported types: addComponent {component}; replaceComponent {key, component}; deleteComponent {key}; reorderComponents {keys}; upsertWorkflow {workflow}; deleteWorkflow {codeName}; replaceCustomModulesSource {source}. Send only changed records, and do not return a complete project snapshot. Never addComponent with an existing key; never delete or replace a missing key. Workflow triggers and showModal targets must use component key values from the snapshot (or a unique codeName the server can remap). Keep routes consistent with remaining components.",
           },
           outcome: {
             type: "string",
