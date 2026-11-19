@@ -155,11 +155,6 @@ describe("ProjectEditorPage component autosave coordination", () => {
     await user.click(await screen.findByRole("button", { name: "Add Button" }));
 
     expect(
-      await screen.findByText(
-        /auto-save will resume after the other project changes are saved/i,
-      ),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole("button", { name: "Save" }),
     ).toBeEnabled();
     await new Promise((resolve) => {
@@ -255,25 +250,13 @@ describe("ProjectEditorPage component autosave coordination", () => {
     );
     await user.click(await screen.findByRole("button", { name: "Main Page" }));
     await user.click(await screen.findByRole("button", { name: "Select Button: saveButton" }));
-    const removeButton = await screen.findByRole("button", {
-      name: "Remove selected component",
-    });
-    await waitFor(() => expect(removeButton).toBeEnabled());
-    await user.click(removeButton);
-    expect(
-      await screen.findByRole("heading", { name: "Remove Button?" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/nested children/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Remove component" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Remove component" }),
+    );
 
     expect(
       screen.queryByRole("button", { name: "Select Button: saveButton" }),
     ).not.toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        /auto-save will resume after the other project changes are saved/i,
-      ),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save" }),
     ).toBeEnabled();
@@ -297,51 +280,4 @@ describe("ProjectEditorPage component autosave coordination", () => {
     expect(replaceProjectWorkflowMock.mock.calls[0]?.[0].version).toBe(2);
   }, 12_000);
 
-  it("reorders root components with accessible move controls", async () => {
-    const user = userEvent.setup();
-    getProjectComponentsMock.mockResolvedValue({
-      projectId: "project-1",
-      version: 1,
-      components: [
-        {
-          key: "first-button",
-          type: "Button",
-          schemaVersion: 1,
-          componentVersion: 1,
-          codeName: "firstButton",
-          description: null,
-          properties: { label: "First" },
-          bindings: null,
-          children: [],
-          layout: null,
-        },
-        {
-          key: "second-button",
-          type: "Button",
-          schemaVersion: 1,
-          componentVersion: 1,
-          codeName: "secondButton",
-          description: null,
-          properties: { label: "Second" },
-          bindings: null,
-          children: [],
-          layout: null,
-        },
-      ],
-    });
-
-    await renderProjectEditorPage({ openMainPage: false });
-    fireEvent.doubleClick(
-      await screen.findByRole("button", { name: "Main Page graph node" }),
-    );
-    await user.click(await screen.findByRole("button", { name: "Main Page" }));
-    await user.click(
-      await screen.findByRole("button", { name: "Select Button: secondButton" }),
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Move selected component up" }),
-    );
-    expect(screen.getByRole("button", { name: "Move selected component up" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move selected component down" })).toBeEnabled();
-  });
 });

@@ -8,7 +8,7 @@ The browser UI is React 19 with React Router v7 Framework Mode, shadcn/ui, and T
 - Project management lists and creates projects visible to the signed-in user.
 - The project editor loads project metadata, component tree, workflows, modules, and workspace references, then supports canvas editing, properties, preview, import/export, and deployment actions.
 - Workspace pages discover current-workspace Apps and Databricks resources through server APIs.
-- AI Builder uses a customer-configured workspace endpoint and returns structured project changes through the server contract.
+- AI Builder uses a customer-configured workspace endpoint and returns structured project changes through the server contract. The chat shows user and assistant bubbles immediately (markdown on both sides), keeps turn-to-turn context in the active conversation, and stores project-local chat history in the browser so users can start a new chat or reopen an earlier one. Progress streams the model's plan text; invalid operations trigger one repair attempt, then an `unableToComplete` conversation result with the validation detail instead of a bare stream error.
 
 ## State and API use
 

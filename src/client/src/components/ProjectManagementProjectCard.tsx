@@ -28,15 +28,25 @@ function ProjectManagementProjectCard({
   isExporting,
   onExport,
 }: Readonly<IProjectManagementProjectCardProps>) {
-  const { app, childApp, status } = useProjectAppStatus(project.id);
+  const settings = project.deploymentSettings;
+  const { app, childApp, status } = useProjectAppStatus(
+    project.id,
+    settings?.appName
+      ? { appName: settings.appName, mode: settings.mode }
+      : null,
+  );
   const [isDeploying, setDeploying] = useState(false);
   const presentation = app?.computeState
     ? getDatabricksComputeStatePresentation(app.computeState)
-    : null;
-  const statusLabel = !childApp
-    ? status === "Error" || status === "Checking" ? status : "Draft"
-    : presentation?.shortLabel ?? status;
-  const settings = project.deploymentSettings;
+    : status === "Starting"
+      ? getDatabricksComputeStatePresentation("STARTING")
+      : null;
+  const statusLabel =
+    !childApp && !settings?.appName
+      ? status === "Error" || status === "Checking"
+        ? status
+        : "Draft"
+      : (presentation?.shortLabel ?? status);
   const canDeployNow = Boolean(settings?.appName);
 
   async function deploy(): Promise<void> {

@@ -10,6 +10,7 @@ test("AiBuilderStream_ParsesChunkedToolArgumentsAndStreamsProgress", async () =>
   });
   const chunks = [
     `data: ${JSON.stringify({ choices: [{ delta: { content: "Working" } }] })}\r\n\r\n`,
+    `data: ${JSON.stringify({ choices: [{ delta: { content: " on it" } }] })}\r\n\r\n`,
     `data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "apply_project_operations", arguments: args } }] } }] })}\r\n\r\n`,
     "data: [DONE]\r\n\r\n",
   ];
@@ -20,10 +21,10 @@ test("AiBuilderStream_ParsesChunkedToolArgumentsAndStreamsProgress", async () =>
     (message) => progress.push(message),
   );
 
-  assert.equal(result.assistantMessage, "Working");
+  assert.equal(result.assistantMessage, "Working on it");
   assert.equal(result.toolName, "apply_project_operations");
   assert.equal(result.toolArgumentsJson, args);
-  assert.deepEqual(progress, ["Working"]);
+  assert.deepEqual(progress, ["Working", "Working on it"]);
 });
 
 test("LocalTestAiBuilder_ReturnsAnApplyToolCall", async () => {

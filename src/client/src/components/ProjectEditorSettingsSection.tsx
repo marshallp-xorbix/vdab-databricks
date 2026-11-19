@@ -29,7 +29,15 @@ function ProjectEditorSettingsSection({
   childAppName,
 }: Readonly<IProjectEditorSettingsSectionProps>) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const appStatus = useProjectAppStatus(editor.project?.id ?? "");
+  const appStatus = useProjectAppStatus(
+    editor.project?.id ?? "",
+    editor.deploymentSettings?.appName
+      ? {
+          appName: editor.deploymentSettings.appName,
+          mode: editor.deploymentSettings.mode,
+        }
+      : null,
+  );
   const workspaceSession = useWorkspaceSession();
   const {
     project,

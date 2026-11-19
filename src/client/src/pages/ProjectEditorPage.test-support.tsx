@@ -161,9 +161,13 @@ export const componentRegistry = componentRegistryFixture;
 export function resetProjectEditorTestState(): void {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
 }
 
 export function initializeProjectEditorTestState(): void {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   getProjectMock.mockResolvedValue(project);
   getProjectComponentsMock.mockResolvedValue({ projectId: "project-1", version: 1, components: [] });
   getProjectWorkflowMock.mockResolvedValue(workflowDocument);

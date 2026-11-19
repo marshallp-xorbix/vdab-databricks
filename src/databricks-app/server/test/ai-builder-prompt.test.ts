@@ -26,6 +26,8 @@ test("AiBuilderPrompt_IncludesActiveWorkflowEventsStoriesAndModuleSignatures", (
 
   assert.match(systemMessage, /apply_project_operations/);
   assert.match(systemMessage, /preserve every unrelated component, workflow, and module/i);
+  assert.match(systemMessage, /stream a short plain-language plan/i);
+  assert.match(systemMessage, /outcome to partial/i);
   for (const actionType of PROJECT_WORKFLOW_ACTION_TYPES) {
     assert.ok(systemMessage.includes(actionType), `Prompt omitted ${actionType}.`);
   }

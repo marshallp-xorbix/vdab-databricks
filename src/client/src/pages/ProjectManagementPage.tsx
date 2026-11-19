@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { MoreVertical, Search } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -40,7 +39,6 @@ function ProjectManagementPage({
   const createProjectMutation = useCreateProject();
   const startProjectDeploymentMutation = useStartProjectDeployment();
   const exportProjectMutation = useExportProject();
-  const navigate = useNavigate();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,6 +52,10 @@ function ProjectManagementPage({
     notice: string;
   } | null>(null);
 
+  /**
+   * Creates the project so the dashboard can show it, then starts deployment
+   * without keeping the wizard open for the full workspace App provision.
+   */
   async function handleCreate(
     name: string,
     description: string | null,
@@ -64,21 +66,23 @@ function ProjectManagementPage({
       description,
       deploymentSettings: { ...target, workspacePath: null },
     });
-    try {
-      await startProjectDeploymentMutation.mutateAsync({
+    void startProjectDeploymentMutation
+      .mutateAsync({
         projectId: createdProject.id,
         mode: target.mode,
         appName: target.appName,
         confirmOverwrite: target.mode === "linkExisting",
+      })
+      .catch((error: unknown) => {
+        toast({
+          title: "Project created, App deployment needs attention",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Open Deployment settings to retry.",
+          variant: "destructive",
+        });
       });
-    } catch (error) {
-      toast({
-        title: "Project created, App deployment needs attention",
-        description: error instanceof Error ? error.message : "Open Deployment settings to retry.",
-        variant: "destructive",
-      });
-    }
-    await navigate(`/apps/${createdProject.id}`);
   }
 
   const filteredProjects = (projectsQuery.data?.items ?? []).filter((project) =>

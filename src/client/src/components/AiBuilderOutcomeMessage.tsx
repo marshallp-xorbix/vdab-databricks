@@ -1,6 +1,5 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type { AiBuilderOutcome } from "../models/AiBuilder";
+import AiBuilderMarkdown from "./AiBuilderMarkdown";
 
 interface IAiBuilderOutcomeMessageProps {
   outcome: AiBuilderOutcome;
@@ -24,9 +23,7 @@ function AiBuilderOutcomeMessage({
   return (
     <div className="space-y-1.5">
       <div className="font-semibold">{OUTCOME_TITLES[outcome]}</div>
-      <div className="ai-builder-markdown">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message}</ReactMarkdown>
-      </div>
+      <AiBuilderMarkdown content={message} tone="assistant" />
       {suggestedNextStep ? (
         <div>
           <div className="font-medium">Next step:</div>

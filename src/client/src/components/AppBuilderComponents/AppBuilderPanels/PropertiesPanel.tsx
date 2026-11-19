@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from "react";
+import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { ComponentWorkflowsPanel } from "../../properties/ComponentWorkflowsPanel";
 import { BindingsPanel } from "../../properties/BindingsPanel";
@@ -41,7 +41,6 @@ interface PropertiesPanelProps {
   pageWidth?: number;
   onPageWidthChange?: (pageWidth: number) => void;
   projectComponentEditor?: IProjectComponentPropertiesEditorProps;
-  projectComponentTreeActions?: ReactNode;
 }
 
 const PropertiesPanel: FC<PropertiesPanelProps> = ({
@@ -59,7 +58,6 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
   pageWidth,
   onPageWidthChange,
   projectComponentEditor,
-  projectComponentTreeActions,
 }) => {
   const [codeNameDrafts, setCodeNameDrafts] = useState<Record<string, string>>(
     {},
@@ -175,11 +173,6 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
       >
         {selectedComponent ? (
           <div className="mx-2 mb-2 space-y-2">
-            {projectComponentTreeActions && (
-              <div className="rounded-lg border border-[var(--builder-chrome-border)] bg-[var(--builder-panel-bg)] p-2 shadow-sm">
-                {projectComponentTreeActions}
-              </div>
-            )}
             <div className="rounded-lg border border-[var(--builder-chrome-border)] bg-[var(--builder-panel-bg)] px-1 py-2 shadow-sm">
               {/* GENERAL section */}
               <div className="flex items-center gap-2 px-3 pt-2 pb-1">

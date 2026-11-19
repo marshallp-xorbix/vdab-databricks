@@ -3,7 +3,6 @@ import type {
   IProjectComponent,
   ProjectJsonObject,
 } from "../models/ProjectComponents";
-import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
 import {
   readDefaultTabIndex,
   readLayoutSlotCount,
@@ -19,27 +18,16 @@ import {
   type ModalChildComponentType,
   type ProjectComponentAddType,
 } from "../utils/projectComponentFactory";
-import {
-  getProjectComponentMoveAvailability,
-  moveProjectComponent,
-  removeProjectComponentSubtree,
-  type ProjectComponentMoveDirection,
-} from "../utils/projectComponentTree";
-import { removeWorkflowsForProjectComponents } from "../utils/projectWorkflowComponentReferences";
 
 interface IUseProjectComponentEditorOptions {
   components: IProjectComponent[];
-  workflow: IProjectWorkflowDefinition;
   onComponentsChange: (components: IProjectComponent[]) => void;
-  onWorkflowChange: (workflow: IProjectWorkflowDefinition) => void;
 }
 
 /** Owns selection and component editing actions for the project component editor. */
 export function useProjectComponentEditor({
   components,
-  workflow,
   onComponentsChange,
-  onWorkflowChange,
 }: Readonly<IUseProjectComponentEditorOptions>) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [activeTabByKey, setActiveTabByKey] = useState<Record<string, number>>(
@@ -47,10 +35,6 @@ export function useProjectComponentEditor({
   );
   const selectedComponent = components.find(
     (component) => component.key === selectedKey,
-  );
-  const moveAvailability = getProjectComponentMoveAvailability(
-    components,
-    selectedKey,
   );
 
   useEffect(() => {
@@ -241,46 +225,12 @@ export function useProjectComponentEditor({
     );
   }
 
-  function moveSelectedComponent(direction: ProjectComponentMoveDirection) {
-    if (!selectedComponent) {
-      return;
-    }
-
-    onComponentsChange(
-      moveProjectComponent(components, selectedComponent.key, direction),
-    );
-  }
-
-  function removeSelectedComponent() {
-    if (!selectedComponent) {
-      return;
-    }
-
-    const parent = components.find((component) =>
-      component.children.includes(selectedComponent.key),
-    );
-    const removal = removeProjectComponentSubtree(
-      components,
-      selectedComponent.key,
-    );
-    if (removal.removedComponents.length === 0) {
-      return;
-    }
-
-    onComponentsChange(removal.components);
-    onWorkflowChange(
-      removeWorkflowsForProjectComponents(workflow, removal.removedComponents),
-    );
-    setSelectedKey(parent?.key ?? readFirstRootKey(removal.components));
-  }
-
   return {
     selectedKey,
     selectedComponent,
     activeTabIndex: selectedComponent
       ? (activeTabByKey[selectedComponent.key] ?? 0)
       : 0,
-    ...moveAvailability,
     selectComponent: setSelectedKey,
     addComponent,
     addLayoutChild,
@@ -289,8 +239,6 @@ export function useProjectComponentEditor({
     removeSelectedTab,
     changeSelectedProperties,
     changeSelectedBindings,
-    moveSelectedComponent,
-    removeSelectedComponent,
     setActiveTabIndex(tabIndex: number) {
       if (!selectedComponent) {
         return;
@@ -302,13 +250,4 @@ export function useProjectComponentEditor({
       }));
     },
   };
-}
-
-function readFirstRootKey(components: IProjectComponent[]): string | null {
-  const childKeys = new Set(
-    components.flatMap((component) => component.children),
-  );
-  return (
-    components.find((component) => !childKeys.has(component.key))?.key ?? null
-  );
 }

@@ -19,7 +19,6 @@ import { useTabManagement } from "../hooks/useTabManagement";
 import { toCanvasComponents } from "../utils/projectCanvasAdapter";
 import { getPageWidthFromTheme } from "../utils/pageWidthDefaults";
 import type { IProjectComponentPropertiesEditorProps } from "./ProjectComponentPropertiesEditor";
-import ProjectComponentTreeActions from "./ProjectComponentTreeActions";
 import { useTheme } from "../context/ThemeContext";
 import { getStreamlitThemeDefaults } from "./AppBuilderComponents/AppSettingsTab/themeDefaults";
 import type { ComponentDragData } from "../types/dnd";
@@ -40,7 +39,6 @@ interface IProjectComponentsEditorProps {
   onComponentsChange: (components: IProjectComponent[]) => void;
   onWorkflowChange: (workflow: IProjectWorkflowDefinition) => void;
   onPageWidthChange: (pageWidth: number) => void;
-  isWorkflowReady: boolean;
 }
 
 function ProjectComponentsEditor({
@@ -54,13 +52,10 @@ function ProjectComponentsEditor({
   onComponentsChange,
   onWorkflowChange,
   onPageWidthChange,
-  isWorkflowReady,
 }: Readonly<IProjectComponentsEditorProps>) {
   const editor = useProjectComponentEditor({
     components,
-    workflow,
     onComponentsChange,
-    onWorkflowChange,
   });
   const { theme: productTheme } = useTheme();
   const jumpToWorkflow = useProjectWorkflowNavigation();
@@ -135,18 +130,6 @@ function ProjectComponentsEditor({
           onRemoveTab: editor.removeSelectedTab,
         }
       : undefined;
-  const projectComponentTreeActions = editor.selectedComponent ? (
-    <ProjectComponentTreeActions
-      component={editor.selectedComponent}
-      isDisabled={isDisabled}
-      isRemoveDisabled={!isWorkflowReady}
-      canMoveUp={editor.canMoveUp}
-      canMoveDown={editor.canMoveDown}
-      onMoveUp={() => editor.moveSelectedComponent("up")}
-      onMoveDown={() => editor.moveSelectedComponent("down")}
-      onRemove={editor.removeSelectedComponent}
-    />
-  ) : undefined;
 
   return (
     <section
@@ -200,7 +183,6 @@ function ProjectComponentsEditor({
               onJumpToWorkflowAction={jumpToWorkflow}
               onCloseProperties={() => editor.selectComponent(null)}
               projectComponentEditor={projectComponentEditor}
-              projectComponentTreeActions={projectComponentTreeActions}
             />
           </aside>
         </div>
@@ -271,7 +253,6 @@ function ProjectComponentsEditor({
               onJumpToWorkflowAction={jumpToWorkflow}
               onCloseProperties={() => editor.selectComponent(null)}
               projectComponentEditor={projectComponentEditor}
-              projectComponentTreeActions={projectComponentTreeActions}
               canvasContextType={canvasContextType}
               pageWidth={
                 activeTab?.type === TabType.MainPage

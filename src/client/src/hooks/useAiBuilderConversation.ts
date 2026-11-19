@@ -10,10 +10,18 @@ import type { IWorkspaceServingEndpoint } from "../models/WorkspaceServingEndpoi
 import { WORKSPACE_CHAT_ENDPOINT_TASK } from "../models/WorkspaceServingEndpoint";
 import { useAiBuilder } from "./useAiBuilder";
 import { createDraftSnapshotKey } from "../utils/aiBuilderDraftSnapshot";
+import {
+  AI_BUILDER_REQUEST_HISTORY_LIMIT,
+  createAiBuilderChat,
+  findActiveAiBuilderChat,
+  loadAiBuilderChatStore,
+  saveAiBuilderChatStore,
+  upsertAiBuilderChat,
+  type IAiBuilderChat,
+  type IAiBuilderChatMessage,
+  type IAiBuilderChatStore,
+} from "../utils/aiBuilderChatHistory";
 
-interface IConversationEntry extends IAiBuilderConversationMessage {
-  id: number;
-}
 interface UseAiBuilderConversationOptions {
   projectId: string;
   version: number;
@@ -28,10 +36,10 @@ interface UseAiBuilderConversationOptions {
     version: number,
   ) => void | Promise<void>;
 }
-const MAX_HISTORY_MESSAGES = 20;
+
 const ENDPOINT_STORAGE_KEY = "vdab-ai-builder-endpoint";
 
-/** Owns AI conversation requests, cancellation and draft proposal validation. */
+/** Owns AI chat requests, local history, cancellation, and draft proposal validation. */
 export function useAiBuilderConversation({
   projectId,
   version,
@@ -71,21 +79,19 @@ export function useAiBuilderConversation({
       // Session storage can be unavailable in private browsing.
     }
   }, [endpointName]);
-  const [prompt, setPrompt] = useState("");
-  const [messages, setMessages] = useState<IConversationEntry[]>(() =>
-    initialHistory.map((message, index) => ({ ...message, id: index })),
+
+  const [chatStore, setChatStore] = useState<IAiBuilderChatStore>(() =>
+    createInitialChatStore(projectId, initialHistory),
   );
+  const [prompt, setPrompt] = useState("");
   const [progressMessage, setProgressMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [latestResult, setLatestResult] = useState<IAiBuilderResult | null>(
-    null,
-  );
-  const [latestResultSnapshotKey, setLatestResultSnapshotKey] = useState<
-    string | null
-  >(null);
+  const [latestResult, setLatestResult] = useState<IAiBuilderResult | null>(null);
+  const [latestResultSnapshotKey, setLatestResultSnapshotKey] = useState<string | null>(null);
   const [appliedVersion, setAppliedVersion] = useState<number | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const currentDraftSnapshotKey = createDraftSnapshotKey(
     version,
     components,
@@ -95,10 +101,27 @@ export function useAiBuilderConversation({
   const currentDraftSnapshotKeyRef = useRef(currentDraftSnapshotKey);
   currentDraftSnapshotKeyRef.current = currentDraftSnapshotKey;
   const abortControllerRef = useRef<AbortController | null>(null);
-  const nextMessageIdRef = useRef(initialHistory.length);
   const aiBuilderMutation = useAiBuilder();
   const isPending = aiBuilderMutation.isPending;
 
+  useEffect(() => {
+    setChatStore(createInitialChatStore(projectId, initialHistory));
+    setPrompt("");
+    setProgressMessage("");
+    setErrorMessage(null);
+    setLatestResult(null);
+    setLatestResultSnapshotKey(null);
+    setAppliedVersion(null);
+    setApplyError(null);
+    setStreamingAssistantId(null);
+  }, [projectId]);
+
+  useEffect(() => {
+    saveAiBuilderChatStore(projectId, chatStore);
+  }, [projectId, chatStore]);
+
+  const activeChat = findActiveAiBuilderChat(chatStore);
+  const messages = activeChat?.messages ?? [];
   const isEndpointAvailable = availableEndpoints.some(
     (endpoint) => endpoint.name === endpointName,
   );
@@ -122,12 +145,26 @@ export function useAiBuilderConversation({
     setLatestResult(null);
     setLatestResultSnapshotKey(null);
     setAppliedVersion(null);
+    setPrompt("");
+
+    const historyForRequest = messages
+      .slice(-AI_BUILDER_REQUEST_HISTORY_LIMIT)
+      .map(({ role, content }) => ({ role, content }));
+    const userMessage = createMessage("user", trimmedPrompt);
+    const assistantMessage = createMessage("assistant", "");
     const requestSnapshotKey = createDraftSnapshotKey(
       version,
       components,
       workflow,
       customModulesSource,
     );
+
+    updateActiveChat((chat) => ({
+      ...chat,
+      updatedAt: new Date().toISOString(),
+      messages: [...chat.messages, userMessage, assistantMessage],
+    }));
+    setStreamingAssistantId(assistantMessage.id);
 
     try {
       const result = await aiBuilderMutation.mutateAsync({
@@ -136,46 +173,46 @@ export function useAiBuilderConversation({
           version,
           endpointName,
           prompt: trimmedPrompt,
-          history: messages
-            .slice(-MAX_HISTORY_MESSAGES)
-            .map(({ role, content }) => ({ role, content })),
+          history: historyForRequest,
           components,
           workflow,
           customModulesSource,
         },
-        onProgress: setProgressMessage,
+        onProgress: (message) => {
+          setProgressMessage(message);
+          patchAssistantMessage(assistantMessage.id, message);
+        },
         signal: abortController.signal,
       });
       setLatestResult(result);
       setLatestResultSnapshotKey(requestSnapshotKey);
       setProgressMessage("");
-      setPrompt("");
-      const userMessageId = nextMessageIdRef.current;
-      nextMessageIdRef.current += 2;
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        { id: userMessageId, role: "user", content: trimmedPrompt },
-        {
-          id: userMessageId + 1,
-          role: "assistant",
-          content: result.assistantMessage,
-        },
-      ]);
+      patchAssistantMessage(assistantMessage.id, result.assistantMessage, result.outcome);
       if (result.proposal) {
         await applyProposal(result, requestSnapshotKey);
       }
     } catch (error) {
       if (abortController.signal.aborted) {
-        setProgressMessage("Request cancelled.");
-      } else {
         setProgressMessage("");
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "AI Builder could not complete the request.",
+        patchAssistantMessage(
+          assistantMessage.id,
+          "Request cancelled.",
+          "unableToComplete",
+        );
+      } else {
+        const detail = error instanceof Error
+          ? error.message
+          : "AI Builder could not complete the request.";
+        setProgressMessage("");
+        setErrorMessage(null);
+        patchAssistantMessage(
+          assistantMessage.id,
+          detail,
+          "unableToComplete",
         );
       }
     } finally {
+      setStreamingAssistantId(null);
       if (abortControllerRef.current === abortController) {
         abortControllerRef.current = null;
       }
@@ -228,7 +265,8 @@ export function useAiBuilderConversation({
 
   function handleNewConversation() {
     if (isPending || isApplying) return;
-    setMessages([]);
+    const nextChat = createAiBuilderChat();
+    setChatStore((current) => upsertAiBuilderChat(current, nextChat, true));
     setPrompt("");
     setProgressMessage("");
     setErrorMessage(null);
@@ -236,7 +274,51 @@ export function useAiBuilderConversation({
     setLatestResultSnapshotKey(null);
     setAppliedVersion(null);
     setApplyError(null);
-    nextMessageIdRef.current = 0;
+    setStreamingAssistantId(null);
+  }
+
+  function handleSelectChat(chatId: string) {
+    if (isPending || isApplying) return;
+    if (!chatStore.chats.some((chat) => chat.id === chatId)) return;
+    setChatStore((current) => ({ ...current, activeChatId: chatId }));
+    setPrompt("");
+    setProgressMessage("");
+    setErrorMessage(null);
+    setLatestResult(null);
+    setLatestResultSnapshotKey(null);
+    setAppliedVersion(null);
+    setApplyError(null);
+    setStreamingAssistantId(null);
+  }
+
+  function updateActiveChat(mutate: (chat: IAiBuilderChat) => IAiBuilderChat) {
+    setChatStore((current) => {
+      const existing = findActiveAiBuilderChat(current) ?? createAiBuilderChat();
+      return upsertAiBuilderChat(current, mutate(existing), true);
+    });
+  }
+
+  function patchAssistantMessage(
+    messageId: string,
+    content: string,
+    outcome?: IAiBuilderChatMessage["outcome"],
+  ) {
+    setChatStore((current) => {
+      const active = findActiveAiBuilderChat(current);
+      if (!active) return current;
+      return upsertAiBuilderChat(current, {
+        ...active,
+        updatedAt: new Date().toISOString(),
+        messages: active.messages.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                content,
+                ...(outcome ? { outcome } : {}),
+              }
+            : message),
+      }, true);
+    });
   }
 
   return {
@@ -246,6 +328,8 @@ export function useAiBuilderConversation({
     prompt,
     setPrompt,
     messages,
+    chats: chatStore.chats,
+    activeChatId: chatStore.activeChatId,
     progressMessage,
     errorMessage,
     latestResult,
@@ -255,9 +339,48 @@ export function useAiBuilderConversation({
     isPending,
     canSubmit,
     isEndpointAvailable,
+    streamingAssistantId,
     handleSubmit,
     handleCancel,
     handleApplyProposal,
     handleNewConversation,
+    handleSelectChat,
   };
+}
+
+function createInitialChatStore(
+  projectId: string,
+  initialHistory: IAiBuilderConversationMessage[],
+): IAiBuilderChatStore {
+  const stored = typeof window === "undefined"
+    ? { activeChatId: null, chats: [] }
+    : loadAiBuilderChatStore(projectId);
+  if (stored.chats.length > 0) return stored;
+  if (initialHistory.length === 0) {
+    return { activeChatId: null, chats: [] };
+  }
+  const seeded = createAiBuilderChat(
+    initialHistory.map((message) => createMessage(message.role, message.content)),
+  );
+  return upsertAiBuilderChat({ activeChatId: null, chats: [] }, seeded, true);
+}
+
+function createMessage(
+  role: "user" | "assistant",
+  content: string,
+  outcome?: IAiBuilderChatMessage["outcome"],
+): IAiBuilderChatMessage {
+  return {
+    id: createMessageId(),
+    role,
+    content,
+    ...(outcome ? { outcome } : {}),
+  };
+}
+
+function createMessageId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `message-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }

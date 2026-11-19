@@ -1,6 +1,7 @@
 import { ArrowUpIcon, Loader2, SquarePen, X } from "lucide-react";
+import AiBuilderChatHistoryMenu from "./AiBuilderChatHistoryMenu";
+import AiBuilderConversationList from "./AiBuilderConversationList";
 import AiBuilderModelSelector from "./AiBuilderModelSelector";
-import AiBuilderOutcomeMessage from "./AiBuilderOutcomeMessage";
 import type {
   IAiBuilderConversationMessage,
   IAiBuilderProposal,
@@ -17,8 +18,6 @@ import {
   InputGroupTextarea,
 } from "./ui/input-group";
 import { Label } from "./ui/label";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 
 interface IAiBuilderPanelProps {
   projectId: string;
@@ -58,6 +57,8 @@ function AiBuilderPanel({
     prompt,
     setPrompt,
     messages,
+    chats,
+    activeChatId,
     progressMessage,
     errorMessage,
     latestResult,
@@ -67,10 +68,12 @@ function AiBuilderPanel({
     isPending,
     canSubmit,
     isEndpointAvailable,
+    streamingAssistantId,
     handleSubmit,
     handleCancel,
     handleApplyProposal,
     handleNewConversation,
+    handleSelectChat,
   } = useAiBuilderConversation({
     projectId,
     version,
@@ -86,9 +89,6 @@ function AiBuilderPanel({
   const showManualApply =
     Boolean(latestResult?.proposal) &&
     appliedVersion !== latestResult?.version;
-  const lastAssistantMessageId = [...messages]
-    .reverse()
-    .find((message) => message.role === "assistant")?.id;
 
   return (
     <section
@@ -109,12 +109,18 @@ function AiBuilderPanel({
           />
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <AiBuilderChatHistoryMenu
+            chats={chats}
+            activeChatId={activeChatId}
+            disabled={isPending || isApplying}
+            onSelectChat={handleSelectChat}
+          />
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            title="New conversation"
-            aria-label="New conversation"
+            title="New chat"
+            aria-label="New chat"
             disabled={isPending || isApplying}
             onClick={handleNewConversation}
           >
@@ -135,63 +141,15 @@ function AiBuilderPanel({
         </div>
       </header>
 
-      <ol
-        aria-label="AI Builder conversation"
-        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto bg-card px-3 py-3"
-      >
-        {messages.length === 0 ? (
-          <li className="text-xs text-muted-foreground">
-            Describe the app you want to build and the AI will suggest changes
-            for your canvas.
-          </li>
-        ) : (
-          messages.map((message) => (
-            <li
-              key={message.id}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-snug ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
-              >
-                {message.role === "assistant" ? (
-                  latestResult && message.id === lastAssistantMessageId ? (
-                    <AiBuilderOutcomeMessage
-                      outcome={latestResult.outcome}
-                      message={message.content}
-                      suggestedNextStep={
-                        applyError
-                          ? "Request a new suggestion after saving or reverting draft changes."
-                          : appliedVersion === latestResult.version
-                            ? "Save the app when you are ready."
-                            : null
-                      }
-                    />
-                  ) : (
-                    <div className="ai-builder-markdown">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  )
-                ) : (
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                )}
-              </div>
-            </li>
-          ))
-        )}
-        {isPending && progressMessage && (
-          <li className="flex justify-start">
-            <div
-              className="max-w-[80%] rounded-lg bg-muted px-3 py-2 text-xs"
-              role="status"
-              aria-live="polite"
-            >
-              {progressMessage}
-            </div>
-          </li>
-        )}
-      </ol>
+      <AiBuilderConversationList
+        messages={messages}
+        progressMessage={progressMessage}
+        isPending={isPending}
+        streamingAssistantId={streamingAssistantId}
+        latestResult={latestResult}
+        appliedVersion={appliedVersion}
+        applyError={applyError}
+      />
 
       {availableEndpoints.length === 0 && (
         <p role="status" className="px-3 pb-2 text-xs text-muted-foreground">

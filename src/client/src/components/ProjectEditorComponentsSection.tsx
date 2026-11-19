@@ -14,16 +14,12 @@ interface IProjectEditorComponentsSectionProps {
     ProjectEditorState,
     | "componentsQuery"
     | "registryQuery"
-    | "workflowQuery"
     | "replaceComponentsMutation"
     | "replaceWorkflowMutation"
     | "updateProjectMutation"
     | "components"
     | "workflow"
     | "isMetadataDirty"
-    | "isComponentsDirty"
-    | "isWorkflowDirty"
-    | "isCustomModulesDirty"
     | "isCanvasSaving"
     | "componentsDocument"
     | "canEdit"
@@ -49,9 +45,6 @@ function ProjectEditorComponentsSection({
     components,
     workflow,
     isMetadataDirty,
-    isComponentsDirty,
-    isWorkflowDirty,
-    isCustomModulesDirty,
     componentsDocument,
     canEdit,
     handleComponentsChange,
@@ -71,20 +64,6 @@ function ProjectEditorComponentsSection({
       {canEdit && replaceWorkflowMutation.isError && (
         <p role="alert" className="px-3 py-2 text-sm text-destructive">
           Workflow save failed. {replaceWorkflowMutation.error instanceof Error ? replaceWorkflowMutation.error.message : "Use Save to retry."}
-        </p>
-      )}
-      {canEdit && isComponentsDirty && !replaceComponentsMutation.isError && (
-        <p role="status" aria-live="polite" className="px-3 py-2 text-sm">
-          {isMetadataDirty || isWorkflowDirty || isCustomModulesDirty
-            ? "Component auto-save will resume after the other project changes are saved."
-            : replaceComponentsMutation.isPending
-              ? "Saving components…"
-              : "Component changes save automatically after you pause editing. Use Save to save now."}
-        </p>
-      )}
-      {canEdit && !isComponentsDirty && !replaceComponentsMutation.isPending && (
-        <p role="status" aria-live="polite" className="sr-only">
-          Components saved.
         </p>
       )}
       {componentsQuery.isPending && (
@@ -123,7 +102,6 @@ function ProjectEditorComponentsSection({
             updateProjectMutation.isPending
           }
           workflow={workflow}
-          isWorkflowReady={editor.workflowQuery.isSuccess}
           toolbar={toolbar}
           customModulesCode={customModulesSource}
           onComponentsChange={handleComponentsChange}

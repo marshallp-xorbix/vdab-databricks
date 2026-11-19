@@ -1,12 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AiBuilderPanel from "./AiBuilderPanel";
 import type { IAiBuilderProposal } from "../models/AiBuilder";
 import type { IWorkspaceServingEndpoint } from "../models/WorkspaceServingEndpoint";
+import { createAiBuilderChatStorageKey } from "../utils/aiBuilderChatHistory";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+});
 
 describe("AiBuilderPanel", () => {
   it("starts a fresh conversation and closes from the header controls", async () => {
@@ -28,7 +33,7 @@ describe("AiBuilderPanel", () => {
     );
 
     expect(screen.getByText("Create a form")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "New conversation" }));
+    await user.click(screen.getByRole("button", { name: "New chat" }));
     expect(screen.queryByText("Create a form")).not.toBeInTheDocument();
     expect(screen.getByText(/Describe the app you want to build/)).toBeInTheDocument();
 
@@ -36,7 +41,7 @@ describe("AiBuilderPanel", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("filters endpoint choices, shows progress and applies a proposal to the draft", async () => {
+  it("shows the user prompt immediately, streams in the assistant bubble, and keeps request history", async () => {
     const user = userEvent.setup();
     const onApplyProposal = vi.fn();
     const responseController = createDeferredStreamResponse();
@@ -67,6 +72,7 @@ describe("AiBuilderPanel", () => {
     await user.type(screen.getByRole("textbox", { name: "What would you like to change?" }), "Add a save button");
     await user.click(screen.getByRole("button", { name: "Generate suggestion" }));
 
+    expect(screen.getByText("Add a save button")).toBeInTheDocument();
     expect(await screen.findByText("Drafting a proposal")).toBeInTheDocument();
     const [, requestOptions] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(requestOptions.body))).toEqual({
@@ -93,11 +99,64 @@ describe("AiBuilderPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("restores a previous local chat from history", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      createAiBuilderChatStorageKey("project-one"),
+      JSON.stringify({
+        activeChatId: "chat-new",
+        chats: [
+          {
+            id: "chat-old",
+            title: "Older request",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            messages: [
+              { id: "m1", role: "user", content: "Older request" },
+              { id: "m2", role: "assistant", content: "Older answer" },
+            ],
+          },
+          {
+            id: "chat-new",
+            title: "Newer request",
+            updatedAt: "2026-02-01T00:00:00.000Z",
+            messages: [
+              { id: "m3", role: "user", content: "Newer request" },
+              { id: "m4", role: "assistant", content: "Newer answer" },
+            ],
+          },
+        ],
+      }),
+    );
+
+    renderWithQueryClient(
+      <AiBuilderPanel
+        projectId="project-one"
+        version={4}
+        endpoints={endpoints}
+        components={[]}
+        workflow={{ version: 1, workflows: [] }}
+        customModulesSource=""
+        onApplyProposal={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Newer request")).toBeInTheDocument();
+    expect(screen.getByText("Newer answer")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Chat history" }));
+    const menu = screen.getByRole("menu");
+    await user.click(within(menu).getByText(/Older request/));
+
+    expect(screen.getByText("Older answer")).toBeInTheDocument();
+    expect(screen.queryByText("Newer answer")).not.toBeInTheDocument();
+  });
+
   it("explains when no ready queryable endpoint is available and hides apply for text-only responses", async () => {
     const fetchMock = vi.fn().mockResolvedValue(sseResponse({
       assistantMessage: "Which control should the form contain?",
       proposal: null,
       version: 2,
+      outcome: "needsClarification",
     }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
@@ -143,6 +202,7 @@ describe("AiBuilderPanel", () => {
       assistantMessage: "Here is a current proposal.",
       proposal,
       version: 4,
+      outcome: "completed",
     })));
     const onApplyProposal = vi.fn();
 
@@ -266,9 +326,9 @@ function createDeferredStreamResponse(): { response: Response; complete: () => v
         assistantMessage: "Added a save button.",
         proposal,
         version: 4,
+        outcome: "completed",
       })}\n\n`));
       streamController?.close();
     },
   };
 }
-

@@ -86,3 +86,35 @@ it("ProjectCard_UndeployedChildApp_StillOpensBuilderCanvas", () => {
     "disabled",
   );
 });
+
+it("ProjectCard_NewAppTarget_ShowsStartingStatus", () => {
+  vi.mocked(useProjectAppStatus).mockReturnValue({
+    childApp: undefined,
+    app: undefined,
+    isOnline: false,
+    status: "Starting",
+  });
+  render(
+    <MemoryRouter>
+      <ul>
+        <ProjectManagementProjectCard
+          project={
+            new Project({
+              id: "project-one",
+              name: "Parity demo",
+              updatedAt: "2026-10-29T00:00:00Z",
+              deploymentSettings: {
+                mode: "createNew",
+                appName: "parity-demo",
+                workspacePath: null,
+              },
+            })
+          }
+          isExporting={false}
+          onExport={vi.fn()}
+        />
+      </ul>
+    </MemoryRouter>,
+  );
+  expect(screen.getByText("Starting")).toBeInTheDocument();
+});

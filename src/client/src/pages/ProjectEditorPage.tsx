@@ -161,7 +161,8 @@ function ProjectEditorPageContent({
         }
       }
       if (isCustomModulesDirty) {
-        const document = customModulesQuery.data;
+        const refreshedModules = await customModulesQuery.refetch();
+        const document = refreshedModules.data ?? customModulesQuery.data;
         if (!document) {
           toast({
             title: "Save failed",
@@ -354,12 +355,7 @@ function ProjectEditorPageContent({
                 onApplyProposal={(proposal) => {
                   editor.handleComponentsChange(proposal.components);
                   editor.setWorkflow(proposal.workflow);
-                  if (
-                    proposal.customModulesSource !==
-                    customModulesQuery.data.source
-                  ) {
-                    handleCustomModulesSourceChange(proposal.customModulesSource);
-                  }
+                  handleCustomModulesSourceChange(proposal.customModulesSource);
                 }}
               />
             )}

@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from "react";
+import type { FC } from "react";
 import PropertiesPanel from "./PropertiesPanel";
 import type { VdabComponent } from "../../../types/components";
 import type { WorkflowDefinition } from "../../../types/workflow";
@@ -23,7 +23,6 @@ interface RightSidebarProps {
   pageWidth?: number;
   onPageWidthChange?: (pageWidth: number) => void;
   projectComponentEditor?: IProjectComponentPropertiesEditorProps;
-  projectComponentTreeActions?: ReactNode;
 }
 
 const RightSidebar: FC<RightSidebarProps> = ({
@@ -41,7 +40,6 @@ const RightSidebar: FC<RightSidebarProps> = ({
   pageWidth,
   onPageWidthChange,
   projectComponentEditor,
-  projectComponentTreeActions,
 }) => {
   return (
     <aside className="builder-sidebar-surface builder-chrome-surface flex h-full w-80 flex-col overflow-hidden border-l border-[var(--builder-chrome-border)]">
@@ -62,7 +60,6 @@ const RightSidebar: FC<RightSidebarProps> = ({
           pageWidth={pageWidth}
           onPageWidthChange={onPageWidthChange}
           projectComponentEditor={projectComponentEditor}
-          projectComponentTreeActions={projectComponentTreeActions}
         />
       </div>
     </aside>

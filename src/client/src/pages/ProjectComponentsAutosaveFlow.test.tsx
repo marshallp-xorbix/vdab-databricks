@@ -24,9 +24,6 @@ describe("ProjectEditorPage component autosave", () => {
     await renderProjectEditorPage();
     await user.click(await screen.findByRole("button", { name: "Add Button" }));
 
-    expect(
-      await screen.findByText(/save automatically after you pause editing/i),
-    ).toBeInTheDocument();
     await waitFor(
       () => {
         expect(replaceProjectComponentsMock).toHaveBeenCalledTimes(1);
@@ -39,7 +36,9 @@ describe("ProjectEditorPage component autosave", () => {
       version: 1,
       components: [{ type: "Button", codeName: "button1" }],
     });
-    expect(await screen.findByText("Components saved.")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/save automatically/i),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Save" }),
     ).toBeEnabled();
@@ -86,6 +85,8 @@ describe("ProjectEditorPage component autosave", () => {
     await waitFor(() => {
       expect(replaceProjectComponentsMock).toHaveBeenCalledTimes(2);
     });
-    expect(await screen.findByText("Components saved.")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/save automatically/i),
+    ).not.toBeInTheDocument();
   }, 8_000);
 });

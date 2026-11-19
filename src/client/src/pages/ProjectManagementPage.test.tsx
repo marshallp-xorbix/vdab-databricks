@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import type { IProject } from "../models/Project";
@@ -12,7 +12,11 @@ import {
   listProjects,
 } from "../api/projectsApi";
 import ProjectManagementPage from "./ProjectManagementPage";
-import { startProjectDeployment } from "../api/projectDeploymentsApi";
+import {
+  getProjectDeploymentHistory,
+  startProjectDeployment,
+} from "../api/projectDeploymentsApi";
+import { getWorkspaceApp } from "../api/workspaceAppsApi";
 
 vi.mock("../api/projectsApi", () => ({
   createProject: vi.fn(),
@@ -22,7 +26,14 @@ vi.mock("../api/projectsApi", () => ({
   listProjects: vi.fn(),
 }));
 vi.mock("../api/projectDeploymentsApi", () => ({
+  getProjectDeploymentHistory: vi.fn(),
   startProjectDeployment: vi.fn(),
+}));
+vi.mock("../api/workspaceAppsApi", () => ({
+  getWorkspaceApp: vi.fn(),
+  startWorkspaceApp: vi.fn(),
+  stopWorkspaceApp: vi.fn(),
+  listWorkspaceApps: vi.fn(),
 }));
 
 const createProjectMock = vi.mocked(createProject);
@@ -30,7 +41,9 @@ const deleteProjectMock = vi.mocked(deleteProject);
 const exportProjectMock = vi.mocked(exportProject);
 const importProjectMock = vi.mocked(importProject);
 const listProjectsMock = vi.mocked(listProjects);
+const getProjectDeploymentHistoryMock = vi.mocked(getProjectDeploymentHistory);
 const startProjectDeploymentMock = vi.mocked(startProjectDeployment);
+const getWorkspaceAppMock = vi.mocked(getWorkspaceApp);
 
 const project: IProject = {
   id: "project-1",
@@ -70,6 +83,20 @@ function renderProjectManagementPage() {
 }
 
 describe("ProjectManagementPage", () => {
+  beforeEach(() => {
+    getProjectDeploymentHistoryMock.mockResolvedValue({
+      childApp: null,
+      items: [],
+    });
+    getWorkspaceAppMock.mockResolvedValue({
+      name: "revenue-dashboard",
+      description: null,
+      url: null,
+      appState: "DEPLOYING",
+      computeState: "STARTING",
+    });
+  });
+
   it("shows loading and empty project states", async () => {
     listProjectsMock.mockResolvedValueOnce({ items: [] });
 
@@ -95,10 +122,22 @@ describe("ProjectManagementPage", () => {
     expect(router.state.location.pathname).toBe("/apps/project-1");
   });
 
-  it("creates a project and opens its editor", async () => {
-    listProjectsMock.mockResolvedValue({ items: [] });
-    createProjectMock.mockResolvedValue(project);
-    startProjectDeploymentMock.mockResolvedValue({} as Awaited<ReturnType<typeof startProjectDeployment>>);
+  it("creates a project, closes the wizard, and stays on the apps dashboard", async () => {
+    const createdProject: IProject = {
+      ...project,
+      deploymentSettings: {
+        mode: "createNew",
+        appName: "revenue-dashboard",
+        workspacePath: null,
+      },
+    };
+    listProjectsMock
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValue({ items: [createdProject] });
+    createProjectMock.mockResolvedValue(createdProject);
+    startProjectDeploymentMock.mockResolvedValue(
+      {} as Awaited<ReturnType<typeof startProjectDeployment>>,
+    );
 
     const router = renderProjectManagementPage();
     fireEvent.click(
@@ -123,20 +162,31 @@ describe("ProjectManagementPage", () => {
     expect(createProjectMock.mock.calls[0]?.[0]).toEqual({
       name: "Revenue dashboard",
       description: "Finance team",
-      deploymentSettings: { mode: "createNew", appName: "revenue-dashboard", workspacePath: null },
+      deploymentSettings: {
+        mode: "createNew",
+        appName: "revenue-dashboard",
+        workspacePath: null,
+      },
     });
-    await waitFor(() => expect(startProjectDeploymentMock.mock.calls[0]?.[0]).toEqual({
-      projectId: "project-1",
-      mode: "createNew",
-      appName: "revenue-dashboard",
-      confirmOverwrite: false,
-    }));
-    expect(
-      await screen.findByRole("heading", { name: "Project editor route" }),
-    ).toBeInTheDocument();
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/apps/project-1"),
+      expect(startProjectDeploymentMock.mock.calls[0]?.[0]).toEqual({
+        projectId: "project-1",
+        mode: "createNew",
+        appName: "revenue-dashboard",
+        confirmOverwrite: false,
+      }),
     );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(
+      await screen.findByRole("link", { name: "Revenue dashboard" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Starting")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/");
+    expect(
+      screen.queryByRole("heading", { name: "Project editor route" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows project-list errors", async () => {

@@ -98,6 +98,54 @@ test("AiBuilderService_EmbeddingEndpoint_RejectsBeforeModelInvocation", async ()
   await assert.rejects(service.prepare(CALLER, "request-1", "project-1", createRequest()), (error: unknown) => isApplicationError(error, 422));
 });
 
+test("AiBuilderService_RepairsInvalidOperationsThenStreamsProposal", async () => {
+  let invokeCount = 0;
+  const workspaceClient = {
+    invoke: async () => {
+      invokeCount += 1;
+      if (invokeCount === 1) return createInvalidProposalStreamResponse();
+      return createProposalStreamResponse();
+    },
+  } as unknown as AiBuilderWorkspaceClient;
+  const service = createService({ workspaceClient });
+  const prepared = await service.prepare(CALLER, "request-1", "project-1", createRequest());
+  const events: AiBuilderEvent[] = [];
+  await prepared.execute(new AbortController().signal, async (event) => {
+    events.push(event);
+  });
+
+  assert.equal(invokeCount, 2);
+  const result = events.find((event) => event.event === "result");
+  assert.ok(result?.event === "result");
+  assert.equal(result.data.outcome, "completed");
+  assert.equal(result.data.assistantMessage, "Added a title.");
+  assert.ok(result.data.proposal);
+});
+
+test("AiBuilderService_StreamsUnableToCompleteWhenRepairStillInvalid", async () => {
+  let invokeCount = 0;
+  const workspaceClient = {
+    invoke: async () => {
+      invokeCount += 1;
+      return createInvalidProposalStreamResponse();
+    },
+  } as unknown as AiBuilderWorkspaceClient;
+  const service = createService({ workspaceClient });
+  const prepared = await service.prepare(CALLER, "request-1", "project-1", createRequest());
+  const events: AiBuilderEvent[] = [];
+  await prepared.execute(new AbortController().signal, async (event) => {
+    events.push(event);
+  });
+
+  assert.equal(invokeCount, 2);
+  const result = events.find((event) => event.event === "result");
+  assert.ok(result?.event === "result");
+  assert.equal(result.data.outcome, "unableToComplete");
+  assert.equal(result.data.proposal, null);
+  assert.match(result.data.assistantMessage, /Validation:/);
+  assert.match(result.data.assistantMessage, /conflicts with existing component key|missing component key|not valid JSON|operationsJson/i);
+});
+
 test("AiBuilderService_RejectsStaleProjectBeforeContactingEndpoint", async () => {
   let endpointListCount = 0;
   const workspaceResources = {
@@ -192,7 +240,7 @@ function createRequest(): Record<string, unknown> {
 }
 
 function createProposalStreamResponse(): Response {
-  const argumentsValue = JSON.stringify({
+  return createToolStreamResponse({
     assistantMessage: "Added a title.",
     operationsJson: JSON.stringify([{
       type: "addComponent",
@@ -210,16 +258,65 @@ function createProposalStreamResponse(): Response {
       },
     }]),
   });
-  const chunk = JSON.stringify({
-    choices: [{ delta: { tool_calls: [{
-      index: 0,
-      function: { name: "apply_project_operations", arguments: argumentsValue },
-    }] } }],
-  });
+}
+
+function createInvalidProposalStreamResponse(): Response {
+  return createToolStreamResponse({
+    assistantMessage: "Tried to rebuild the page.",
+    operationsJson: JSON.stringify([{
+      type: "addComponent",
+      component: {
+        key: "title-label",
+        type: "Label",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: null,
+        description: null,
+        properties: { text: "Dashboard title", fontSize: "medium", bold: false },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+    }, {
+      type: "addComponent",
+      component: {
+        key: "title-label",
+        type: "Label",
+        schemaVersion: 1,
+        componentVersion: 1,
+        codeName: null,
+        description: null,
+        properties: { text: "Duplicate title", fontSize: "medium", bold: false },
+        bindings: null,
+        children: [],
+        layout: null,
+      },
+    }]),
+  }, "Planning a large rebuild");
+}
+
+function createToolStreamResponse(
+  argumentsObject: Record<string, unknown>,
+  content?: string,
+): Response {
+  const argumentsValue = JSON.stringify(argumentsObject);
+  const frames = [
+    ...(content
+      ? [`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`]
+      : []),
+    `data: ${JSON.stringify({
+      choices: [{ delta: { tool_calls: [{
+        index: 0,
+        function: { name: "apply_project_operations", arguments: argumentsValue },
+      }] } }],
+    })}\n\n`,
+    "data: [DONE]\n\n",
+  ];
   return new Response(new ReadableStream<Uint8Array>({
     start(controller) {
-      controller.enqueue(new TextEncoder().encode(`data: ${chunk}\n\n`));
-      controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+      for (const frame of frames) {
+        controller.enqueue(new TextEncoder().encode(frame));
+      }
       controller.close();
     },
   }), { headers: { "content-type": "text/event-stream" } });

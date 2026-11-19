@@ -37,7 +37,7 @@ export async function readAiBuilderCompletion(
         buffer = buffer.slice(frameBoundary.index + frameBoundary[0].length);
         readFrame(frame, toolCall, (text) => {
           assistantMessage = appendBoundedText(assistantMessage, text);
-          reportProgress(text);
+          reportProgress(assistantMessage);
         });
         frameBoundary = /\r?\n\r?\n/.exec(buffer);
       }
@@ -46,7 +46,7 @@ export async function readAiBuilderCompletion(
     if (buffer.trim()) {
       readFrame(buffer, toolCall, (text) => {
         assistantMessage = appendBoundedText(assistantMessage, text);
-        reportProgress(text);
+        reportProgress(assistantMessage);
       });
     }
   } catch (error) {

@@ -280,31 +280,23 @@ describe("ProjectEditorPage AI Builder drafts", () => {
     expect(
       await screen.findByText("AI changes applied to the draft. Save the app when you are ready."),
     ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Close AI Builder" }));
 
-    await user.click(screen.getByRole("link", { name: "Canvas" }));
-    await user.click(await screen.findByRole("link", { name: "Workflow" }));
-    await user.click(
-      await screen.findByRole("button", { name: "Save" }),
-    );
-    await waitFor(() =>
-      expect(replaceProjectWorkflowMock).toHaveBeenCalledTimes(1),
-    );
     await user.click(screen.getByRole("link", { name: "Code" }));
     await user.click(await screen.findByRole("button", { name: "custom_modules.py" }));
-    await user.click(
-      await screen.findByRole("button", { name: "Save custom modules" }),
-    );
+    expect(
+      screen.getByText("Custom Python changes are not saved."),
+    ).toBeInTheDocument();
 
-    await waitFor(() =>
-      expect(replaceProjectCustomModulesMock).toHaveBeenCalledTimes(1),
-    );
-    await waitFor(
-      () => expect(replaceProjectComponentsMock).toHaveBeenCalledTimes(1),
-      { timeout: 3_000 },
-    );
-    expect(replaceProjectWorkflowMock.mock.calls[0]?.[0].version).toBe(1);
-    expect(replaceProjectCustomModulesMock.mock.calls[0]?.[0].version).toBe(2);
-    expect(replaceProjectComponentsMock.mock.calls[0]?.[0].version).toBe(3);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      expect(replaceProjectComponentsMock).toHaveBeenCalledTimes(1);
+      expect(replaceProjectWorkflowMock).toHaveBeenCalledTimes(1);
+      expect(replaceProjectCustomModulesMock).toHaveBeenCalledTimes(1);
+    });
+    expect(replaceProjectComponentsMock.mock.calls[0]?.[0].version).toBe(1);
+    expect(replaceProjectWorkflowMock.mock.calls[0]?.[0].version).toBe(2);
+    expect(replaceProjectCustomModulesMock.mock.calls[0]?.[0].version).toBe(3);
     expect(sharedVersion).toBe(4);
     await waitFor(() =>
       expect(

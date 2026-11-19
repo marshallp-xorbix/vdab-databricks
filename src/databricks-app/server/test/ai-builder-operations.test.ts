@@ -62,20 +62,20 @@ test("AiBuilderOperations_RejectsConflictsMalformedListsAndDanglingReferences", 
   assertOperationRejected(current, [{
     type: "addComponent",
     component: duplicateComponent,
-  }]);
+  }], /conflicts with existing component key/);
   assertOperationRejected(current, [{
     type: "replaceComponent",
     key: "missing-component",
-    component: duplicateComponent,
-  }]);
-  assertOperationRejected(current, [{ type: "deleteWorkflow", codeName: "missingWorkflow" }]);
-  assertOperationRejected(current, [{ type: "reorderComponents", keys: ["only-one"] }]);
-  assertOperationRejected(current, [{ type: "deleteComponent", key: "button-1" }]);
-  assertOperationRejected(current, [{ type: "unknownOperation" }]);
-  assertOperationRejected(current, [{ type: "deleteWorkflow", codeName: "buttonWorkflow", extra: true }]);
+    component: { ...duplicateComponent, key: "missing-component" },
+  }], /targets missing component key "missing-component"/);
+  assertOperationRejected(current, [{ type: "deleteWorkflow", codeName: "missingWorkflow" }], /missing workflow "missingWorkflow"/);
+  assertOperationRejected(current, [{ type: "reorderComponents", keys: ["only-one"] }], /every current component key exactly once/);
+  assertOperationRejected(current, [{ type: "deleteComponent", key: "button-1" }], /Check component shapes, workflow references/);
+  assertOperationRejected(current, [{ type: "unknownOperation" }], /unsupported type "unknownOperation"/);
+  assertOperationRejected(current, [{ type: "deleteWorkflow", codeName: "buttonWorkflow", extra: true }], /exactly these fields/);
   assert.throws(
     () => applyAiBuilderOperations(current, "not-json", 1, definitions),
-    (error: unknown) => isApplicationError(error),
+    (error: unknown) => isApplicationError(error) && /not valid JSON/.test((error as Error).message),
   );
 });
 
@@ -96,10 +96,15 @@ test("AiBuilderOperations_RejectsUnboundedOperationCountAndPayload", () => {
   );
 });
 
-function assertOperationRejected(current: AiBuilderProposal, operations: unknown[]): void {
+function assertOperationRejected(
+  current: AiBuilderProposal,
+  operations: unknown[],
+  detailPattern?: RegExp,
+): void {
   assert.throws(
     () => applyAiBuilderOperations(current, JSON.stringify(operations), 1, definitions),
-    (error: unknown) => isApplicationError(error),
+    (error: unknown) => isApplicationError(error)
+      && (detailPattern === undefined || detailPattern.test((error as Error).message)),
   );
 }
 

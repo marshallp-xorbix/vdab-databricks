@@ -11,11 +11,18 @@ export const projectDeploymentKeys = {
 };
 
 /** Loads linked App and history; refreshes while Databricks reports an active deployment. */
-export function useProjectDeployments(projectId: string | undefined) {
+export function useProjectDeployments(
+  projectId: string | undefined,
+  options?: { pollWhileUnlinked?: boolean },
+) {
   return useQuery({
     queryKey: projectDeploymentKeys.detail(projectId ?? ""),
     queryFn: ({ signal }) => getProjectDeploymentHistory(projectId ?? "", signal),
     enabled: Boolean(projectId),
+    refetchInterval: (query) => {
+      if (!options?.pollWhileUnlinked) return false;
+      return query.state.data?.childApp ? false : 3_000;
+    },
   });
 }
 

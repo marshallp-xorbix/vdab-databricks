@@ -1,5 +1,5 @@
 import { ApplicationError } from "./application-error.ts";
-import type { AiBuilderEvent, AiBuilderInput } from "./ai-builder-contract.ts";
+import type { AiBuilderEvent, AiBuilderInput, AiBuilderProposal } from "./ai-builder-contract.ts";
 import { readAiBuilderInput } from "./ai-builder-input.ts";
 import { applyAiBuilderOperations } from "./ai-builder-operations.ts";
 import { buildAiBuilderMessages } from "./ai-builder-prompt.ts";
@@ -22,6 +22,17 @@ export interface PreparedAiBuilderRequest {
     emit: (event: AiBuilderEvent) => Promise<void>,
   ): Promise<void>;
 }
+
+type AiBuilderResultData = {
+  assistantMessage: string;
+  proposal: AiBuilderProposal | null;
+  version: number;
+  outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
+};
+
+type CompletionParse =
+  | { kind: "result"; data: AiBuilderResultData }
+  | { kind: "repairable"; assistantMessage: string; detail: string };
 
 /** Validates project and endpoint authority before invoking a customer model. */
 export class AiBuilderService {
@@ -129,7 +140,73 @@ export class AiBuilderService {
     await emit({ event: "progress", data: { message: "Checking current-workspace resources…" } });
     const resourceContext = await this.resourceContext.getContext(caller, signal);
     const messages = buildAiBuilderMessages(input, definitions, resourceContext);
-    await emit({ event: "progress", data: { message: `Generating a proposal with ${endpoint.name}…` } });
+    const first = await this.completeOnce(
+      caller,
+      endpoint,
+      messages,
+      input,
+      definitions,
+      signal,
+      emit,
+      `Generating a proposal with ${endpoint.name}…`,
+    );
+    if (first.kind === "result") {
+      await emit({ event: "result", data: first.data });
+      return;
+    }
+
+    await emit({ event: "progress", data: { message: "Refining the proposal after validation feedback…" } });
+    const repairMessages = [
+      ...messages,
+      {
+        role: "assistant" as const,
+        content: first.assistantMessage || "I proposed project operations for your request.",
+      },
+      {
+        role: "user" as const,
+        content: [
+          "The server rejected those project operations:",
+          first.detail,
+          "Return corrected apply_project_operations with a smaller coherent set of operations, or explain what you need clarified in ordinary assistant text without calling the tool.",
+        ].join("\n"),
+      },
+    ];
+    const second = await this.completeOnce(
+      caller,
+      endpoint,
+      repairMessages,
+      input,
+      definitions,
+      signal,
+      emit,
+      "Generating a revised proposal…",
+    );
+    if (second.kind === "result") {
+      await emit({ event: "result", data: second.data });
+      return;
+    }
+    await emit({
+      event: "result",
+      data: {
+        assistantMessage: buildUnableToCompleteMessage(second.assistantMessage, second.detail),
+        proposal: null,
+        version: input.version,
+        outcome: "unableToComplete",
+      },
+    });
+  }
+
+  private async completeOnce(
+    caller: CallerIdentity,
+    endpoint: WorkspaceServingEndpointResource,
+    messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+    input: AiBuilderInput,
+    definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
+    signal: AbortSignal,
+    emit: (event: AiBuilderEvent) => Promise<void>,
+    progressMessage: string,
+  ): Promise<CompletionParse> {
+    await emit({ event: "progress", data: { message: progressMessage } });
     const response = await this.workspaceClient.invoke(caller, endpoint.name, messages, signal);
     let progressEvents = Promise.resolve();
     const completion = await readAiBuilderCompletion(
@@ -140,8 +217,7 @@ export class AiBuilderService {
       },
     );
     await progressEvents;
-    const result = readCompletionResult(completion, input, definitions);
-    await emit({ event: "result", data: result });
+    return readCompletionResult(completion, input, definitions);
   }
 }
 
@@ -155,24 +231,43 @@ function readCompletionResult(
   completion: Awaited<ReturnType<typeof readAiBuilderCompletion>>,
   input: AiBuilderInput,
   definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
-): { assistantMessage: string; proposal: AiBuilderInput["proposalContext"] | null; version: number; outcome: "completed" | "partial" | "needsClarification" } {
+): CompletionParse {
   if (completion.toolArgumentsJson === null) {
     return {
-      assistantMessage: completion.assistantMessage.slice(0, 4_000),
-      proposal: null,
-      version: input.version,
-      outcome: "needsClarification",
+      kind: "result",
+      data: {
+        assistantMessage: completion.assistantMessage.slice(0, 4_000),
+        proposal: null,
+        version: input.version,
+        outcome: "needsClarification",
+      },
     };
   }
-  if (completion.toolName !== AI_BUILDER_TOOL_NAME) throw invalidToolProposal();
+  if (completion.toolName !== AI_BUILDER_TOOL_NAME) {
+    return {
+      kind: "repairable",
+      assistantMessage: completion.assistantMessage,
+      detail: "The model called an unsupported tool. It must use apply_project_operations.",
+    };
+  }
 
   let argumentsValue: unknown;
   try {
     argumentsValue = JSON.parse(completion.toolArgumentsJson);
   } catch {
-    throw invalidToolProposal();
+    return {
+      kind: "repairable",
+      assistantMessage: preferredAssistantMessage(completion.assistantMessage, null),
+      detail: "The model returned tool arguments that are not valid JSON.",
+    };
   }
-  if (!isRecord(argumentsValue)) throw invalidToolProposal();
+  if (!isRecord(argumentsValue)) {
+    return {
+      kind: "repairable",
+      assistantMessage: preferredAssistantMessage(completion.assistantMessage, null),
+      detail: "The model returned tool arguments that are not a JSON object.",
+    };
+  }
   const outcome = argumentsValue.outcome === "partial" ? "partial" : "completed";
   if (!hasExactKeys(argumentsValue, argumentsValue.outcome === undefined
         ? ["assistantMessage", "operationsJson"]
@@ -180,20 +275,64 @@ function readCompletionResult(
       typeof argumentsValue.assistantMessage !== "string" || argumentsValue.assistantMessage.length > 4_000 ||
       typeof argumentsValue.operationsJson !== "string" ||
       (argumentsValue.outcome !== undefined && argumentsValue.outcome !== "partial" && argumentsValue.outcome !== "completed")) {
-    throw invalidToolProposal();
+    return {
+      kind: "repairable",
+      assistantMessage: preferredAssistantMessage(
+        completion.assistantMessage,
+        typeof argumentsValue.assistantMessage === "string" ? argumentsValue.assistantMessage : null,
+      ),
+      detail: "The model tool call must include assistantMessage and operationsJson, with optional outcome of completed or partial.",
+    };
   }
 
-  return {
-    assistantMessage: argumentsValue.assistantMessage,
-    proposal: applyAiBuilderOperations(
-      input.proposalContext,
-      argumentsValue.operationsJson,
-      input.version,
-      definitions,
-    ),
-    version: input.version,
-    outcome,
-  };
+  try {
+    return {
+      kind: "result",
+      data: {
+        assistantMessage: preferredAssistantMessage(
+          completion.assistantMessage,
+          argumentsValue.assistantMessage,
+        ),
+        proposal: applyAiBuilderOperations(
+          input.proposalContext,
+          argumentsValue.operationsJson,
+          input.version,
+          definitions,
+        ),
+        version: input.version,
+        outcome,
+      },
+    };
+  } catch (error) {
+    const detail = error instanceof ApplicationError
+      ? error.message
+      : "The proposed project operations could not be applied.";
+    return {
+      kind: "repairable",
+      assistantMessage: preferredAssistantMessage(
+        completion.assistantMessage,
+        argumentsValue.assistantMessage,
+      ),
+      detail,
+    };
+  }
+}
+
+function preferredAssistantMessage(streamed: string, toolMessage: string | null): string {
+  const preferred = (toolMessage?.trim() || streamed).trim();
+  return preferred.slice(0, 4_000);
+}
+
+function buildUnableToCompleteMessage(assistantMessage: string, detail: string): string {
+  const summary = assistantMessage.trim();
+  const parts = [
+    summary.length > 0 ? summary : "I could not apply a valid set of project operations for that request.",
+    "",
+    `Validation: ${detail}`,
+    "",
+    "Try a narrower slice of the request, or tell me which part to do first.",
+  ];
+  return parts.join("\n").slice(0, 4_000);
 }
 
 function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
@@ -203,8 +342,4 @@ function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function invalidToolProposal(): ApplicationError {
-  return new ApplicationError(422, "invalid_ai_builder_proposal", "The proposed changes need review", "The model returned an invalid project proposal. Try a smaller change or another endpoint.");
 }
