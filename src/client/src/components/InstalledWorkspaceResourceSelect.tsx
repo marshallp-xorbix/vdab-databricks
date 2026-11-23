@@ -1,3 +1,4 @@
+import { SELECT_DISABLED } from "../constants/databricksAppResourcesUi";
 import { Label } from "./ui/label";
 import {
   Select,
@@ -24,12 +25,6 @@ interface IInstalledWorkspaceResourceSelectProps {
   onChange: (next: string) => void;
 }
 
-const SELECT_DISABLED = {
-  loading: "__loading__",
-  empty: "__empty__",
-  error: "__error__",
-};
-
 /** Renders one accessible selector for a current-workspace resource. */
 export default function InstalledWorkspaceResourceSelect({
   label,
@@ -42,7 +37,9 @@ export default function InstalledWorkspaceResourceSelect({
   emptyLabel = `No ${label.toLowerCase()} found`,
   onChange,
 }: Readonly<IInstalledWorkspaceResourceSelectProps>) {
-  const selectedValue = options.some((option) => option.value === value) ? value : "";
+  const selectedValue = options.some((option) => option.value === value)
+    ? value
+    : undefined;
   const errorMessage = error?.message;
 
   return (
@@ -54,23 +51,39 @@ export default function InstalledWorkspaceResourceSelect({
         disabled={disabled || loading || Boolean(errorMessage)}
       >
         <SelectTrigger aria-label={label} className="h-9 text-sm">
-          <SelectValue placeholder={loading ? `Loading ${label.toLowerCase()}…` : placeholder} />
+          <SelectValue
+            placeholder={
+              loading ? `Loading ${label.toLowerCase()}…` : placeholder
+            }
+          />
         </SelectTrigger>
         <SelectContent className="max-h-60 overflow-y-auto">
           {loading ? (
-            <SelectItem value={SELECT_DISABLED.loading} disabled>Loading…</SelectItem>
+            <SelectItem value={SELECT_DISABLED.loading} disabled>
+              Loading…
+            </SelectItem>
           ) : errorMessage ? (
-            <SelectItem value={SELECT_DISABLED.error} disabled>{errorMessage}</SelectItem>
+            <SelectItem value={SELECT_DISABLED.error} disabled>
+              {errorMessage}
+            </SelectItem>
           ) : options.length === 0 ? (
-            <SelectItem value={SELECT_DISABLED.empty} disabled>{emptyLabel}</SelectItem>
+            <SelectItem value={SELECT_DISABLED.emptyList} disabled>
+              {emptyLabel}
+            </SelectItem>
           ) : (
             options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
             ))
           )}
         </SelectContent>
       </Select>
-      {errorMessage && <p role="alert" className="text-xs text-destructive">{errorMessage}</p>}
+      {errorMessage && (
+        <p role="alert" className="text-xs text-destructive">
+          {errorMessage}
+        </p>
+      )}
     </div>
   );
 }

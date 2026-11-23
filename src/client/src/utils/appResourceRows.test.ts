@@ -37,4 +37,43 @@ describe("appResourceRows", () => {
     expect(validateResourceRow(complete)).toBeNull();
     expect(canSaveAppResources([complete])).toBe(true);
   });
+
+  it("rejects empty or non-wire autoscaling postgres database paths", () => {
+    const emptyPostgres = createEmptyAppResource(
+      AppResourceKindSlug.AutoscalingDatabase,
+      "autoscaling-lakebase",
+    );
+    expect(validateResourceRow(emptyPostgres)).toMatch(
+      /autoscaling Lakebase database/i,
+    );
+    expect(
+      validateResourceRow({
+        ...emptyPostgres,
+        postgres: {
+          database: "databricks_postgres",
+          permission: "CAN_CONNECT_AND_CREATE",
+        },
+      }),
+    ).toMatch(/autoscaling Lakebase database/i);
+    expect(
+      validateResourceRow({
+        ...emptyPostgres,
+        postgres: {
+          database: "projects/project-one/branches/branch-main",
+          permission: "CAN_CONNECT_AND_CREATE",
+        },
+      }),
+    ).toMatch(/autoscaling Lakebase database/i);
+
+    const complete = {
+      ...emptyPostgres,
+      postgres: {
+        database:
+          "projects/project-one/branches/branch-main/databases/db-one",
+        permission: "CAN_CONNECT_AND_CREATE" as const,
+      },
+    };
+    expect(validateResourceRow(complete)).toBeNull();
+    expect(canSaveAppResources([complete])).toBe(true);
+  });
 });

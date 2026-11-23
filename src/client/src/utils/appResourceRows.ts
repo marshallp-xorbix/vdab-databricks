@@ -4,6 +4,7 @@ import {
   KIND_LABELS,
   type AppResourceKind,
 } from "../types/appResourceKinds";
+import { parseAutoscalingPostgresDatabasePath } from "./appResourcePostgresPath";
 
 const KEY_PATTERN = /^[a-z][a-z0-9-]{0,28}[a-z0-9]$/;
 
@@ -110,7 +111,7 @@ export function validateResourceRow(resource: IWorkspaceAppResource): string | n
     return null;
   }
   if ("postgres" in resource) {
-    if (!resource.postgres.database.trim()) {
+    if (!parseAutoscalingPostgresDatabasePath(resource.postgres.database)) {
       return "Select an autoscaling Lakebase database.";
     }
     if (!resource.postgres.permission.trim()) return "Permission is required.";

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { IWorkspaceAppResource } from "../models/ProjectDeployments";
 import { useWorkspaceLakebaseBranches } from "../hooks/useWorkspaceLakebaseBranches";
 import { useWorkspaceLakebaseDatabases } from "../hooks/useWorkspaceLakebaseDatabases";
@@ -7,11 +8,32 @@ import {
   buildAutoscalingPostgresBranchPath,
   buildAutoscalingPostgresDatabasePath,
   parseAutoscalingPostgresDatabasePath,
+  type IParsedAutoscalingPostgresPath,
 } from "../utils/appResourcePostgresPath";
 import InstalledWorkspaceResourceSelect from "./InstalledWorkspaceResourceSelect";
 import { Input } from "./ui/input";
 
 type OnChange = (resource: IWorkspaceAppResource) => void;
+
+const EMPTY_SELECTION: IParsedAutoscalingPostgresPath = {
+  projectId: "",
+  branchId: "",
+  databaseId: "",
+};
+
+function selectionFromWire(
+  databasePath: string,
+): IParsedAutoscalingPostgresPath {
+  return parseAutoscalingPostgresDatabasePath(databasePath) ?? EMPTY_SELECTION;
+}
+
+function isCompleteSelection(next: IParsedAutoscalingPostgresPath): boolean {
+  return (
+    next.projectId.length > 0 &&
+    next.branchId.length > 0 &&
+    next.databaseId.length > 0
+  );
+}
 
 /** Cascading project/branch/database pickers for Autoscaling Lakebase grants. */
 export function AutoscalingPostgresTargetFields({
@@ -21,10 +43,11 @@ export function AutoscalingPostgresTargetFields({
   resource: Extract<IWorkspaceAppResource, { postgres: unknown }>;
   onChange: OnChange;
 }>) {
-  const parsed = parseAutoscalingPostgresDatabasePath(resource.postgres.database);
-  const projectId = parsed?.projectId ?? "";
-  const branchId = parsed?.branchId ?? "";
-  const databaseId = parsed?.databaseId ?? "";
+  const wireDatabase = resource.postgres.database;
+  const [selection, setSelection] = useState<IParsedAutoscalingPostgresPath>(
+    () => selectionFromWire(wireDatabase),
+  );
+  const { projectId, branchId, databaseId } = selection;
   const projects = useWorkspaceLakebaseProjects();
   const branches = useWorkspaceLakebaseBranches(projectId || null);
   const databases = useWorkspaceLakebaseDatabases(
@@ -32,20 +55,26 @@ export function AutoscalingPostgresTargetFields({
     branchId || null,
   );
 
-  function updateSelection(next: {
-    projectId: string;
-    branchId: string;
-    databaseId: string;
-  }) {
-    const hasTarget =
-      next.projectId.length > 0 &&
-      next.branchId.length > 0 &&
-      next.databaseId.length > 0;
+  useEffect(() => {
+    const parsed = parseAutoscalingPostgresDatabasePath(wireDatabase);
+    if (parsed) {
+      setSelection(parsed);
+      return;
+    }
+    if (!wireDatabase.trim()) {
+      setSelection((current) =>
+        isCompleteSelection(current) ? EMPTY_SELECTION : current,
+      );
+    }
+  }, [wireDatabase]);
+
+  function updateSelection(next: IParsedAutoscalingPostgresPath) {
+    setSelection(next);
     onChange({
       ...resource,
       postgres: {
         ...resource.postgres,
-        ...(hasTarget
+        ...(isCompleteSelection(next)
           ? {
               branch: buildAutoscalingPostgresBranchPath(
                 next.projectId,
