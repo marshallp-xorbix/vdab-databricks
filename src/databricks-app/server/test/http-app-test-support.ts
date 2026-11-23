@@ -230,6 +230,9 @@ export function createEmptyWorkspaceResourcesClient(): WorkspaceResourcesClient 
     listTables: async () => [],
     listGenieSpaces: async () => [],
     listServingEndpoints: async () => [],
+    listSecretScopes: async () => [],
+    listSecretKeys: async () => [],
+    listExperiments: async () => [],
   };
 }
 

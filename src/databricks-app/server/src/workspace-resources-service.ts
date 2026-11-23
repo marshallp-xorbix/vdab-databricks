@@ -3,6 +3,8 @@ import type {
   WorkspaceResourcesPage,
   WorkspaceGenieSpacesPage,
   WorkspaceServingEndpointsPage,
+  WorkspaceSecretScopesPage,
+  WorkspaceExperimentsPage,
   WorkspaceTableSummariesPage,
   WorkspaceTablesPage,
 } from "./contracts.ts";
@@ -96,6 +98,40 @@ export class WorkspaceResourcesService {
   ): Promise<WorkspaceServingEndpointsPage> {
     return {
       items: await this.workspaceResourcesClient.listServingEndpoints(caller),
+      authenticationMode: caller.authenticationMode,
+    };
+  }
+
+  /** Lists secret scopes visible to the acting Databricks user. */
+  async listSecretScopes(
+    caller: CallerIdentity,
+  ): Promise<WorkspaceSecretScopesPage> {
+    return {
+      items: await this.workspaceResourcesClient.listSecretScopes(caller),
+      authenticationMode: caller.authenticationMode,
+    };
+  }
+
+  /** Lists secret keys visible to the acting Databricks user in one scope. */
+  async listSecretKeys(
+    caller: CallerIdentity,
+    secretScope: string,
+  ): Promise<WorkspaceSecretScopesPage> {
+    return {
+      items: await this.workspaceResourcesClient.listSecretKeys(
+        caller,
+        secretScope,
+      ),
+      authenticationMode: caller.authenticationMode,
+    };
+  }
+
+  /** Lists MLflow experiments visible to the acting Databricks user. */
+  async listExperiments(
+    caller: CallerIdentity,
+  ): Promise<WorkspaceExperimentsPage> {
+    return {
+      items: await this.workspaceResourcesClient.listExperiments(caller),
       authenticationMode: caller.authenticationMode,
     };
   }

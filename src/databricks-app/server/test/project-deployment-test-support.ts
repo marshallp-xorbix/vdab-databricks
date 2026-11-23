@@ -241,9 +241,14 @@ class MemoryWorkspaceAppsClient implements WorkspaceAppDeploymentClient {
     _caller: CallerIdentity,
     appName: string,
     resources: WorkspaceAppDetails["resources"],
-  ): Promise<void> {
+  ): Promise<WorkspaceAppDetails> {
     const app = this.apps.get(appName);
-    if (app) app.resources = structuredClone(resources);
+    if (!app) {
+      throw new Error(`Missing mock App ${appName}`);
+    }
+    app.resources = structuredClone(resources);
+    app.appUpdateTime = new Date().toISOString();
+    return structuredClone(app);
   }
 
   async createApp(

@@ -196,6 +196,52 @@ test("ProjectPreviewGenerator_ColumnsPlacesControlsBeforeEmptySlots", () => {
 });
 
 
+test("ProjectPreviewGenerator_ColumnsAcceptsCanvasSlotLayoutOnChildren", () => {
+  const generator = new ProjectPreviewGenerator();
+  const columns = createColumns({
+    properties: { columnCount: 3 },
+    children: ["column-button-a", "column-button-b", "column-button-c"],
+  });
+  const buttonA = createButton({
+    key: "column-button-a",
+    codeName: "columnButtonA",
+    properties: { label: "Column A", variant: "secondary", disabled: false, help: "" },
+    layout: { y: 0 },
+  });
+  const buttonB = createButton({
+    key: "column-button-b",
+    codeName: "columnButtonB",
+    properties: { label: "Column B", variant: "secondary", disabled: false, help: "" },
+    layout: { y: 1 },
+  });
+  const buttonC = createButton({
+    key: "column-button-c",
+    codeName: "columnButtonC",
+    properties: { label: "Column C", variant: "secondary", disabled: false, help: "" },
+    layout: { y: 2 },
+  });
+  const source = generator.generate(
+    project,
+    createDocument([columns, buttonA, buttonB, buttonC]),
+  ).files[0]?.content ?? "";
+
+  assert.equal((source.match(/st\.columns\(3\)/g) ?? []).length, 1);
+  assert.equal((source.match(/st\.button\(/g) ?? []).length, 3);
+  assert.match(
+    source,
+    /with vdab_maincolumns\[0\]:[\s\S]*else 'Column A'[\s\S]*st\.button\(/,
+  );
+  assert.match(
+    source,
+    /with vdab_maincolumns\[1\]:[\s\S]*else 'Column B'[\s\S]*st\.button\(/,
+  );
+  assert.match(
+    source,
+    /with vdab_maincolumns\[2\]:[\s\S]*else 'Column C'[\s\S]*st\.button\(/,
+  );
+});
+
+
 test("ProjectPreviewGenerator_RejectsInvalidColumnsShapeAndTree", () => {
   const generator = new ProjectPreviewGenerator();
   const invalidColumns = [
@@ -306,6 +352,45 @@ test("ProjectPreviewGenerator_RowsUsesValidEmptyAndPartialContainers", () => {
   assert.match(emptySource, /with vdab_mainrows:\n    pass/);
   assert.match(partialSource, /with vdab_mainrows:\n\n    _vdab_lbl_/);
   assert.match(partialSource, /st\.text\('Row 2'\)/);
+});
+
+
+test("ProjectPreviewGenerator_RowsAcceptsCanvasSlotLayoutOnChildren", () => {
+  const generator = new ProjectPreviewGenerator();
+  const rows = createRows({
+    properties: { rowCount: 3 },
+    children: ["row-button-a", "row-button-b", "row-button-c"],
+  });
+  const buttonA = createButton({
+    key: "row-button-a",
+    codeName: "rowButtonA",
+    properties: { label: "Row A", variant: "secondary", disabled: false, help: "" },
+    layout: { y: 0 },
+  });
+  const buttonB = createButton({
+    key: "row-button-b",
+    codeName: "rowButtonB",
+    properties: { label: "Row B", variant: "secondary", disabled: false, help: "" },
+    layout: { y: 1 },
+  });
+  const buttonC = createButton({
+    key: "row-button-c",
+    codeName: "rowButtonC",
+    properties: { label: "Row C", variant: "secondary", disabled: false, help: "" },
+    layout: { y: 2 },
+  });
+  const source = generator.generate(
+    project,
+    createDocument([rows, buttonA, buttonB, buttonC]),
+  ).files[0]?.content ?? "";
+
+  assert.equal((source.match(/st\.container\(\)/g) ?? []).length, 1);
+  assert.equal((source.match(/st\.button\(/g) ?? []).length, 3);
+  assert.match(source, /else 'Row A'/);
+  assert.match(source, /else 'Row B'/);
+  assert.match(source, /else 'Row C'/);
+  assert.ok(source.indexOf("else 'Row A'") < source.indexOf("else 'Row B'"));
+  assert.ok(source.indexOf("else 'Row B'") < source.indexOf("else 'Row C'"));
 });
 
 

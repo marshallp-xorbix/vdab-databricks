@@ -140,23 +140,36 @@ function readWorkspaceAppResources(value: unknown): {
   const resources: WorkspaceAppResource[] = [];
   let unsupportedResourceCount = 0;
   for (const entry of value) {
-    if (!isRecord(entry)) throw invalidDatabricksResponse();
-    if (entry.postgres !== undefined)
-      resources.push(readAutoscalingAppResource(entry));
-    else if (entry.database !== undefined)
-      resources.push(readProvisionedAppResource(entry));
-    else if (entry.sql_warehouse !== undefined)
-      resources.push(readSqlWarehouseAppResource(entry));
-    else if (entry.secret !== undefined)
-      resources.push(readSecretAppResource(entry));
-    else if (entry.job !== undefined || entry.experiment !== undefined || entry.genie_space !== undefined || entry.serving_endpoint !== undefined || entry.uc_securable !== undefined)
-      resources.push(readAdditionalAppResource(entry));
-    else unsupportedResourceCount += 1;
-  }
-  try {
-    validateWorkspaceAppResources(resources);
-  } catch {
-    throw invalidDatabricksResponse();
+    if (!isRecord(entry)) {
+      unsupportedResourceCount += 1;
+      continue;
+    }
+    try {
+      if (entry.postgres !== undefined)
+        resources.push(readAutoscalingAppResource(entry));
+      else if (entry.database !== undefined)
+        resources.push(readProvisionedAppResource(entry));
+      else if (entry.sql_warehouse !== undefined)
+        resources.push(readSqlWarehouseAppResource(entry));
+      else if (entry.secret !== undefined)
+        resources.push(readSecretAppResource(entry));
+      else if (
+        entry.job !== undefined ||
+        entry.experiment !== undefined ||
+        entry.genie_space !== undefined ||
+        entry.serving_endpoint !== undefined ||
+        entry.uc_securable !== undefined
+      ) {
+        resources.push(readAdditionalAppResource(entry));
+      } else {
+        unsupportedResourceCount += 1;
+        continue;
+      }
+      validateWorkspaceAppResources([resources[resources.length - 1]!]);
+    } catch {
+      if (resources.length > 0) resources.pop();
+      unsupportedResourceCount += 1;
+    }
   }
   return { resources, unsupportedResourceCount };
 }

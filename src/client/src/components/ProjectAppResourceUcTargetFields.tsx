@@ -2,6 +2,7 @@ import type { IWorkspaceAppResource } from "../models/ProjectDeployments";
 import { useWorkspaceCatalogs } from "../hooks/useWorkspaceCatalogs";
 import { useWorkspaceSchemas } from "../hooks/useWorkspaceSchemas";
 import { useWorkspaceTables } from "../hooks/useWorkspaceTables";
+import { defaultPermissionForUcSecurableType } from "../types/appResourceKinds";
 import InstalledWorkspaceResourceSelect from "./InstalledWorkspaceResourceSelect";
 import { Input } from "./ui/input";
 
@@ -31,17 +32,21 @@ export default function ProjectAppResourceUcTargetFields({
         <select
           className="h-9 w-full rounded-md border border-input bg-background px-2"
           value={resource.uc_securable.securable_type}
-          onChange={(event) =>
+          onChange={(event) => {
+            const securableType = event.target
+              .value as typeof resource.uc_securable.securable_type;
             onChange({
               ...resource,
               uc_securable: {
                 ...resource.uc_securable,
-                securable_type: event.target
-                  .value as typeof resource.uc_securable.securable_type,
+                securable_type: securableType,
                 securable_full_name: "",
+                permission: defaultPermissionForUcSecurableType(
+                  securableType,
+                ) as typeof resource.uc_securable.permission,
               },
-            })
-          }
+            });
+          }}
         >
           {["TABLE", "VOLUME", "FUNCTION", "CONNECTION", "MODEL_SERVICE"].map(
             (value) => (

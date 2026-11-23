@@ -82,7 +82,13 @@ export function appendRows(
     }
 
     const childLines: string[] = [];
-    appendGeneratedControl(childLines, child, componentIndex, usedVariableNames, workflowEventKeys);
+    appendGeneratedControl(
+      childLines,
+      { ...child, layout: null },
+      componentIndex,
+      usedVariableNames,
+      workflowEventKeys,
+    );
     lines.push(...childLines.map(indentPythonLine));
   }
 }

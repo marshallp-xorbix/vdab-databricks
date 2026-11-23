@@ -39,6 +39,7 @@ export function createClientHarness(responses: Response[]) {
       "https://workspace.example",
       "vdab-app",
       fetchImplementation,
+      { appUpdatePollIntervalMs: 0, appUpdateTimeoutMs: 5_000 },
     ),
   };
 }

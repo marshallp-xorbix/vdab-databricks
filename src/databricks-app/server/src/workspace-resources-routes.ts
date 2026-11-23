@@ -6,7 +6,10 @@ export type WorkspaceResourcesRoute =
   | { type: "volumes"; catalogName: string; schemaName: string }
   | { type: "tables"; catalogName: string; schemaName: string }
   | { type: "genieSpaces" }
-  | { type: "servingEndpoints" };
+  | { type: "servingEndpoints" }
+  | { type: "secretScopes" }
+  | { type: "secretKeys"; secretScope: string }
+  | { type: "experiments" };
 
 const CATALOGS_PATH = "/api/v1/workspace/resources/catalogs";
 const SCHEMAS_PATH = "/api/v1/workspace/resources/schemas";
@@ -14,7 +17,11 @@ const VOLUMES_PATH = "/api/v1/workspace/resources/volumes";
 const TABLES_PATH = "/api/v1/workspace/resources/tables";
 const GENIE_SPACES_PATH = "/api/v1/workspace/resources/genie-spaces";
 const SERVING_ENDPOINTS_PATH = "/api/v1/workspace/resources/serving-endpoints";
+const SECRET_SCOPES_PATH = "/api/v1/workspace/resources/secret-scopes";
+const SECRET_KEYS_PATH = "/api/v1/workspace/resources/secret-keys";
+const EXPERIMENTS_PATH = "/api/v1/workspace/resources/experiments";
 const MAX_RESOURCE_NAME_LENGTH = 255;
+const MAX_SECRET_SCOPE_LENGTH = 128;
 
 /** Matches and validates the read-only current-workspace resource routes. */
 export function matchWorkspaceResourcesRoute(
@@ -66,6 +73,24 @@ export function matchWorkspaceResourcesRoute(
     return { type: "servingEndpoints" };
   }
 
+  if (requestUrl.pathname === SECRET_SCOPES_PATH) {
+    requireOnlyQueryNames(requestUrl, []);
+    return { type: "secretScopes" };
+  }
+
+  if (requestUrl.pathname === SECRET_KEYS_PATH) {
+    requireOnlyQueryNames(requestUrl, ["secretScope"]);
+    return {
+      type: "secretKeys",
+      secretScope: readSecretScope(requestUrl),
+    };
+  }
+
+  if (requestUrl.pathname === EXPERIMENTS_PATH) {
+    requireOnlyQueryNames(requestUrl, []);
+    return { type: "experiments" };
+  }
+
   return null;
 }
 
@@ -99,6 +124,20 @@ function readResourceName(requestUrl: URL, propertyName: string): string {
     throw invalidResourceRequest();
   }
 
+  return value;
+}
+
+function readSecretScope(requestUrl: URL): string {
+  const value = requestUrl.searchParams.get("secretScope");
+  if (
+    value === null ||
+    value.length < 1 ||
+    value.length > MAX_SECRET_SCOPE_LENGTH ||
+    value.trim() !== value ||
+    /[\u0000-\u001f\u007f]/.test(value)
+  ) {
+    throw invalidResourceRequest();
+  }
   return value;
 }
 

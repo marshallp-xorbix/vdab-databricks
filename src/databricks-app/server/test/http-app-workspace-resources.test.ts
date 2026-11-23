@@ -66,6 +66,18 @@ test("HttpApp_WorkspaceResourceRoutes_UseCurrentWorkspaceAndRejectHostAuthority"
       calls.push("serving-endpoints");
       return [{ name: "support-chat", readiness: "ready", permissionLevel: "CAN_QUERY" }];
     },
+    listSecretScopes: async () => {
+      calls.push("secret-scopes");
+      return [{ name: "service-scope" }];
+    },
+    listSecretKeys: async (_caller, secretScope) => {
+      calls.push(`secret-keys:${secretScope}`);
+      return [{ name: "api-key" }];
+    },
+    listExperiments: async () => {
+      calls.push("experiments");
+      return [{ experimentId: "1021971371025173", name: "/Users/sample/demo" }];
+    },
   };
   const appHarness = await createAppHarness({ workspaceResourcesClient });
 
@@ -88,6 +100,15 @@ test("HttpApp_WorkspaceResourceRoutes_UseCurrentWorkspaceAndRejectHostAuthority"
     const servingEndpointsResponse = await fetch(
       `${appHarness.baseUrl}/api/v1/workspace/resources/serving-endpoints`,
     );
+    const secretScopesResponse = await fetch(
+      `${appHarness.baseUrl}/api/v1/workspace/resources/secret-scopes`,
+    );
+    const secretKeysResponse = await fetch(
+      `${appHarness.baseUrl}/api/v1/workspace/resources/secret-keys?secretScope=service-scope`,
+    );
+    const experimentsResponse = await fetch(
+      `${appHarness.baseUrl}/api/v1/workspace/resources/experiments`,
+    );
     const hostileResponse = await fetch(
       `${appHarness.baseUrl}/api/v1/workspace/resources/schemas?catalogName=main&workspaceHost=https%3A%2F%2Fattacker.invalid`,
     );
@@ -104,6 +125,15 @@ test("HttpApp_WorkspaceResourceRoutes_UseCurrentWorkspaceAndRejectHostAuthority"
     assert.deepEqual((await servingEndpointsResponse.json()).items, [
       { name: "support-chat", readiness: "ready", permissionLevel: "CAN_QUERY" },
     ]);
+    assert.deepEqual((await secretScopesResponse.json()).items, [
+      { name: "service-scope" },
+    ]);
+    assert.deepEqual((await secretKeysResponse.json()).items, [
+      { name: "api-key" },
+    ]);
+    assert.deepEqual((await experimentsResponse.json()).items, [
+      { experimentId: "1021971371025173", name: "/Users/sample/demo" },
+    ]);
     assert.equal(hostileResponse.status, 400);
     assert.equal((await hostileResponse.json()).code, "invalid_workspace_resource_request");
     assert.deepEqual(calls, [
@@ -113,6 +143,9 @@ test("HttpApp_WorkspaceResourceRoutes_UseCurrentWorkspaceAndRejectHostAuthority"
       "tables:main.default",
       "genie-spaces",
       "serving-endpoints",
+      "secret-scopes",
+      "secret-keys:service-scope",
+      "experiments",
     ]);
   } finally {
     await appHarness.dispose();

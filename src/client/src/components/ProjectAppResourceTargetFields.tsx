@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
 import type { IWorkspaceAppResource } from "../models/ProjectDeployments";
+import { useWorkspaceExperiments } from "../hooks/useWorkspaceExperiments";
 import { useWorkspaceGenieSpaces } from "../hooks/useWorkspaceGenieSpaces";
 import { useWorkspaceJobs } from "../hooks/useWorkspaceJobs";
+import { useWorkspaceSecretKeys } from "../hooks/useWorkspaceSecretKeys";
+import { useWorkspaceSecretScopes } from "../hooks/useWorkspaceSecretScopes";
 import { useWorkspaceServingEndpoints } from "../hooks/useWorkspaceServingEndpoints";
 import { useWorkspaceSqlWarehouses } from "../hooks/useWorkspaceSqlWarehouses";
 import {
@@ -10,7 +12,6 @@ import {
 } from "./ProjectAppResourceLakebaseTargetFields";
 import ProjectAppResourceUcTargetFields from "./ProjectAppResourceUcTargetFields";
 import InstalledWorkspaceResourceSelect from "./InstalledWorkspaceResourceSelect";
-import { Input } from "./ui/input";
 
 interface IProjectAppResourceTargetFieldsProps {
   resource: IWorkspaceAppResource;
@@ -65,32 +66,49 @@ function SecretFields({
   resource: Extract<IWorkspaceAppResource, { secret: unknown }>;
   onChange: (resource: IWorkspaceAppResource) => void;
 }) {
+  const scopes = useWorkspaceSecretScopes(true);
+  const keys = useWorkspaceSecretKeys(resource.secret.scope || null);
   return (
     <div className="grid min-w-0 gap-2">
-      <Field label={`Secret scope for ${resource.name}`}>
-        <Input
-          value={resource.secret.scope}
-          maxLength={128}
-          onChange={(event) =>
-            onChange({
-              ...resource,
-              secret: { ...resource.secret, scope: event.target.value },
-            })
-          }
-        />
-      </Field>
-      <Field label={`Secret key for ${resource.name}`}>
-        <Input
-          value={resource.secret.key}
-          maxLength={128}
-          onChange={(event) =>
-            onChange({
-              ...resource,
-              secret: { ...resource.secret, key: event.target.value },
-            })
-          }
-        />
-      </Field>
+      <InstalledWorkspaceResourceSelect
+        label={`Secret scope for ${resource.name}`}
+        value={resource.secret.scope}
+        emptyLabel="No secret scopes found"
+        placeholder="Select a secret scope…"
+        options={(scopes.data?.items ?? []).map((item) => ({
+          value: item.name,
+          label: item.name,
+        }))}
+        loading={scopes.isPending}
+        error={scopes.error}
+        onChange={(scope) =>
+          onChange({
+            ...resource,
+            secret: { ...resource.secret, scope, key: "" },
+          })
+        }
+      />
+      <InstalledWorkspaceResourceSelect
+        label={`Secret key for ${resource.name}`}
+        value={resource.secret.key}
+        emptyLabel="No secret keys found"
+        placeholder={
+          resource.secret.scope ? "Select a secret key…" : "Select a scope first"
+        }
+        options={(keys.data?.items ?? []).map((item) => ({
+          value: item.name,
+          label: item.name,
+        }))}
+        loading={Boolean(resource.secret.scope) && keys.isPending}
+        error={keys.error}
+        disabled={!resource.secret.scope}
+        onChange={(key) =>
+          onChange({
+            ...resource,
+            secret: { ...resource.secret, key },
+          })
+        }
+      />
     </div>
   );
 }
@@ -159,22 +177,29 @@ function ExperimentFields({
   resource: Extract<IWorkspaceAppResource, { experiment: unknown }>;
   onChange: (resource: IWorkspaceAppResource) => void;
 }) {
+  const experiments = useWorkspaceExperiments(true);
   return (
-    <Field label={`Experiment for ${resource.name}`}>
-      <Input
-        value={resource.experiment.experiment_id}
-        maxLength={255}
-        onChange={(event) =>
-          onChange({
-            ...resource,
-            experiment: {
-              ...resource.experiment,
-              experiment_id: event.target.value,
-            },
-          })
-        }
-      />
-    </Field>
+    <InstalledWorkspaceResourceSelect
+      label={`Experiment for ${resource.name}`}
+      value={resource.experiment.experiment_id}
+      emptyLabel="No experiments found"
+      placeholder="Select an MLflow experiment…"
+      options={(experiments.data?.items ?? []).map((item) => ({
+        value: item.experimentId,
+        label: item.name,
+      }))}
+      loading={experiments.isPending}
+      error={experiments.error}
+      onChange={(experimentId) =>
+        onChange({
+          ...resource,
+          experiment: {
+            ...resource.experiment,
+            experiment_id: experimentId,
+          },
+        })
+      }
+    />
   );
 }
 
@@ -240,15 +265,6 @@ function EndpointFields({
         })
       }
     />
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="grid min-w-0 gap-1 text-xs text-muted-foreground">
-      <span>{label}</span>
-      {children}
-    </label>
   );
 }
 

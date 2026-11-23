@@ -54,7 +54,6 @@ export async function getProjectDeploymentReadiness(
     !Array.isArray(value.userApiScopes) ||
     value.userApiScopes.some((scope) => typeof scope !== "string") ||
     !Array.isArray(value.appResources) ||
-    !value.appResources.every(isWorkspaceAppResource) ||
     !Array.isArray(value.blockers) ||
     value.blockers.some(
       (blocker) =>
@@ -69,7 +68,7 @@ export async function getProjectDeploymentReadiness(
   }
   return new ProjectDeploymentReadiness({
     userApiScopes: value.userApiScopes as string[],
-    appResources: value.appResources as IWorkspaceAppResource[],
+    appResources: value.appResources.filter(isWorkspaceAppResource),
     blockers: value.blockers as Array<{ code: string; detail: string }>,
   });
 }
@@ -217,7 +216,13 @@ export async function updateProjectResourceGrants(input: {
   projectId: string;
   resources: IWorkspaceAppResource[];
   expectedUpdateTime?: string | null;
-}): Promise<void> {
+}): Promise<{
+  appName: string;
+  resourceCount: number;
+  appResources: IWorkspaceAppResource[];
+  appUpdateTime: string | null;
+  unsupportedResourceCount: number;
+}> {
   const response = await fetch(
     `${projectPath(input.projectId)}/deployments/resources`,
     {
@@ -234,7 +239,27 @@ export async function updateProjectResourceGrants(input: {
     },
   );
   if (!response.ok) throw new Error(await readErrorMessage(response));
-  await response.body?.cancel();
+  const value: unknown = await response.json();
+  if (
+    !isRecord(value) ||
+    typeof value.appName !== "string" ||
+    typeof value.resourceCount !== "number" ||
+    !Array.isArray(value.appResources) ||
+    !value.appResources.every(isWorkspaceAppResource) ||
+    (value.appUpdateTime !== null && typeof value.appUpdateTime !== "string") ||
+    typeof value.unsupportedResourceCount !== "number" ||
+    !Number.isInteger(value.unsupportedResourceCount) ||
+    value.unsupportedResourceCount < 0
+  ) {
+    throw new Error("The workspace returned an invalid App resource update response.");
+  }
+  return {
+    appName: value.appName,
+    resourceCount: value.resourceCount,
+    appResources: value.appResources as IWorkspaceAppResource[],
+    appUpdateTime: value.appUpdateTime,
+    unsupportedResourceCount: value.unsupportedResourceCount,
+  };
 }
 
 /** Refreshes a deployment state through the installed workspace's Apps API. */
@@ -384,15 +409,19 @@ function parseWorkspaceAppDeploymentTarget(
     !Array.isArray(value.userApiScopes) ||
     value.userApiScopes.some((scope) => typeof scope !== "string") ||
     !Array.isArray(value.appResources) ||
-    !value.appResources.every(isWorkspaceAppResource) ||
     !Array.isArray(value.secretResources) ||
-    !value.secretResources.every(isWorkspaceSecretAppResource) ||
     typeof value.unsupportedResourceCount !== "number" ||
     !Number.isInteger(value.unsupportedResourceCount) ||
     value.unsupportedResourceCount < 0
   ) {
     throw new Error("The workspace returned invalid child App details.");
   }
+  const appResources = value.appResources.filter(isWorkspaceAppResource);
+  const secretResources = value.secretResources.filter(isWorkspaceSecretAppResource);
+  const skippedResourceCount =
+    value.appResources.length -
+    appResources.length +
+    (value.secretResources.length - secretResources.length);
   return new WorkspaceAppDeploymentTarget({
     appId: value.appId,
     name: value.name,
@@ -406,9 +435,9 @@ function parseWorkspaceAppDeploymentTarget(
     sourceCodePath: value.sourceCodePath,
     usesGitSource: value.usesGitSource,
     userApiScopes: value.userApiScopes as string[],
-    appResources: value.appResources as IWorkspaceAppResource[],
-    secretResources: value.secretResources as IWorkspaceSecretAppResource[],
-    unsupportedResourceCount: value.unsupportedResourceCount,
+    appResources,
+    secretResources,
+    unsupportedResourceCount: value.unsupportedResourceCount + skippedResourceCount,
     appUpdateTime: typeof value.appUpdateTime === "string" ? value.appUpdateTime : null,
   });
 }

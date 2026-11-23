@@ -127,7 +127,14 @@ function ProjectGeneratedCodeEditor({
           {replaceCustomModulesMutation.isPending ? "Saving…" : "Save custom modules"}
         </Button>
       </div>
-      {errorMessage && <p role="alert" className="sr-only">{errorMessage}</p>}
+      {errorMessage && (
+        <p
+          role="alert"
+          className="border-b border-[var(--builder-chrome-border)] bg-destructive/10 px-4 py-2 text-sm text-destructive"
+        >
+          {errorMessage}
+        </p>
+      )}
       {replaceCustomModulesMutation.isError && (
         <p role="alert" className="sr-only">
           {replaceCustomModulesMutation.error instanceof Error

@@ -127,7 +127,13 @@ export class ProjectDeploymentService {
     requestId: string,
     projectId: string,
     body: unknown,
-  ): Promise<{ appName: string; resourceCount: number }> {
+  ): Promise<{
+    appName: string;
+    resourceCount: number;
+    appResources: WorkspaceAppResource[];
+    appUpdateTime: string | null;
+    unsupportedResourceCount: number;
+  }> {
     return this.resourceGrantsService.update(
       caller,
       requestId,

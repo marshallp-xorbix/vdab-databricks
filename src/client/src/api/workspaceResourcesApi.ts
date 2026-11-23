@@ -15,8 +15,17 @@ import {
   type IWorkspaceServingEndpoint,
   type IWorkspaceServingEndpointsPage,
 } from "../models/WorkspaceServingEndpoint";
+import {
+  WorkspaceSecretScopesPage,
+  type IWorkspaceSecretScopesPage,
+} from "../models/WorkspaceSecretScope";
+import {
+  WorkspaceExperimentsPage,
+  type IWorkspaceExperimentsPage,
+} from "../models/WorkspaceExperiment";
 
 const WORKSPACE_RESOURCES_PATH = "/api/v1/workspace/resources";
+const MAX_SECRET_IDENTIFIER_LENGTH = 128;
 
 /** Lists catalogs visible to the signed-in user in the installed workspace. */
 export async function listWorkspaceCatalogs(
@@ -112,6 +121,59 @@ export async function listWorkspaceServingEndpoints(
 
   const responseBody: unknown = await response.json();
   return parseWorkspaceServingEndpointsPage(responseBody);
+}
+
+/** Lists secret scopes visible to the signed-in user in this workspace. */
+export async function listWorkspaceSecretScopes(
+  signal?: AbortSignal,
+): Promise<IWorkspaceSecretScopesPage> {
+  const response = await fetch(`${WORKSPACE_RESOURCES_PATH}/secret-scopes`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+  return parseWorkspaceSecretScopesPage(await response.json());
+}
+
+/** Lists secret keys visible to the signed-in user in one secret scope. */
+export async function listWorkspaceSecretKeys(
+  secretScope: string,
+  signal?: AbortSignal,
+): Promise<IWorkspaceSecretScopesPage> {
+  const query = new URLSearchParams({ secretScope });
+  const response = await fetch(
+    `${WORKSPACE_RESOURCES_PATH}/secret-keys?${query.toString()}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
+      signal,
+    },
+  );
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+  return parseWorkspaceSecretScopesPage(await response.json());
+}
+
+/** Lists MLflow experiments visible to the signed-in user in this workspace. */
+export async function listWorkspaceExperiments(
+  signal?: AbortSignal,
+): Promise<IWorkspaceExperimentsPage> {
+  const response = await fetch(`${WORKSPACE_RESOURCES_PATH}/experiments`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+    signal,
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+  return parseWorkspaceExperimentsPage(await response.json());
 }
 
 async function readWorkspaceResources(
@@ -285,6 +347,68 @@ function parseWorkspaceTable(value: unknown): {
       typeof value.dataSourceFormat === "string" ? value.dataSourceFormat : null,
     columns,
   };
+}
+
+function parseWorkspaceSecretScopesPage(
+  value: unknown,
+): IWorkspaceSecretScopesPage {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    (value.authenticationMode !== "databricks" &&
+      value.authenticationMode !== "local-test")
+  ) {
+    throw new Error("The workspace returned an invalid secret scope response.");
+  }
+  const items = value.items.map((item) => {
+    if (
+      !isRecord(item) ||
+      typeof item.name !== "string" ||
+      item.name.length < 1 ||
+      item.name.length > MAX_SECRET_IDENTIFIER_LENGTH ||
+      item.name.trim() !== item.name ||
+      containsControlCharacters(item.name)
+    ) {
+      throw new Error("The workspace returned an invalid secret identifier.");
+    }
+    return { name: item.name };
+  });
+  return new WorkspaceSecretScopesPage({
+    items,
+    authenticationMode: value.authenticationMode,
+  });
+}
+
+function parseWorkspaceExperimentsPage(
+  value: unknown,
+): IWorkspaceExperimentsPage {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    (value.authenticationMode !== "databricks" &&
+      value.authenticationMode !== "local-test")
+  ) {
+    throw new Error("The workspace returned an invalid experiment response.");
+  }
+  const items = value.items.map((item) => {
+    if (
+      !isRecord(item) ||
+      typeof item.experimentId !== "string" ||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(item.experimentId) ||
+      typeof item.name !== "string" ||
+      item.name.length < 1 ||
+      item.name.length > 512 ||
+      item.name.trim() !== item.name ||
+      containsControlCharacters(item.name)
+    ) {
+      throw new Error("The workspace returned an invalid experiment.");
+    }
+    return { experimentId: item.experimentId, name: item.name };
+  });
+  return new WorkspaceExperimentsPage({
+    items,
+    authenticationMode: value.authenticationMode,
+  });
 }
 
 function containsControlCharacters(value: string): boolean {

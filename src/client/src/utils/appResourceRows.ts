@@ -1,6 +1,7 @@
 import type { IWorkspaceAppResource } from "../models/ProjectDeployments";
 import {
   AppResourceKindSlug,
+  KIND_LABELS,
   type AppResourceKind,
 } from "../types/appResourceKinds";
 
@@ -11,7 +12,7 @@ export function createEmptyAppResource(
   kind: AppResourceKind,
   name: string,
 ): IWorkspaceAppResource {
-  const description = "VDAB app resource";
+  const description = "";
   switch (kind) {
     case AppResourceKindSlug.SqlWarehouse:
       return { name, description, sql_warehouse: { id: "", permission: "CAN_USE" } };
@@ -46,13 +47,21 @@ export function createEmptyAppResource(
   }
 }
 
-/** Chooses the next unused resource key for a newly added row. */
+/** Lowercase label with runs of whitespace turned into single hyphens. */
+export function slugifyResourceTypeLabel(label: string): string {
+  return label.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+/**
+ * Default resource key for a new row: slug from the kind's display label,
+ * unique among existing names (matches SaaS nextAvailableDefaultResourceKey).
+ */
 export function nextAppResourceKey(
   kind: AppResourceKind,
   resources: readonly IWorkspaceAppResource[],
 ): string {
-  const base = kind.replaceAll("_", "-");
-  const names = new Set(resources.map((resource) => resource.name));
+  const base = slugifyResourceTypeLabel(KIND_LABELS[kind]);
+  const names = new Set(resources.map((resource) => resource.name.trim()));
   if (!names.has(base) && KEY_PATTERN.test(base)) return base;
   for (let index = 2; index < 100; index += 1) {
     const candidate = `${base}-${index}`.slice(0, 30);
@@ -73,4 +82,85 @@ export function duplicateAppResourceKeys(
     seen.add(name);
   }
   return [...duplicates];
+}
+
+/** Returns a user-facing message if the row is invalid, or null if valid. */
+export function validateResourceRow(resource: IWorkspaceAppResource): string | null {
+  const name = resource.name.trim();
+  if (!name) return "Resource key is required.";
+  if (!KEY_PATTERN.test(name)) {
+    return "Resource key must be 2–30 characters: start with a letter, then lowercase letters, digits, or hyphens.";
+  }
+
+  if ("sql_warehouse" in resource) {
+    if (!resource.sql_warehouse.id.trim()) return "Select a SQL warehouse.";
+    if (!resource.sql_warehouse.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  if ("job" in resource) {
+    if (!resource.job.id.trim()) return "Select a job.";
+    if (!resource.job.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  if ("database" in resource) {
+    if (!resource.database.instance_name.trim() || !resource.database.database_name.trim()) {
+      return "Select a Lakebase database instance.";
+    }
+    if (!resource.database.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  if ("postgres" in resource) {
+    if (!resource.postgres.database.trim()) {
+      return "Select an autoscaling Lakebase database.";
+    }
+    if (!resource.postgres.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  if ("secret" in resource) {
+    if (!resource.secret.scope.trim() || !resource.secret.key.trim()) {
+      return "Select a secret scope and key.";
+    }
+    if (!resource.secret.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  if ("experiment" in resource) {
+    if (!resource.experiment.experiment_id.trim()) {
+      return "Select an MLflow experiment.";
+    }
+    if (!resource.experiment.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  if ("genie_space" in resource) {
+    if (!resource.genie_space.space_id.trim() || !resource.genie_space.name.trim()) {
+      return "Select a Genie space.";
+    }
+    if (!resource.genie_space.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  if ("serving_endpoint" in resource) {
+    if (!resource.serving_endpoint.name.trim()) {
+      return "Select a model serving endpoint.";
+    }
+    if (!resource.serving_endpoint.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  if ("uc_securable" in resource) {
+    if (!resource.uc_securable.securable_full_name.trim()) {
+      return "Select a Unity Catalog table or enter securable full name.";
+    }
+    if (!resource.uc_securable.securable_type.trim()) {
+      return "Securable type is required.";
+    }
+    if (!resource.uc_securable.permission.trim()) return "Permission is required.";
+    return null;
+  }
+  return "Unknown resource type.";
+}
+
+/** True when every staged row is complete and keys are unique. */
+export function canSaveAppResources(
+  resources: readonly IWorkspaceAppResource[],
+): boolean {
+  if (duplicateAppResourceKeys(resources).length > 0) return false;
+  return resources.every((resource) => validateResourceRow(resource) === null);
 }

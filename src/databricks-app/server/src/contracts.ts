@@ -312,6 +312,29 @@ export interface WorkspaceServingEndpointsPage {
   authenticationMode: "databricks" | "local-test";
 }
 
+/** Secret scope or secret key name visible to the acting user. */
+export interface WorkspaceSecretScopeResource {
+  name: string;
+}
+
+/** Secret scopes or keys returned by the caller-authorized Secrets API. */
+export interface WorkspaceSecretScopesPage {
+  items: WorkspaceSecretScopeResource[];
+  authenticationMode: "databricks" | "local-test";
+}
+
+/** MLflow experiment visible to the acting user in the installed workspace. */
+export interface WorkspaceExperimentResource {
+  experimentId: string;
+  name: string;
+}
+
+/** Experiments returned by the caller-authorized MLflow API. */
+export interface WorkspaceExperimentsPage {
+  items: WorkspaceExperimentResource[];
+  authenticationMode: "databricks" | "local-test";
+}
+
 /** Job that the acting Databricks user can see in the installed workspace. */
 export interface WorkspaceJobResource {
   jobId: string;

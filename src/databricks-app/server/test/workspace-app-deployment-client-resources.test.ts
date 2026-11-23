@@ -141,3 +141,78 @@ test("WorkspaceAppDeploymentClient_RoundTripsAdditionalDatabricksResourceKinds",
   assert.deepEqual(app.resources, resources);
   assert.equal(app.unsupportedResourceCount, 0);
 });
+
+test("WorkspaceAppDeploymentClient_UpdateAppResources_PollsUntilSucceededAndReturnsApp", async () => {
+  const resources = [
+    {
+      name: "sql-warehouse",
+      description: "SQL warehouse",
+      sql_warehouse: { id: "warehouse-123", permission: "CAN_USE" as const },
+    },
+  ];
+  const harness = createClientHarness([
+    jsonResponse({ status: { state: "IN_PROGRESS", message: "Updating" } }),
+    jsonResponse({ status: { state: "IN_PROGRESS", message: "Still updating" } }),
+    jsonResponse({ status: { state: "SUCCEEDED", message: "Done" } }),
+    jsonResponse({
+      id: "child-app-id",
+      name: "child-app",
+      update_time: "2026-03-20T12:00:00Z",
+      resources,
+    }),
+  ]);
+
+  const app = await harness.client.updateAppResources(
+    CALLER,
+    "child-app",
+    resources,
+    "2026-03-20T11:00:00Z",
+  );
+
+  assert.equal(harness.calls.length, 4);
+  assert.equal(
+    new URL(harness.calls[0]!.url).pathname,
+    "/api/2.0/apps/child-app/update",
+  );
+  assert.equal(harness.calls[0]!.init.method, "POST");
+  assert.equal(harness.calls[1]!.init.method, "GET");
+  assert.equal(harness.calls[2]!.init.method, "GET");
+  assert.equal(
+    new URL(harness.calls[3]!.url).pathname,
+    "/api/2.0/apps/child-app",
+  );
+  const postBody = JSON.parse(String(harness.calls[0]!.init.body)) as {
+    update_mask: string;
+    app: { resources: unknown[]; update_time?: string };
+  };
+  assert.equal(postBody.update_mask, "resources");
+  assert.deepEqual(postBody.app.resources, resources);
+  assert.equal(postBody.app.update_time, "2026-03-20T11:00:00Z");
+  assert.deepEqual(app.resources, resources);
+  assert.equal(app.appUpdateTime, "2026-03-20T12:00:00Z");
+});
+
+test("WorkspaceAppDeploymentClient_UpdateAppResources_MapsFailedUpdate", async () => {
+  const resources = [
+    {
+      name: "sql-warehouse",
+      description: "SQL warehouse",
+      sql_warehouse: { id: "warehouse-123", permission: "CAN_USE" as const },
+    },
+  ];
+  const harness = createClientHarness([
+    jsonResponse({ status: { state: "IN_PROGRESS" } }),
+    jsonResponse({
+      status: { state: "FAILED", message: "Permission denied for warehouse" },
+    }),
+  ]);
+
+  await assert.rejects(
+    harness.client.updateAppResources(CALLER, "child-app", resources),
+    (error: unknown) =>
+      error instanceof ApplicationError &&
+      error.code === "child_app_update_failed" &&
+      error.message.includes("Permission denied for warehouse"),
+  );
+  assert.equal(harness.calls.length, 2);
+});

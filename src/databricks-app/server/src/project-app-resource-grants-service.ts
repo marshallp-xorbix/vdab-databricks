@@ -44,7 +44,13 @@ export class ProjectAppResourceGrantsService {
     requestId: string,
     projectId: string,
     body: unknown,
-  ): Promise<{ appName: string; resourceCount: number }> {
+  ): Promise<{
+    appName: string;
+    resourceCount: number;
+    appResources: WorkspaceAppResource[];
+    appUpdateTime: string | null;
+    unsupportedResourceCount: number;
+  }> {
     const project = await this.projectService.getProject(
       caller,
       requestId,
@@ -115,7 +121,7 @@ export class ProjectAppResourceGrantsService {
       );
     }
 
-    await this.workspaceClient.updateAppResources(
+    const updatedApp = await this.workspaceClient.updateAppResources(
       caller,
       childApp.appName,
       resources,
@@ -127,7 +133,13 @@ export class ProjectAppResourceGrantsService {
       actor,
       { action: "child_app.resource_grants.update_submitted" },
     );
-    return { appName: childApp.appName, resourceCount: resources.length };
+    return {
+      appName: childApp.appName,
+      resourceCount: updatedApp.resources.length,
+      appResources: updatedApp.resources,
+      appUpdateTime: updatedApp.appUpdateTime ?? null,
+      unsupportedResourceCount: updatedApp.unsupportedResourceCount ?? 0,
+    };
   }
 }
 

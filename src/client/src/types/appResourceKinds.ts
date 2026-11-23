@@ -65,9 +65,29 @@ export const PERMISSION_OPTIONS_BY_KIND: Record<AppResourceKind, string[]> = {
     "CAN_MANAGE",
   ],
   [AppResourceKindSlug.ServingEndpoint]: ["CAN_MANAGE", "CAN_QUERY", "CAN_VIEW"],
-  /** UC table-style securables (SELECT / MODIFY per Databricks Apps table resources). */
+  /** Default UC table-style securables; VOLUME uses READ_VOLUME / WRITE_VOLUME via helpers. */
   [AppResourceKindSlug.UcSecurable]: ["SELECT", "MODIFY"],
 };
+
+/** Permission options for a UC securable based on its wire type. */
+export function permissionOptionsForUcSecurableType(
+  securableType: string,
+): string[] {
+  if (securableType === UcSecurableTypeWire.Volume) {
+    return ["READ_VOLUME", "WRITE_VOLUME"];
+  }
+  if (securableType === "FUNCTION") return ["EXECUTE"];
+  if (securableType === "CONNECTION") return ["USE_CONNECTION"];
+  if (securableType === "MODEL_SERVICE") return ["EXECUTE"];
+  return PERMISSION_OPTIONS_BY_KIND[AppResourceKindSlug.UcSecurable];
+}
+
+/** Default permission for a UC securable type. */
+export function defaultPermissionForUcSecurableType(
+  securableType: string,
+): string {
+  return permissionOptionsForUcSecurableType(securableType)[0] ?? "SELECT";
+}
 
 export const KIND_LABELS: Record<AppResourceKind, string> = {
   [AppResourceKindSlug.SqlWarehouse]: "SQL warehouse",

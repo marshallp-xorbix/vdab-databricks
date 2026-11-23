@@ -1,3 +1,4 @@
+import { setTimeout as delay } from "node:timers/promises";
 import type {
   CallerIdentity,
   ProjectDeploymentSourceFile,
@@ -39,6 +40,9 @@ const WORKSPACE_IMPORT_PATH = "/api/2.0/workspace/import";
 const MAX_APP_LIST_PAGES = 50;
 const MAX_APP_PAGE_TOKEN_LENGTH = 2_048;
 const REQUEST_TIMEOUT_MS = 30_000;
+const APP_UPDATE_POLL_INTERVAL_MS = 1_500;
+const APP_UPDATE_TIMEOUT_MS = 90_000;
+const TERMINAL_APP_UPDATE_STATES = new Set(["SUCCEEDED", "FAILED"]);
 
 /** Small response model required to safely operate a selected child App. */
 export interface WorkspaceAppDetails {
@@ -73,7 +77,7 @@ export interface WorkspaceAppDeploymentClient {
     appName: string,
     resources: WorkspaceAppResource[],
     expectedUpdateTime?: string | null,
-  ): Promise<void>;
+  ): Promise<WorkspaceAppDetails>;
   createApp(
     caller: CallerIdentity,
     appName: string,
@@ -101,14 +105,25 @@ export interface WorkspaceAppDeploymentClient {
 
 interface ApiObject extends Record<string, unknown> {}
 
+interface WorkspaceAppDeploymentClientOptions {
+  appUpdatePollIntervalMs?: number;
+  appUpdateTimeoutMs?: number;
+}
+
 /** Creates a Databricks client whose host comes only from trusted app config. */
 export function createWorkspaceAppDeploymentClient(
   workspaceHost: string,
   installedAppName: string,
   fetchImplementation: typeof fetch = fetch,
+  options: WorkspaceAppDeploymentClientOptions = {},
 ): WorkspaceAppDeploymentClient {
   const host = normalizeWorkspaceHost(workspaceHost);
   validateAppName(installedAppName);
+  const updatePoll = {
+    pollIntervalMs:
+      options.appUpdatePollIntervalMs ?? APP_UPDATE_POLL_INTERVAL_MS,
+    timeoutMs: options.appUpdateTimeoutMs ?? APP_UPDATE_TIMEOUT_MS,
+  };
 
   return {
     getInstalledAppSpace: (caller) =>
@@ -117,7 +132,15 @@ export function createWorkspaceAppDeploymentClient(
     getApp: (caller, appName) =>
       getApp(caller, appName, host, fetchImplementation),
     updateAppResources: (caller, appName, resources, expectedUpdateTime) =>
-      updateAppResources(caller, appName, resources, host, fetchImplementation, expectedUpdateTime),
+      updateAppResources(
+        caller,
+        appName,
+        resources,
+        host,
+        fetchImplementation,
+        expectedUpdateTime,
+        updatePoll,
+      ),
     createApp: (
       caller,
       appName,
@@ -256,8 +279,9 @@ async function updateAppResources(
   resources: WorkspaceAppResource[],
   host: string,
   fetchImplementation: typeof fetch,
-  expectedUpdateTime?: string | null,
-): Promise<void> {
+  expectedUpdateTime: string | null | undefined,
+  updatePoll: { pollIntervalMs: number; timeoutMs: number },
+): Promise<WorkspaceAppDetails> {
   validateAppName(appName);
   const response = await callDatabricks(
     caller,
@@ -273,7 +297,75 @@ async function updateAppResources(
     },
     fetchImplementation,
   );
-  await discardHttpResponseBody(response);
+  const startedUpdate = await readResponse(response);
+  await waitForAppUpdate(
+    caller,
+    appName,
+    host,
+    fetchImplementation,
+    startedUpdate,
+    updatePoll,
+  );
+  const updatedApp = await getApp(caller, appName, host, fetchImplementation);
+  if (!updatedApp) throw invalidDatabricksResponse();
+  return updatedApp;
+}
+
+async function waitForAppUpdate(
+  caller: CallerIdentity,
+  appName: string,
+  host: string,
+  fetchImplementation: typeof fetch,
+  initialBody: unknown,
+  updatePoll: { pollIntervalMs: number; timeoutMs: number },
+): Promise<void> {
+  const deadline = Date.now() + updatePoll.timeoutMs;
+  let lastBody = initialBody;
+  let state = readAppUpdateState(lastBody);
+  while (!TERMINAL_APP_UPDATE_STATES.has(state ?? "")) {
+    if (Date.now() >= deadline) {
+      throw new ApplicationError(
+        504,
+        "child_app_update_timeout",
+        "App resource update timed out",
+        "Databricks is still applying the App resource update. Reload from Databricks and try again shortly.",
+      );
+    }
+    await delay(
+      Math.min(updatePoll.pollIntervalMs, Math.max(0, deadline - Date.now())),
+    );
+    const statusResponse = await callDatabricks(
+      caller,
+      new URL(`${APPS_PATH}/${encodeURIComponent(appName)}/update`, host),
+      "GET",
+      undefined,
+      fetchImplementation,
+    );
+    lastBody = await readResponse(statusResponse);
+    state = readAppUpdateState(lastBody);
+  }
+  if (state === "FAILED") {
+    throw new ApplicationError(
+      502,
+      "child_app_update_failed",
+      "App resource update failed",
+      readAppUpdateMessage(lastBody) ??
+        "Databricks reported that the App resource update failed.",
+    );
+  }
+}
+
+function readAppUpdateState(value: unknown): string | null {
+  if (!isRecord(value) || !isRecord(value.status)) return null;
+  return typeof value.status.state === "string" ? value.status.state : null;
+}
+
+function readAppUpdateMessage(value: unknown): string | null {
+  if (!isRecord(value) || !isRecord(value.status)) return null;
+  return typeof value.status.message === "string" &&
+    value.status.message.trim() !== ""
+    ? value.status.message.trim()
+    : null;
 }
 
 async function createApp(

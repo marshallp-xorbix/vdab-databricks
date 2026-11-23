@@ -18,16 +18,61 @@ export async function fetchWorkspaceResource(
   permissionDetail: string = "Confirm the app has the required user authorization scope and that you can access this Unity Catalog resource.",
   signal?: AbortSignal,
 ): Promise<Response> {
+  return callWorkspaceResource(
+    endpoint,
+    caller,
+    fetchImplementation,
+    "GET",
+    undefined,
+    permissionDetail,
+    signal,
+  );
+}
+
+/** Posts to a workspace resource endpoint with the caller token. */
+export async function postWorkspaceResource(
+  endpoint: URL,
+  caller: CallerIdentity,
+  fetchImplementation: typeof fetch,
+  body: Record<string, unknown>,
+  permissionDetail: string,
+  signal?: AbortSignal,
+  allowedStatusCodes: number[] = [],
+): Promise<Response> {
+  return callWorkspaceResource(
+    endpoint,
+    caller,
+    fetchImplementation,
+    "POST",
+    body,
+    permissionDetail,
+    signal,
+    allowedStatusCodes,
+  );
+}
+
+async function callWorkspaceResource(
+  endpoint: URL,
+  caller: CallerIdentity,
+  fetchImplementation: typeof fetch,
+  method: "GET" | "POST",
+  body: Record<string, unknown> | undefined,
+  permissionDetail: string,
+  signal?: AbortSignal,
+  allowedStatusCodes: number[] = [],
+): Promise<Response> {
   requireWorkspaceCallerToken(caller);
   let response: Response;
 
   try {
     response = await fetchImplementation(endpoint, {
-      method: "GET",
+      method,
       headers: {
         Authorization: `Bearer ${caller.databricksAccessToken}`,
         Accept: "application/json",
+        ...(body ? { "Content-Type": "application/json" } : {}),
       },
+      ...(body ? { body: JSON.stringify(body) } : {}),
       redirect: "error",
       signal: signal
         ? AbortSignal.any([
@@ -46,7 +91,10 @@ export async function fetchWorkspaceResource(
     );
   }
 
-  if (!response.ok) await discardHttpResponseBody(response);
+  if (response.ok || allowedStatusCodes.includes(response.status)) {
+    return response;
+  }
+  await discardHttpResponseBody(response);
   if (response.status === 401) {
     throw new ApplicationError(
       401,
@@ -63,15 +111,12 @@ export async function fetchWorkspaceResource(
       permissionDetail,
     );
   }
-  if (!response.ok) {
-    throw new ApplicationError(
-      502,
-      "databricks_request_failed",
-      "Databricks request failed",
-      "Workspace resources could not be loaded. Try again shortly.",
-    );
-  }
-  return response;
+  throw new ApplicationError(
+    502,
+    "databricks_request_failed",
+    "Databricks request failed",
+    "Workspace resources could not be loaded. Try again shortly.",
+  );
 }
 
 /** Reads and validates a bounded JSON object from a workspace API response. */

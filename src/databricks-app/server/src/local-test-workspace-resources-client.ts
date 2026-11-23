@@ -1,7 +1,9 @@
 import type {
   CallerIdentity,
+  WorkspaceExperimentResource,
   WorkspaceGenieSpaceResource,
   WorkspaceResource,
+  WorkspaceSecretScopeResource,
   WorkspaceServingEndpointResource,
   WorkspaceTableSummariesResult,
   WorkspaceTableResource,
@@ -26,6 +28,25 @@ export class LocalTestWorkspaceResourcesClient implements WorkspaceResourcesClie
       readiness: "ready",
       permissionLevel: "CAN_QUERY",
     }];
+  }
+
+  async listSecretScopes(
+    _caller: CallerIdentity,
+  ): Promise<WorkspaceSecretScopeResource[]> {
+    return [{ name: "service-scope" }];
+  }
+
+  async listSecretKeys(
+    _caller: CallerIdentity,
+    secretScope: string,
+  ): Promise<WorkspaceSecretScopeResource[]> {
+    return secretScope === "service-scope" ? [{ name: "api-key" }] : [];
+  }
+
+  async listExperiments(
+    _caller: CallerIdentity,
+  ): Promise<WorkspaceExperimentResource[]> {
+    return [{ experimentId: "1021971371025173", name: "/Users/sample/demo" }];
   }
 
   async listCatalogs(_caller: CallerIdentity): Promise<WorkspaceResource[]> {

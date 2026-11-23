@@ -161,24 +161,33 @@ export async function handleWorkspaceHttpRoute(
         ? await options.workspaceResourcesService.listGenieSpaces(caller)
         : workspaceRoute.type === "servingEndpoints"
           ? await options.workspaceResourcesService.listServingEndpoints(caller)
-          : workspaceRoute.type === "catalogs"
-            ? await options.workspaceResourcesService.listCatalogs(caller)
-            : workspaceRoute.type === "schemas"
-              ? await options.workspaceResourcesService.listSchemas(
+          : workspaceRoute.type === "secretScopes"
+            ? await options.workspaceResourcesService.listSecretScopes(caller)
+            : workspaceRoute.type === "secretKeys"
+              ? await options.workspaceResourcesService.listSecretKeys(
                   caller,
-                  workspaceRoute.catalogName,
+                  workspaceRoute.secretScope,
                 )
-              : workspaceRoute.type === "volumes"
-                ? await options.workspaceResourcesService.listVolumes(
-                    caller,
-                    workspaceRoute.catalogName,
-                    workspaceRoute.schemaName,
-                  )
-                : await options.workspaceResourcesService.listTables(
-                    caller,
-                    workspaceRoute.catalogName,
-                    workspaceRoute.schemaName,
-                  );
+              : workspaceRoute.type === "experiments"
+                ? await options.workspaceResourcesService.listExperiments(caller)
+                : workspaceRoute.type === "catalogs"
+                  ? await options.workspaceResourcesService.listCatalogs(caller)
+                  : workspaceRoute.type === "schemas"
+                    ? await options.workspaceResourcesService.listSchemas(
+                        caller,
+                        workspaceRoute.catalogName,
+                      )
+                    : workspaceRoute.type === "volumes"
+                      ? await options.workspaceResourcesService.listVolumes(
+                          caller,
+                          workspaceRoute.catalogName,
+                          workspaceRoute.schemaName,
+                        )
+                      : await options.workspaceResourcesService.listTables(
+                          caller,
+                          workspaceRoute.catalogName,
+                          workspaceRoute.schemaName,
+                        );
     sendJson(response, 200, resources);
     return 200;
   }

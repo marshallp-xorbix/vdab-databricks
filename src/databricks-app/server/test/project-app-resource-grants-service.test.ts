@@ -27,7 +27,11 @@ test("ProjectAppResourceGrantsService_UpdatesCallerAuthorizedGrantsAndAudits", a
     { resources: [secret] },
   );
 
-  assert.deepEqual(result, { appName: "project-child", resourceCount: 1 });
+  assert.equal(result.appName, "project-child");
+  assert.equal(result.resourceCount, 1);
+  assert.deepEqual(result.appResources, [secret]);
+  assert.equal(typeof result.appUpdateTime, "string");
+  assert.equal(result.unsupportedResourceCount, 0);
   assert.deepEqual(
     harness.workspace.apps.get("project-child")?.resources,
     [secret],

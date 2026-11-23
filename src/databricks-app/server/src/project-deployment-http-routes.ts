@@ -88,7 +88,7 @@ export async function handleProjectDeploymentHttpRoute(
     }
     sendJson(
       response,
-      202,
+      200,
       await deploymentService.updateResourceGrants(
         caller,
         requestId,
@@ -96,7 +96,7 @@ export async function handleProjectDeploymentHttpRoute(
         parseJsonRequestBody(requestBody, request.headers["content-type"]),
       ),
     );
-    return 202;
+    return 200;
   }
 
   if (route.type === "history") {
