@@ -56,7 +56,8 @@ function ProjectEditorComponentsSection({
     <section hidden={!isActive} className="h-full min-h-0">
       {canEdit && replaceComponentsMutation.isError && (
         <p role="alert" className="px-3 py-2 text-sm text-destructive">
-          Automatic save failed. {saveError instanceof Error
+          Components save failed.{" "}
+          {saveError instanceof Error
             ? saveError.message
             : "Use Save to retry."}
         </p>

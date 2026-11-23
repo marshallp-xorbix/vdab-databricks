@@ -8,11 +8,9 @@ import { useReplaceProjectWorkflow } from "./useReplaceProjectWorkflow";
 import { useComponentRegistry } from "./useComponentRegistry";
 import { useGenerateProjectPreview } from "./useGenerateProjectPreview";
 import { useUpdateProject } from "./useUpdateProject";
-import { useProjectComponentsAutosave } from "./useProjectComponentsAutosave";
 import type { IProjectComponent } from "../models/ProjectComponents";
 import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
 import type { IProjectDeploymentSettings } from "../models/ProjectDeploymentSettings";
-import { toast } from "../components/ui/use-toast";
 import { validateProjectComponentsForSave } from "../utils/projectComponentSaveValidation";
 
 type ProjectEditorSection =
@@ -180,41 +178,6 @@ export function useProjectEditor() {
     }
   }
 
-  async function handleSaveComponents() {
-    if (
-      !project ||
-      !componentsDocument ||
-      !canEdit ||
-      isMetadataDirty ||
-      isWorkflowDirty ||
-      isCustomModulesDirty
-    ) {
-      return;
-    }
-
-    try {
-      validateProjectComponentsForSave(components);
-    } catch (error) {
-      toast({
-        title: "Cannot save components",
-        description:
-          error instanceof Error ? error.message : "Component layout is invalid.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await replaceComponentsMutation.mutateAsync({
-        projectId: project.id,
-        version: componentsDocument.version,
-        components,
-      });
-    } catch {
-      // The mutation state renders the safe API error below.
-    }
-  }
-
   async function handleSaveCanvas(): Promise<boolean> {
     if (
       !isMetadataDirty &&
@@ -344,25 +307,6 @@ export function useProjectEditor() {
     );
   }
 
-  useProjectComponentsAutosave({
-    draft: components,
-    isDirty: isComponentsDirty,
-    canSave: Boolean(
-      project &&
-      componentsDocument &&
-      canEdit &&
-      !isMetadataDirty &&
-      !isWorkflowDirty &&
-      !isCustomModulesDirty &&
-      !isCanvasSaving &&
-      !updateProjectMutation.isPending &&
-      !replaceWorkflowMutation.isPending,
-    ),
-    isSaving: replaceComponentsMutation.isPending,
-    hasError: replaceComponentsMutation.isError,
-    onSave: handleSaveComponents,
-  });
-
   return {
     projectQuery,
     componentsQuery,
@@ -402,7 +346,6 @@ export function useProjectEditor() {
     navigationBlocker,
     handleSave,
     handleReloadMetadata,
-    handleSaveComponents,
     handleSaveCanvas,
     handlePreview,
     handleReloadComponents,

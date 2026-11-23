@@ -13,7 +13,6 @@ import {
   resetProjectEditorTestState,
   workflowDocument,
 } from "./ProjectEditorPage.test-support";
-import { PROJECT_COMPONENTS_AUTOSAVE_DELAY_MS } from "../hooks/useProjectComponentsAutosave";
 import type { IProjectWorkflowDefinition } from "../models/ProjectWorkflow";
 import type { IProjectComponent } from "../models/ProjectComponents";
 
@@ -35,7 +34,7 @@ vi.mock("../components/AppBuilderComponents/AppCanvas/MainFlowView", () => ({
 afterEach(resetProjectEditorTestState);
 beforeEach(initializeProjectEditorTestState);
 
-describe("ProjectEditorPage component autosave coordination", () => {
+describe("ProjectEditorPage component save coordination", () => {
   it("CanvasSave_WorkflowUnavailable_SavesIndependentComponentEdits", async () => {
     const user = userEvent.setup();
     getProjectWorkflowMock.mockRejectedValue(new Error("Workflows temporarily unavailable"));
@@ -157,9 +156,6 @@ describe("ProjectEditorPage component autosave coordination", () => {
     expect(
       screen.getByRole("button", { name: "Save" }),
     ).toBeEnabled();
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, PROJECT_COMPONENTS_AUTOSAVE_DELAY_MS + 100);
-    });
     expect(replaceProjectComponentsMock).not.toHaveBeenCalled();
 
     await user.click(
