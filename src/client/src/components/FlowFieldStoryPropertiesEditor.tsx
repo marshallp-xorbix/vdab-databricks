@@ -1,11 +1,7 @@
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import DataWindowTableBindingEditor from "./DataWindowTableBindingEditor";
-import FlowFieldStoryFieldMappingsEditor from "./FlowFieldStoryFieldMappingsEditor";
 import FlowFieldStoryVisualPropertiesEditor from "./FlowFieldStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
-import type { IWorkspaceTableColumn } from "../models/WorkspaceTable";
-import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface IFlowFieldStoryPropertiesEditorProps {
   componentKey: string;
@@ -19,14 +15,10 @@ interface IFlowFieldStoryPropertiesEditorProps {
 function FlowFieldStoryPropertiesEditor({
   componentKey,
   properties,
-  bindings,
   disabled,
   onPropertiesChange,
-  onBindingsChange,
 }: Readonly<IFlowFieldStoryPropertiesEditorProps>) {
-  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Flow Field Story";
-  const columns: IWorkspaceTableColumn[] = table?.columns ?? [];
 
   return (
     <section className="grid gap-4" aria-label="Flow field story configuration">
@@ -42,31 +34,12 @@ function FlowFieldStoryPropertiesEditor({
           />
         </div>
       </fieldset>
-      <DataWindowTableBindingEditor
-        componentKey={componentKey}
-        bindings={bindings}
-        disabled={disabled}
-        primaryKeyRequired={false}
-        onBindingsChange={onBindingsChange}
-      />
-      <FlowFieldStoryFieldMappingsEditor
-        componentKey={componentKey}
-        properties={properties}
-        columns={columns}
-        disabled={disabled}
-        onPropertiesChange={onPropertiesChange}
-      />
       <FlowFieldStoryVisualPropertiesEditor
         componentKey={componentKey}
         properties={properties}
         disabled={disabled}
         onPropertiesChange={onPropertiesChange}
       />
-      {table?.table && columns.length === 0 && (
-        <p role="status" className="text-sm text-muted-foreground">
-          The selected table does not include column metadata. Reselect it to configure flow mappings.
-        </p>
-      )}
     </section>
   );
 }

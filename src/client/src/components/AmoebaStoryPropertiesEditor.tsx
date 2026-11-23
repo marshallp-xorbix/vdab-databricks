@@ -1,10 +1,7 @@
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import DataWindowTableBindingEditor from "./DataWindowTableBindingEditor";
-import AmoebaStoryFieldMappingsEditor from "./AmoebaStoryFieldMappingsEditor";
 import AmoebaStoryVisualPropertiesEditor from "./AmoebaStoryVisualPropertiesEditor";
 import type { ProjectJsonObject } from "../models/ProjectComponents";
-import { readProjectTableBinding } from "../utils/projectDataWindowBinding";
 
 interface IAmoebaStoryPropertiesEditorProps {
   componentKey: string;
@@ -18,12 +15,9 @@ interface IAmoebaStoryPropertiesEditorProps {
 function AmoebaStoryPropertiesEditor({
   componentKey,
   properties,
-  bindings,
   disabled,
   onPropertiesChange,
-  onBindingsChange,
 }: Readonly<IAmoebaStoryPropertiesEditorProps>) {
-  const table = readProjectTableBinding(bindings);
   const title = typeof properties.title === "string" ? properties.title : "Amoeba Story";
 
   return (
@@ -40,31 +34,12 @@ function AmoebaStoryPropertiesEditor({
           />
         </div>
       </fieldset>
-      <DataWindowTableBindingEditor
-        componentKey={componentKey}
-        bindings={bindings}
-        disabled={disabled}
-        primaryKeyRequired={false}
-        onBindingsChange={onBindingsChange}
-      />
-      <AmoebaStoryFieldMappingsEditor
-        componentKey={componentKey}
-        properties={properties}
-        columns={table?.columns ?? []}
-        disabled={disabled}
-        onPropertiesChange={onPropertiesChange}
-      />
       <AmoebaStoryVisualPropertiesEditor
         componentKey={componentKey}
         properties={properties}
         disabled={disabled}
         onPropertiesChange={onPropertiesChange}
       />
-      {table?.table && table.columns.length === 0 && (
-        <p role="status" className="text-sm text-muted-foreground">
-          The selected table does not include column metadata. Reselect it to configure the story mappings.
-        </p>
-      )}
     </section>
   );
 }

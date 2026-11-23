@@ -19,6 +19,8 @@ interface IDataWindowTableBindingEditorProps {
   bindings: ProjectJsonObject | null;
   disabled: boolean;
   primaryKeyRequired: boolean;
+  /** Compact layout for the Bindings properties card (SaaS propertyPanel). */
+  layoutVariant?: "default" | "propertyPanel";
   onBindingsChange: (bindings: ProjectJsonObject | null) => void;
 }
 
@@ -27,8 +29,10 @@ function DataWindowTableBindingEditor({
   bindings,
   disabled,
   primaryKeyRequired,
+  layoutVariant = "default",
   onBindingsChange,
 }: Readonly<IDataWindowTableBindingEditorProps>) {
+  const isPropertyPanel = layoutVariant === "propertyPanel";
   const selection = readProjectTableBinding(bindings);
   const unityCatalogSelection = selection?.kind === "unityCatalogTable"
     ? selection
@@ -97,13 +101,24 @@ function DataWindowTableBindingEditor({
   }
 
   return (
-    <fieldset className="grid gap-4 rounded-lg border border-border p-4" disabled={disabled}>
-      <legend className="px-1 text-sm font-medium">Data source</legend>
+    <fieldset
+      className={
+        isPropertyPanel
+          ? "grid gap-3"
+          : "grid gap-4 rounded-lg border border-border p-4"
+      }
+      disabled={disabled}
+    >
+      {!isPropertyPanel ? (
+        <legend className="px-1 text-sm font-medium">Data source</legend>
+      ) : null}
       <div className="grid gap-2">
-        <Label htmlFor={`data-window-source-${componentKey}`}>Workspace table source</Label>
+        <Label htmlFor={`data-window-source-${componentKey}`}>
+          {isPropertyPanel ? "Source" : "Workspace table source"}
+        </Label>
         <select
           id={`data-window-source-${componentKey}`}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           value={selection?.kind ?? "unityCatalogTable"}
           onChange={(event) => changeSource(event.target.value)}
         >
@@ -115,11 +130,20 @@ function DataWindowTableBindingEditor({
       </div>
       {unityCatalogSelection !== null && (
       <>
-      <div className="grid gap-2">
-        <Label htmlFor={`data-window-catalog-${componentKey}`}>Current-workspace catalog</Label>
+      <div
+        className={
+          isPropertyPanel
+            ? "grid gap-2 sm:grid-cols-3"
+            : "grid gap-2"
+        }
+      >
+      <div className="grid gap-2 min-w-0">
+        <Label htmlFor={`data-window-catalog-${componentKey}`}>
+          {isPropertyPanel ? "Catalog" : "Current-workspace catalog"}
+        </Label>
         <select
           id={`data-window-catalog-${componentKey}`}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           value={unityCatalogSelection.catalog ?? ""}
           onChange={(event) => changeCatalog(event.target.value)}
         >
@@ -137,7 +161,7 @@ function DataWindowTableBindingEditor({
           </p>
         )}
       </div>
-      {unityCatalogSelection.catalog && (
+      {unityCatalogSelection.catalog ? (
         <>
           <DataWindowResourceSelect
             id={`data-window-schema-${componentKey}`}
@@ -153,7 +177,7 @@ function DataWindowTableBindingEditor({
             error={schemas.isError ? schemas.error.message : null}
             emptyMessage="No schemas are visible in this catalog."
           />
-          {unityCatalogSelection.schema && (
+          {unityCatalogSelection.schema ? (
             <DataWindowResourceSelect
               id={`data-window-table-${componentKey}`}
               label="Table"
@@ -168,15 +192,25 @@ function DataWindowTableBindingEditor({
               error={tables.isError ? tables.error.message : null}
               emptyMessage="No tables are visible in this schema."
             />
+          ) : (
+            isPropertyPanel ? <div className="min-w-0" /> : null
           )}
           {!tables.isPending && !tables.isError && unityCatalogSelection.table &&
             !tables.data?.items.some((item) => item.name === unityCatalogSelection.table) && (
-              <p role="status" className="text-xs text-muted-foreground">
+              <p role="status" className="text-xs text-muted-foreground sm:col-span-3">
                 The saved table is not in the current results. It may be inaccessible or no longer exist.
               </p>
             )}
         </>
+      ) : (
+        isPropertyPanel ? (
+          <>
+            <div className="min-w-0" />
+            <div className="min-w-0" />
+          </>
+        ) : null
       )}
+      </div>
       {primaryKeyRequired && unityCatalogSelection.table && unityCatalogSelection.dataSourceFormat === "DELTA" && (
         <div className="grid gap-2">
           <Label htmlFor={`data-window-primary-key-${componentKey}`}>Primary key column</Label>

@@ -121,7 +121,9 @@ export const BindingsPanel: FC<BindingsPanelProps> = ({
             componentKey={component.id}
             bindings={(component.bindings ?? null) as ProjectJsonObject | null}
             disabled={false}
-            onChange={(bindings) =>
+            primaryKeyRequired={false}
+            layoutVariant="propertyPanel"
+            onBindingsChange={(bindings) =>
               onUpdateBindings(
                 bindings as Record<string, Binding> | null,
               )

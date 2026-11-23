@@ -2,6 +2,15 @@ import type { FC } from "react";
 import { useEffect, useState } from "react";
 import { ComponentWorkflowsPanel } from "../../properties/ComponentWorkflowsPanel";
 import { BindingsPanel } from "../../properties/BindingsPanel";
+import { AmoebaStoryFieldMappingsPanel } from "../../properties/AmoebaStoryFieldMappingsPanel";
+import { NetworkWebStoryFieldMappingsPanel } from "../../properties/NetworkWebStoryFieldMappingsPanel";
+import { TerrainStoryFieldMappingsPanel } from "../../properties/TerrainStoryFieldMappingsPanel";
+import { HeatMapStoryFieldMappingsPanel } from "../../properties/HeatMapStoryFieldMappingsPanel";
+import { PulseWaveStoryFieldMappingsPanel } from "../../properties/PulseWaveStoryFieldMappingsPanel";
+import { FlowFieldStoryFieldMappingsPanel } from "../../properties/FlowFieldStoryFieldMappingsPanel";
+import { HoneycombStoryFieldMappingsPanel } from "../../properties/HoneycombStoryFieldMappingsPanel";
+import { SpiralStoryFieldMappingsPanel } from "../../properties/SpiralStoryFieldMappingsPanel";
+import { StoryVisualizationHelpLink } from "../../properties/StoryVisualizationHelpLink";
 import {
   getCodeNameInputValidationError,
   MAX_CODE_NAME_LENGTH,
@@ -9,7 +18,10 @@ import {
 } from "../../../utils/codeNameUtils";
 import type { VdabComponent } from "../../../types/components";
 import type { Binding } from "../../../types/components/bindings";
-import { humanizeComponentType } from "../../../types/components/componentTypes";
+import {
+  ComponentType,
+  humanizeComponentType,
+} from "../../../types/components/componentTypes";
 import {
   EMPTY_WORKFLOW_DEFINITION,
   type WorkflowDefinition,
@@ -21,6 +33,25 @@ import ProjectComponentPropertiesEditor, {
   type IProjectComponentPropertiesEditorProps,
 } from "../../ProjectComponentPropertiesEditor";
 import { getWorkflowBindingOverridesForComponent } from "../../../utils/workflow/workflowBindingOverrides";
+
+const STORY_FIELD_MAPPING_PANELS: Partial<
+  Record<
+    ComponentType,
+    FC<{
+      component: VdabComponent;
+      onPropertyChange: (key: string, value: unknown) => void;
+    }>
+  >
+> = {
+  [ComponentType.AmoebaStory]: AmoebaStoryFieldMappingsPanel,
+  [ComponentType.NetworkWebStory]: NetworkWebStoryFieldMappingsPanel,
+  [ComponentType.HeatMapStory]: HeatMapStoryFieldMappingsPanel,
+  [ComponentType.PulseWaveStory]: PulseWaveStoryFieldMappingsPanel,
+  [ComponentType.FlowFieldStory]: FlowFieldStoryFieldMappingsPanel,
+  [ComponentType.HoneycombStory]: HoneycombStoryFieldMappingsPanel,
+  [ComponentType.SpiralStory]: SpiralStoryFieldMappingsPanel,
+  [ComponentType.TerrainStory]: TerrainStoryFieldMappingsPanel,
+};
 
 interface PropertiesPanelProps {
   selectedComponent: VdabComponent | null;
@@ -113,6 +144,14 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
     }));
   };
 
+  const handleStoryPropertyChange = (key: string, value: unknown) => {
+    if (!selectedComponent || !projectComponentEditor) return;
+    projectComponentEditor.onPropertiesChange({
+      ...selectedComponent.props,
+      [key]: value,
+    });
+  };
+
   const renderPropertyEditor = () => {
     if (!selectedComponent) return null;
 
@@ -144,6 +183,16 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
     canvasContextType === CanvasContextType.Page &&
     pageWidth !== undefined &&
     onPageWidthChange !== undefined;
+  const hasBindingsSection = Boolean(
+    (selectedComponent?.supportedBindings?.length ?? 0) > 0 &&
+      projectComponentEditor,
+  );
+  const hasStoryFieldMappings =
+    selectedComponent != null &&
+    selectedComponent.type in STORY_FIELD_MAPPING_PANELS;
+  const StoryFieldMappingsPanelComponent = selectedComponent
+    ? STORY_FIELD_MAPPING_PANELS[selectedComponent.type as ComponentType]
+    : undefined;
 
   let panelTitle = "Properties";
   if (selectedComponent) {
@@ -160,6 +209,9 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
         sidebarTitleRole="panel"
         disableContentScroll={disableScroll}
         collapsible={false}
+        titleAccessory={
+          hasStoryFieldMappings ? <StoryVisualizationHelpLink /> : undefined
+        }
         headerActions={
           selectedComponent && (
             <button
@@ -223,14 +275,13 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
               </div>
             </div>
 
-            {(selectedComponent.supportedBindings?.length ?? 0) > 0 &&
-            projectComponentEditor ? (
+            {hasBindingsSection ? (
               <div className="rounded-lg border border-[var(--builder-chrome-border)] bg-[var(--builder-panel-bg)] px-1 py-2 shadow-sm">
                 <div className="px-3 pb-3 pt-2" data-property-nested-fields>
                   <BindingsPanel
                     component={selectedComponent}
                     onUpdateBindings={(bindings) =>
-                      projectComponentEditor.onBindingsChange(
+                      projectComponentEditor!.onBindingsChange(
                         bindings as Record<string, Binding> | null,
                       )
                     }
@@ -240,6 +291,24 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
                       components,
                     )}
                     onJumpToWorkflowAction={onJumpToWorkflowAction}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {hasStoryFieldMappings && StoryFieldMappingsPanelComponent ? (
+              <div className="rounded-lg border border-[var(--builder-chrome-border)] bg-[var(--builder-panel-bg)] px-1 py-2 shadow-sm">
+                <div className="flex items-center gap-2 px-3 pb-1 pt-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Field Mappings
+                  </span>
+                  <div className="flex-1 h-px bg-muted" />
+                </div>
+
+                <div className="px-3 pb-3" data-property-nested-fields>
+                  <StoryFieldMappingsPanelComponent
+                    component={selectedComponent}
+                    onPropertyChange={handleStoryPropertyChange}
                   />
                 </div>
               </div>
@@ -270,7 +339,7 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
                   </p>
                 )}
               </div>
-              </div>
+            </div>
           </div>
         ) : (
           <>

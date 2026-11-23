@@ -138,8 +138,77 @@ test("ProjectDeploymentRequirements_BlocksUnityCatalogWhenDefaultIsMissingOrInva
 
   assert.equal(missing.blockers[0]?.code, "default_sql_warehouse_unavailable");
   assert.equal(invalid.blockers[0]?.code, "default_sql_warehouse_unavailable");
+  assert.match(
+    missing.blockers[0]?.detail ?? "",
+    /App Settings → Resources/,
+  );
   assert.deepEqual(missing.appResources, []);
   assert.deepEqual(invalid.appResources, []);
+});
+
+test("ProjectDeploymentRequirements_UsesChildAppSqlWarehouseWithoutBuilderEnv", () => {
+  const childWarehouse = {
+    name: "sql-warehouse",
+    description: "Analytics warehouse",
+    sql_warehouse: { id: "child-wh-1", permission: "CAN_USE" as const },
+  };
+  const requirements = getProjectDeploymentRequirements(
+    [createUnityCatalogComponent()],
+    { version: 1, workflows: [] },
+    null,
+    [childWarehouse],
+  );
+
+  assert.deepEqual(requirements.appResources, [childWarehouse]);
+  assert.deepEqual(requirements.userApiScopes, ["sql"]);
+  assert.deepEqual(requirements.blockers, []);
+});
+
+test("ProjectDeploymentRequirements_PrefersSqlWarehouseKeyOverOtherWarehouseNames", () => {
+  const other = {
+    name: "analytics-wh",
+    description: "Other",
+    sql_warehouse: { id: "other-id", permission: "CAN_USE" as const },
+  };
+  const preferred = {
+    name: "sql-warehouse",
+    description: "Preferred",
+    sql_warehouse: { id: "preferred-id", permission: "CAN_USE" as const },
+  };
+  const requirements = getProjectDeploymentRequirements(
+    [createUnityCatalogComponent()],
+    { version: 1, workflows: [] },
+    "builder-fallback",
+    [other, preferred],
+  );
+
+  assert.deepEqual(requirements.appResources, [preferred]);
+  assert.deepEqual(requirements.blockers, []);
+});
+
+test("ProjectDeploymentRequirements_IncompleteUnityCatalogBinding_DoesNotRequireWarehouse", () => {
+  const requirements = getProjectDeploymentRequirements(
+    [createIncompleteUnityCatalogComponent()],
+    { version: 1, workflows: [] },
+  );
+
+  assert.deepEqual(requirements.userApiScopes, []);
+  assert.deepEqual(requirements.appResources, []);
+  assert.deepEqual(requirements.blockers, []);
+});
+
+test("ProjectDeploymentRequirements_FallsBackToBuilderEnvWhenChildHasNoWarehouse", () => {
+  const requirements = getProjectDeploymentRequirements(
+    [createUnityCatalogComponent()],
+    { version: 1, workflows: [] },
+    "warehouse-123",
+    [],
+  );
+
+  assert.deepEqual(requirements.appResources, [
+    createSqlWarehouseAppResourceBinding("warehouse-123").resource,
+  ]);
+  assert.deepEqual(requirements.blockers, []);
 });
 
 test("ProjectDeploymentRequirements_UsesExplicitBuildSqlWarehouseWithoutDefaultResource", () => {
@@ -349,7 +418,52 @@ function createUnityCatalogComponent(): ProjectComponent {
     codeName: "dataWindow",
     description: null,
     properties: {},
-    bindings: { unityCatalogTable: {} },
+    bindings: {
+      unityCatalogTable: {
+        bindingType: "unityCatalogTable",
+        source: {
+          kind: "resource",
+          valueType: "table",
+          resource: {
+            type: "unityCatalogTable",
+            catalog: "main",
+            schema: "default",
+            table: "orders",
+            primaryKeyColumn: null,
+          },
+        },
+      },
+    },
+    children: [],
+    layout: null,
+  };
+}
+
+function createIncompleteUnityCatalogComponent(): ProjectComponent {
+  return {
+    key: "data-window",
+    type: "DataWindow",
+    schemaVersion: 1,
+    componentVersion: 1,
+    codeName: "dataWindow",
+    description: null,
+    properties: {},
+    bindings: {
+      unityCatalogTable: {
+        bindingType: "unityCatalogTable",
+        source: {
+          kind: "resource",
+          valueType: "table",
+          resource: {
+            type: "unityCatalogTable",
+            catalog: "main",
+            schema: null,
+            table: null,
+            primaryKeyColumn: null,
+          },
+        },
+      },
+    },
     children: [],
     layout: null,
   };

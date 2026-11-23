@@ -1,12 +1,18 @@
 import type { ProjectComponent } from "../db/project-components-contract.ts";
 import type { ProjectWorkflowDefinition } from "../db/project-workflow-contract.ts";
-import type { WorkspaceAppResource } from "../contracts.ts";
+import type {
+  WorkspaceAppResource,
+  WorkspaceSqlWarehouseAppResource,
+} from "../contracts.ts";
 import { projectUsesLakebase } from "./preview-lakebase-helpers.ts";
 import { getLakebaseDeploymentRequirements } from "./preview-deployment-lakebase-requirements.ts";
 import {
   createSqlWarehouseAppResourceBinding,
   isValidSqlWarehouseId,
 } from "../sql-warehouse-app-resource-binding.ts";
+
+/** Preferred child-App resource key for Unity Catalog SQL (SaaS DefaultResourceKey). */
+export const PREFERRED_SQL_WAREHOUSE_RESOURCE_KEY = "sql-warehouse";
 
 /** User scopes and unsupported actions required by one generated Streamlit app. */
 export interface ProjectDeploymentRequirements {
@@ -30,10 +36,8 @@ export function getProjectDeploymentRequirements(
   );
   blockers.push(...lakebaseRequirements.blockers);
   const usesUnityCatalog =
-    components.some(
-      (component) =>
-        component.bindings !== null &&
-        Object.hasOwn(component.bindings, "unityCatalogTable"),
+    components.some((component) =>
+      hasCompleteUnityCatalogBinding(component),
     ) ||
     workflow.workflows.some((definition) =>
       definition.nodes.some(
@@ -45,10 +49,8 @@ export function getProjectDeploymentRequirements(
       ),
     );
   const requiresDefaultSqlWarehouse =
-    components.some(
-      (component) =>
-        component.bindings !== null &&
-        Object.hasOwn(component.bindings, "unityCatalogTable"),
+    components.some((component) =>
+      hasCompleteUnityCatalogBinding(component),
     ) ||
     workflow.workflows.some((definition) =>
       definition.nodes.some(
@@ -81,19 +83,25 @@ export function getProjectDeploymentRequirements(
     ...chatRequirements.appResources,
   ];
   if (requiresDefaultSqlWarehouse) {
-    if (
-      !defaultSqlWarehouseId ||
-      !isValidSqlWarehouseId(defaultSqlWarehouseId)
+    const childWarehouse = preferSqlWarehouseResource(availableAppResources);
+    if (childWarehouse) {
+      appResources.push(childWarehouse);
+    } else if (
+      defaultSqlWarehouseId &&
+      isValidSqlWarehouseId(defaultSqlWarehouseId)
     ) {
-      blockers.push({
-        code: "default_sql_warehouse_unavailable",
-        detail:
-          "Configure a valid installed-workspace DATABRICKS_SQL_WAREHOUSE_ID for Unity Catalog data access before deploying this child App.",
-      });
-    } else {
       appResources.push(
         createSqlWarehouseAppResourceBinding(defaultSqlWarehouseId).resource,
       );
+    } else {
+      blockers.push({
+        code: "default_sql_warehouse_unavailable",
+        detail:
+          "This app queries Unity Catalog tables and needs a SQL warehouse app resource. " +
+          `Open App Settings → Resources, add a SQL warehouse (resource key '${PREFERRED_SQL_WAREHOUSE_RESOURCE_KEY}' recommended), save, then deploy again. ` +
+          "Grant the app's service principal CAN USE on that warehouse and the required Unity Catalog privileges on bound tables. " +
+          "For a first deploy before a child App exists, configure DATABRICKS_SQL_WAREHOUSE_ID on the installed builder App.",
+      });
     }
   }
 
@@ -102,6 +110,43 @@ export function getProjectDeploymentRequirements(
     appResources,
     blockers,
   };
+}
+
+/**
+ * Prefers the SaaS default resource key `sql-warehouse`, else the first valid
+ * sql_warehouse grant on the child App.
+ */
+export function preferSqlWarehouseResource(
+  availableAppResources: readonly WorkspaceAppResource[] | null,
+): WorkspaceSqlWarehouseAppResource | null {
+  if (!availableAppResources || availableAppResources.length === 0) {
+    return null;
+  }
+  const warehouses = availableAppResources.filter(
+    (resource): resource is WorkspaceSqlWarehouseAppResource =>
+      "sql_warehouse" in resource &&
+      isValidSqlWarehouseId(resource.sql_warehouse.id),
+  );
+  if (warehouses.length === 0) return null;
+  const preferred = warehouses.find(
+    (resource) => resource.name === PREFERRED_SQL_WAREHOUSE_RESOURCE_KEY,
+  );
+  return preferred ?? warehouses[0] ?? null;
+}
+
+/** True when a component binding has catalog, schema, and table set for UC SQL. */
+export function hasCompleteUnityCatalogBinding(
+  component: ProjectComponent,
+): boolean {
+  const binding = component.bindings?.unityCatalogTable;
+  if (!isRecord(binding) || !isRecord(binding.source)) return false;
+  const resource = binding.source.resource;
+  if (!isRecord(resource)) return false;
+  return (
+    isNonEmptyString(resource.catalog) &&
+    isNonEmptyString(resource.schema) &&
+    isNonEmptyString(resource.table)
+  );
 }
 
 /**
@@ -223,4 +268,12 @@ function isUnityCatalogTable(value: unknown): boolean {
     "tableType" in value &&
     value.tableType === "unityCatalogTable"
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
