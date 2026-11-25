@@ -4,10 +4,7 @@ import type {
   ProjectChildAppRecord,
   ProjectDeploymentRecord,
 } from "./db/project-deployment-repository.ts";
-import {
-  containsWorkspaceAppResources,
-  hasExactWorkspaceAppResources,
-} from "./workspace-app-resource-validation.ts";
+import { containsWorkspaceAppResources } from "./workspace-app-resource-validation.ts";
 import type {
   WorkspaceAppDeploymentClient,
   WorkspaceAppDetails,
@@ -77,7 +74,7 @@ export class ProjectDeploymentTargetService {
       existing.appId,
       expectedAppSpaceName,
     );
-    if (!hasExactWorkspaceAppResources(existing.resources, requiredResources)) {
+    if (!containsWorkspaceAppResources(existing.resources, requiredResources)) {
       throw missingChildAppResources();
     }
   }

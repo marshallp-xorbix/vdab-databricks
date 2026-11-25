@@ -97,7 +97,7 @@ describe("ProjectAppResourceGrantsEditor", () => {
   it("shows missing required resources with restore action", async () => {
     const user = userEvent.setup();
     const requiredWarehouse = {
-      name: "vdab-wh-0123456789abcdef",
+      name: "sql-warehouse",
       description: "Required SQL warehouse",
       sql_warehouse: {
         id: "warehouse-123",
@@ -118,7 +118,7 @@ describe("ProjectAppResourceGrantsEditor", () => {
       screen.getByText(/1 required project resource is missing/i),
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add required" }));
-    expect(screen.getByText("vdab-wh-0123456789abcdef")).toBeInTheDocument();
+    expect(screen.getByText("sql-warehouse")).toBeInTheDocument();
     expect(
       screen.queryByText(/required project resource is missing/i),
     ).not.toBeInTheDocument();

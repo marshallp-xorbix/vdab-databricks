@@ -86,7 +86,7 @@ function appendSqlRequestHelpers(lines: string[]): void {
 function appendSqlExecutionHelper(lines: string[]): void {
   lines.push(
     "def _vdab_sql_execute(statement: str, parameters: list[dict[str, str | None]]) -> None:",
-    "    warehouse_id = os.environ.get('DATABRICKS_SQL_WAREHOUSE_ID', '')",
+    "    warehouse_id = os.environ.get('DATABRICKS_WAREHOUSE_ID') or os.environ.get('DATABRICKS_SQL_WAREHOUSE_ID', '')",
     "    if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', warehouse_id):",
     "        raise RuntimeError('Bind an existing SQL warehouse to this app before saving table changes.')",
     "    response_body, _response_bytes = _vdab_sql_request('POST', '/api/2.0/sql/statements', {",
@@ -235,7 +235,7 @@ function appendDataWindowQuerySetup(lines: string[]): void {
     "        return _vdab_lakebase_query_df(schema, table, max_rows, query_statement, database, endpoint, resource_environment_variable)",
     "    if source_kind != 'unityCatalogTable':",
     "        raise RuntimeError('The selected database source is not supported by this generated app.')",
-    "    warehouse_id = warehouse_id_override or os.environ.get('DATABRICKS_SQL_WAREHOUSE_ID', '')",
+    "    warehouse_id = warehouse_id_override or os.environ.get('DATABRICKS_WAREHOUSE_ID') or os.environ.get('DATABRICKS_SQL_WAREHOUSE_ID', '')",
     "    if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', warehouse_id):",
     "        raise RuntimeError('Bind an existing SQL warehouse to this app before loading this table.')",
     "    if not isinstance(max_rows, int) or max_rows < 0 or max_rows > _VDAB_SQL_MAX_RESULT_ROWS:",

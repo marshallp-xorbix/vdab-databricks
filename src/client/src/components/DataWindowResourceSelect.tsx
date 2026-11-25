@@ -25,11 +25,11 @@ export default function DataWindowResourceSelect({
   onChange,
 }: Readonly<IDataWindowResourceSelectProps>) {
   return (
-    <div className="grid gap-2">
+    <div className="grid min-w-0 gap-2">
       <Label htmlFor={id}>{label}</Label>
       <select
         id={id}
-        className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+        className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}

@@ -6,6 +6,7 @@ import type {
   WorkspaceAppResource,
 } from "../contracts.ts";
 import { MAX_CHILD_APP_SECRET_IDENTIFIER_LENGTH } from "../contracts.ts";
+import { ApplicationError } from "../application-error.ts";
 import type {
   ProjectChildAppRecord,
   ProjectDeploymentRecord,
@@ -89,8 +90,7 @@ export function toDeploymentRecord(
   linkedSourcePath: string | null,
 ): ProjectDeploymentRecord {
   const childAppMode = mode ?? linkMode;
-  if (!childAppMode)
-    throw new Error("Deployment history has no child-App link mode.");
+  if (!childAppMode) throw invalidDeploymentSnapshot();
   return {
     id: row.id,
     projectId: row.project_id,
@@ -140,8 +140,7 @@ export function readDeploymentSourceFiles(
   value: unknown,
 ): ProjectDeploymentSourceFile[] {
   const parsed = typeof value === "string" ? parseJson(value) : value;
-  if (!Array.isArray(parsed))
-    throw new Error("Deployment source snapshot is invalid.");
+  if (!Array.isArray(parsed)) throw invalidDeploymentSnapshot();
   return parsed.map((file) => {
     if (
       typeof file !== "object" ||
@@ -150,7 +149,7 @@ export function readDeploymentSourceFiles(
       typeof file.path !== "string" ||
       typeof file.content !== "string"
     ) {
-      throw new Error("Deployment source snapshot is invalid.");
+      throw invalidDeploymentSnapshot();
     }
     return { path: file.path, content: file.content };
   });
@@ -160,7 +159,7 @@ function parseJson(value: string): unknown {
   try {
     return JSON.parse(value) as unknown;
   } catch {
-    throw new Error("Deployment source snapshot is invalid.");
+    throw invalidDeploymentSnapshot();
   }
 }
 
@@ -170,7 +169,7 @@ export function readDeploymentScopeArray(value: unknown): string[] {
     !Array.isArray(parsed) ||
     parsed.some((scope) => typeof scope !== "string")
   ) {
-    throw new Error("Deployment authorization scope snapshot is invalid.");
+    throw invalidDeploymentSnapshot();
   }
   return parsed as string[];
 }
@@ -181,14 +180,14 @@ export function readDeploymentAppResourceArray(
 ): WorkspaceAppResource[] {
   const parsed = typeof value === "string" ? parseJson(value) : value;
   if (!Array.isArray(parsed) || parsed.length > 100) {
-    throw new Error("Deployment App resource snapshot is invalid.");
+    throw invalidDeploymentSnapshot();
   }
   const resources = parsed.map(readDeploymentAppResource);
   if (
     new Set(resources.map((resource) => resource.name)).size !==
     resources.length
   ) {
-    throw new Error("Deployment App resource snapshot is invalid.");
+    throw invalidDeploymentSnapshot();
   }
   return resources;
 }
@@ -197,27 +196,36 @@ function readDeploymentAppResource(value: unknown): WorkspaceAppResource {
   if (
     !isRecord(value) ||
     typeof value.name !== "string" ||
-    !/^[a-z][a-z0-9-]{0,29}$/.test(value.name) ||
+    !/^[a-z][a-z0-9-]{0,28}[a-z0-9]$/.test(value.name) ||
     typeof value.description !== "string" ||
     value.description.length > 50
   ) {
-    throw new Error("Deployment App resource snapshot is invalid.");
+    throw invalidDeploymentSnapshot();
   }
   if (
     isRecord(value.postgres) &&
     exactKeys(value, ["name", "description", "postgres"]) &&
     /^vdab-pg-[a-f0-9]{16}$/.test(value.name) &&
-    exactKeys(value.postgres, ["database", "permission"]) &&
+    hasPostgresKeys(value.postgres) &&
     typeof value.postgres.database === "string" &&
     /^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}\/databases\/[A-Za-z0-9_-]{1,128}$/.test(
       value.postgres.database,
     ) &&
-    value.postgres.permission === "CAN_CONNECT_AND_CREATE"
+    value.postgres.permission === "CAN_CONNECT_AND_CREATE" &&
+    (value.postgres.branch === undefined ||
+      (typeof value.postgres.branch === "string" &&
+        /^projects\/[A-Za-z0-9_-]{1,128}\/branches\/[A-Za-z0-9_-]{1,128}$/.test(
+          value.postgres.branch,
+        ) &&
+        value.postgres.database.startsWith(`${value.postgres.branch}/databases/`)))
   ) {
     return {
       name: value.name,
       description: value.description,
       postgres: {
+        ...(typeof value.postgres.branch === "string"
+          ? { branch: value.postgres.branch }
+          : {}),
         database: value.postgres.database,
         permission: "CAN_CONNECT_AND_CREATE",
       },
@@ -226,18 +234,19 @@ function readDeploymentAppResource(value: unknown): WorkspaceAppResource {
   if (
     isRecord(value.sql_warehouse) &&
     exactKeys(value, ["name", "description", "sql_warehouse"]) &&
-    /^vdab-wh-[a-f0-9]{16}$/.test(value.name) &&
     exactKeys(value.sql_warehouse, ["id", "permission"]) &&
     typeof value.sql_warehouse.id === "string" &&
     /^[A-Za-z0-9_-]{1,128}$/.test(value.sql_warehouse.id) &&
-    value.sql_warehouse.permission === "CAN_USE"
+    (value.sql_warehouse.permission === "CAN_USE" ||
+      value.sql_warehouse.permission === "CAN_MANAGE" ||
+      value.sql_warehouse.permission === "IS_OWNER")
   ) {
     return {
       name: value.name,
       description: value.description,
       sql_warehouse: {
         id: value.sql_warehouse.id,
-        permission: "CAN_USE",
+        permission: value.sql_warehouse.permission,
       },
     };
   }
@@ -249,7 +258,9 @@ function readDeploymentAppResource(value: unknown): WorkspaceAppResource {
     isBoundedSecretIdentifier(value.secret.scope) &&
     typeof value.secret.key === "string" &&
     isBoundedSecretIdentifier(value.secret.key) &&
-    value.secret.permission === "READ"
+    (value.secret.permission === "READ" ||
+      value.secret.permission === "WRITE" ||
+      value.secret.permission === "MANAGE")
   ) {
     return {
       name: value.name,
@@ -257,7 +268,7 @@ function readDeploymentAppResource(value: unknown): WorkspaceAppResource {
       secret: {
         scope: value.secret.scope,
         key: value.secret.key,
-        permission: "READ",
+        permission: value.secret.permission,
       },
     };
   }
@@ -328,7 +339,91 @@ function readDeploymentAppResource(value: unknown): WorkspaceAppResource {
       },
     };
   }
-  throw new Error("Deployment App resource snapshot is invalid.");
+  if (
+    isRecord(value.job) &&
+    exactKeys(value, ["name", "description", "job"]) &&
+    exactKeys(value.job, ["id", "permission"]) &&
+    typeof value.job.id === "string" &&
+    /^[A-Za-z0-9_-]{1,128}$/.test(value.job.id) &&
+    (value.job.permission === "CAN_VIEW" ||
+      value.job.permission === "CAN_MANAGE_RUN" ||
+      value.job.permission === "CAN_MANAGE" ||
+      value.job.permission === "IS_OWNER")
+  ) {
+    return {
+      name: value.name,
+      description: value.description,
+      job: { id: value.job.id, permission: value.job.permission },
+    };
+  }
+  if (
+    isRecord(value.experiment) &&
+    exactKeys(value, ["name", "description", "experiment"]) &&
+    exactKeys(value.experiment, ["experiment_id", "permission"]) &&
+    typeof value.experiment.experiment_id === "string" &&
+    /^[A-Za-z0-9_-]{1,128}$/.test(value.experiment.experiment_id) &&
+    (value.experiment.permission === "CAN_READ" ||
+      value.experiment.permission === "CAN_EDIT" ||
+      value.experiment.permission === "CAN_MANAGE")
+  ) {
+    return {
+      name: value.name,
+      description: value.description,
+      experiment: {
+        experiment_id: value.experiment.experiment_id,
+        permission: value.experiment.permission,
+      },
+    };
+  }
+  if (
+    isRecord(value.uc_securable) &&
+    exactKeys(value, ["name", "description", "uc_securable"]) &&
+    exactKeys(value.uc_securable, [
+      "securable_full_name",
+      "securable_type",
+      "permission",
+    ]) &&
+    typeof value.uc_securable.securable_full_name === "string" &&
+    isBoundedResourceLabel(value.uc_securable.securable_full_name) &&
+    (value.uc_securable.securable_type === "VOLUME" ||
+      value.uc_securable.securable_type === "TABLE" ||
+      value.uc_securable.securable_type === "FUNCTION" ||
+      value.uc_securable.securable_type === "CONNECTION" ||
+      value.uc_securable.securable_type === "MODEL_SERVICE") &&
+    (value.uc_securable.permission === "READ_VOLUME" ||
+      value.uc_securable.permission === "WRITE_VOLUME" ||
+      value.uc_securable.permission === "SELECT" ||
+      value.uc_securable.permission === "EXECUTE" ||
+      value.uc_securable.permission === "USE_CONNECTION" ||
+      value.uc_securable.permission === "MODIFY")
+  ) {
+    return {
+      name: value.name,
+      description: value.description,
+      uc_securable: {
+        securable_full_name: value.uc_securable.securable_full_name,
+        securable_type: value.uc_securable.securable_type,
+        permission: value.uc_securable.permission,
+      },
+    };
+  }
+  throw invalidDeploymentSnapshot();
+}
+
+function hasPostgresKeys(value: Record<string, unknown>): boolean {
+  return (
+    exactKeys(value, ["database", "permission"]) ||
+    exactKeys(value, ["branch", "database", "permission"])
+  );
+}
+
+function invalidDeploymentSnapshot(): ApplicationError {
+  return new ApplicationError(
+    500,
+    "invalid_deployment_snapshot",
+    "Deployment snapshot is invalid",
+    "A saved deployment snapshot could not be read. Retry the failed deployment or contact support if the problem continues.",
+  );
 }
 
 function isBoundedResourceLabel(value: string): boolean {

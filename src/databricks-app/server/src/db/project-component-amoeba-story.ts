@@ -1,6 +1,10 @@
 import type { ProjectJsonObject } from "./project-components-contract.ts";
 import { hasUnexpectedProperties, isRecord } from "./project-component-json.ts";
 import { invalidComponents } from "./project-component-validation-errors.ts";
+import {
+  classifyChartColumnType,
+  readChartBinding,
+} from "../generation/preview-chart-bindings.ts";
 
 const PROPERTY_NAMES = [
   "title", "entityId", "entityLabel", "category", "sizeMetric", "xMetric",
@@ -20,7 +24,7 @@ const PULSE_MODES = new Set(["risk_score", "none"]);
 const PULSE_THRESHOLD_MODES = new Set(["above", "below"]);
 const LABEL_MODES = new Set(["none", "compact", "full"]);
 
-type ChartErrorFactory = () => Error;
+type ChartErrorFactory = (detail?: string) => Error;
 
 /** Validated field mapping used by AmoebaStory SQL and canvas configuration. */
 export interface AmoebaStoryAxis {
@@ -112,11 +116,10 @@ export function validateAmoebaStoryBindings(
   properties: ProjectJsonObject,
   errorFactory: ChartErrorFactory = invalidComponents,
 ): void {
-  const resource = readUnityCatalogResource(bindings);
-  if (resource === null || !Array.isArray(resource.columns) || resource.columns.length === 0) {
+  const binding = readChartBinding(bindings, errorFactory);
+  if (binding.kind !== "unityCatalogTable" || binding.columns.length === 0) {
     return;
   }
-  const columns = readColumns(resource.columns, errorFactory);
   const story = readAmoebaStoryProperties(properties, errorFactory);
   const dimensions = [story.entityId, story.entityLabel, story.category, story.timeField];
   const measures: AmoebaStoryAxis[] = [
@@ -124,10 +127,10 @@ export function validateAmoebaStoryBindings(
     story.healthScore, story.riskScore,
   ];
   for (const axis of dimensions) {
-    validateMappedColumn(axis, columns, false, errorFactory);
+    validateMappedColumn(axis, binding.columns, false, errorFactory);
   }
   for (const axis of measures) {
-    validateMappedColumn(axis, columns, true, errorFactory);
+    validateMappedColumn(axis, binding.columns, true, errorFactory);
   }
 }
 
@@ -174,7 +177,7 @@ function validateMappedColumn(
     return;
   }
   const transform = axis.transform === "none" ? "sum" : axis.transform;
-  const type = classifyAmoebaColumnType(column.type);
+  const type = classifyChartColumnType(column.type);
   const allowed = type === "numeric"
     ? MEASURE_TRANSFORMS
     : type === "temporal"
@@ -183,55 +186,6 @@ function validateMappedColumn(
   if (type !== "unknown" && !allowed.has(transform)) {
     throw errorFactory();
   }
-}
-
-function classifyAmoebaColumnType(type: string | null): "numeric" | "temporal" | "categorical" | "unknown" {
-  const normalized = (type ?? "").trim().toUpperCase();
-  if (/^(TINYINT|SMALLINT|INT|INTEGER|BIGINT|LONG|FLOAT|DOUBLE|DECIMAL|NUMERIC)(\b|\s*\()/.test(normalized)) {
-    return "numeric";
-  }
-  if (/^(DATE|TIMESTAMP|TIMESTAMP_NTZ|TIME)(\b|\s*\()/.test(normalized)) {
-    return "temporal";
-  }
-  if (/^(STRING|CHAR|VARCHAR|BOOLEAN|BOOL)(\b|\s*\()/.test(normalized)) {
-    return "categorical";
-  }
-  return "unknown";
-}
-
-function readColumns(
-  value: unknown[],
-  errorFactory: ChartErrorFactory,
-): Array<{ name: string; type: string | null }> {
-  const columns = value.map((column) => {
-    if (
-      !isRecord(column) ||
-      hasUnexpectedProperties(column, ["name", "type", "dataType", "nullable"]) ||
-      (column.nullable !== undefined && typeof column.nullable !== "boolean")
-    ) {
-      throw errorFactory();
-    }
-    const name = readText(column.name, "", 255, errorFactory);
-    const typeValue = column.type ?? column.dataType ?? null;
-    if (typeValue !== null && (typeof typeValue !== "string" || typeValue.length > 255)) {
-      throw errorFactory();
-    }
-    return { name, type: typeValue as string | null };
-  });
-  if (columns.some((column) => column.name === "") ||
-      new Set(columns.map((column) => column.name)).size !== columns.length) {
-    throw errorFactory();
-  }
-  return columns;
-}
-
-function readUnityCatalogResource(
-  bindings: ProjectJsonObject | null,
-): Record<string, unknown> | null {
-  const binding = bindings?.unityCatalogTable;
-  const source = isRecord(binding) ? binding.source : null;
-  const resource = isRecord(source) ? source.resource : null;
-  return isRecord(resource) ? resource : null;
 }
 
 function readText(

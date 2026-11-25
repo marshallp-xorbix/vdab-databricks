@@ -148,7 +148,10 @@ test("ProjectPreviewGenerator_EmitsWorkflowRuntimeCallbacksActionsAndModuleFiles
   assert.match(source, /_vdab_sql_parameter\(parameter_name, value\)/);
   assert.match(source, /warehouse_id_override=source_output\.get\('sqlWarehouseId'\)/);
   assert.match(source, /sqlWarehouseId': params\.get\('sqlWarehouseId'\)/);
-  assert.match(source, /warehouse_id_override or os\.environ\.get\('DATABRICKS_SQL_WAREHOUSE_ID'/);
+  assert.match(
+    source,
+    /warehouse_id_override or os\.environ\.get\('DATABRICKS_WAREHOUSE_ID'\) or os\.environ\.get\('DATABRICKS_SQL_WAREHOUSE_ID'/,
+  );
   assert.match(source, /binding_overrides\[str\(target_code_name\) \+ ':' \+ str\(target\.get\('bindingType'\)\)\]/);
   assert.match(source, /'ordersGrid:unityCatalogTable'/);
   assert.match(source, /_vdab_binding_override_to_dataframe\(_vdab_binding_override_[A-Za-z0-9_]+\)/);

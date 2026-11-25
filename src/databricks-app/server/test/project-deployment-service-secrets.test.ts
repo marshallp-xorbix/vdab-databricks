@@ -81,7 +81,7 @@ test("ProjectDeploymentService_LinkExistingRequiresSelectedExactSecretResource",
   );
 });
 
-test("ProjectDeploymentService_LinkExistingRejectsUnselectedSecretBeforeSnapshot", async () => {
+test("ProjectDeploymentService_LinkExistingAllowsUnselectedSecretWhenNoneRequired", async () => {
   const secret = createWorkspaceSecretAppResource(
     "api-key",
     "service-scope",
@@ -93,18 +93,15 @@ test("ProjectDeploymentService_LinkExistingRejectsUnselectedSecretBeforeSnapshot
     makeApp({ name: "existing-child", resources: [secret] }),
   );
 
-  await assert.rejects(
-    harness.service.deploy(CALLER, "request-1", PROJECT_ID, {
-      mode: "linkExisting",
-      appName: "existing-child",
-      confirmOverwrite: true,
-    }),
-    (error: unknown) =>
-      error instanceof ApplicationError &&
-      error.code === "child_app_resources_missing",
-  );
-  assert.equal(harness.repository.records.length, 0);
-  assert.equal(harness.workspace.uploads.length, 0);
+  const result = await harness.service.deploy(CALLER, "request-1", PROJECT_ID, {
+    mode: "linkExisting",
+    appName: "existing-child",
+    confirmOverwrite: true,
+  });
+
+  assert.equal(result.status, "succeeded");
+  assert.deepEqual(harness.repository.records[0]?.requiredAppResources, []);
+  assert.equal(harness.workspace.uploads.length, 1);
 });
 
 test("ProjectDeploymentService_TargetReturnsOnlySecretIdentifiersAndPermission", async () => {

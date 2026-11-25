@@ -149,7 +149,7 @@ describe("project deployment API", () => {
               },
             },
             {
-              name: "vdab-wh-0123456789abcdef",
+              name: "sql-warehouse",
               description: "VDAB default SQL warehouse",
               sql_warehouse: { id: "warehouse-123", permission: "CAN_USE" },
             },
@@ -164,7 +164,7 @@ describe("project deployment API", () => {
     expect(readiness.appResources.map((resource) => resource.name)).toEqual([
       "vdab-pg-0123456789abcdef",
       "vdab-db-fedcba9876543210",
-      "vdab-wh-0123456789abcdef",
+      "sql-warehouse",
     ]);
   });
 

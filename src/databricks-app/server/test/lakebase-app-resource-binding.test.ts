@@ -54,8 +54,8 @@ test("LakebaseAppResourceBinding_UsesStableDistinctKeysAndVariables", () => {
     lakebaseResourceEnvironmentVariable(provisioned.resource),
     provisioned.environmentVariable,
   );
-  assert.match(warehouse.resource.name, /^vdab-wh-[a-f0-9]{16}$/);
-  assert.equal(warehouse.environmentVariable, "DATABRICKS_SQL_WAREHOUSE_ID");
+  assert.equal(warehouse.resource.name, "sql-warehouse");
+  assert.equal(warehouse.environmentVariable, "DATABRICKS_WAREHOUSE_ID");
 });
 
 test("GeneratedAppManifest_ReferencesEveryLakebaseResourceByItsValueFromKey", () => {
@@ -72,17 +72,18 @@ test("GeneratedAppManifest_ReferencesEveryLakebaseResourceByItsValueFromKey", ()
   );
 
   assert.equal(files[0]?.path, "app.yaml");
+  // Manifest env entries are sorted by resource name (sql-warehouse before vdab-*).
   assert.equal(
     files[0]?.content,
     [
       "command: ['streamlit', 'run', 'app.py']",
       "env:",
+      `  - name: ${warehouse.environmentVariable}`,
+      `    valueFrom: ${warehouse.resource.name}`,
       `  - name: ${provisioned.environmentVariable}`,
       `    valueFrom: ${provisioned.resource.name}`,
       `  - name: ${autoscaling.environmentVariable}`,
       `    valueFrom: ${autoscaling.resource.name}`,
-      `  - name: ${warehouse.environmentVariable}`,
-      `    valueFrom: ${warehouse.resource.name}`,
       "",
     ].join("\n"),
   );

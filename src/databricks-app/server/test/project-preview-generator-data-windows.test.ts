@@ -41,7 +41,7 @@ test("ProjectPreviewGenerator_DataWindowUsesViewerAuthorizedSqlAndRendersTableOp
     createDocument([createDataWindow()]),
   ).files[0]?.content ?? "";
 
-  assert.match(source, /DATABRICKS_SQL_WAREHOUSE_ID/);
+  assert.match(source, /DATABRICKS_WAREHOUSE_ID/);
   assert.match(source, /x-forwarded-access-token/);
   assert.match(source, /headers=\{'Authorization': f'Bearer \{user_token\}'/);
   assert.match(source, /'warehouse_id': warehouse_id/);

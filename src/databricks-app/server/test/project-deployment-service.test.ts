@@ -191,7 +191,7 @@ test("ProjectDeploymentService_LinkExistingRequiresMatchingLakebaseResourceBefor
   assert.equal(harness.workspace.uploads.length, 0);
 });
 
-test("ProjectDeploymentService_LinkExistingRejectsExtraManagedResourcesBeforeSnapshot", async () => {
+test("ProjectDeploymentService_LinkExistingAllowsExtraManagedResourcesWhenRequiredPresent", async () => {
   const warehouse =
     createSqlWarehouseAppResourceBinding("warehouse-123").resource;
   const harness = createHarness({
@@ -210,18 +210,17 @@ test("ProjectDeploymentService_LinkExistingRejectsExtraManagedResourcesBeforeSna
     }),
   );
 
-  await assert.rejects(
-    harness.service.deploy(CALLER, "request-1", PROJECT_ID, {
-      mode: "linkExisting",
-      appName: "existing-child",
-      confirmOverwrite: true,
-    }),
-    (error: unknown) =>
-      error instanceof ApplicationError &&
-      error.code === "child_app_resources_missing",
-  );
-  assert.equal(harness.repository.records.length, 0);
-  assert.equal(harness.workspace.uploads.length, 0);
+  const result = await harness.service.deploy(CALLER, "request-1", PROJECT_ID, {
+    mode: "linkExisting",
+    appName: "existing-child",
+    confirmOverwrite: true,
+  });
+
+  assert.equal(result.status, "succeeded");
+  assert.deepEqual(harness.repository.records[0]?.requiredAppResources, [
+    ...LAKEBASE_APP_RESOURCES,
+  ]);
+  assert.equal(harness.workspace.uploads.length, 1);
 });
 
 test("ProjectDeploymentService_CreateNewBindsInstalledDefaultSqlWarehouse", async () => {
@@ -249,7 +248,7 @@ test("ProjectDeploymentService_CreateNewBindsInstalledDefaultSqlWarehouse", asyn
   );
   assert.ok(
     harness.workspace.uploads[0]?.files[0]?.content.includes(
-      "name: DATABRICKS_SQL_WAREHOUSE_ID",
+      "name: DATABRICKS_WAREHOUSE_ID",
     ),
   );
   assert.deepEqual(harness.repository.records[0]?.requiredAppResources, [

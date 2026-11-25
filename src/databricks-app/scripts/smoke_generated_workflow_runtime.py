@@ -93,7 +93,7 @@ def _mock_http(
         name: os.environ.get(name)
         for name in (
             "DATABRICKS_HOST",
-            "DATABRICKS_SQL_WAREHOUSE_ID",
+            "DATABRICKS_WAREHOUSE_ID",
             "DATABRICKS_WORKSPACE_ID",
             "PGHOST",
             "PGPORT",
@@ -108,7 +108,7 @@ def _mock_http(
     urllib.request.urlopen = http.urlopen
     urllib.request.build_opener = http.build_opener
     os.environ["DATABRICKS_HOST"] = WORKSPACE_HOST
-    os.environ["DATABRICKS_SQL_WAREHOUSE_ID"] = WAREHOUSE_ID
+    os.environ["DATABRICKS_WAREHOUSE_ID"] = WAREHOUSE_ID
     os.environ["DATABRICKS_WORKSPACE_ID"] = WORKSPACE_ID
     os.environ["PGHOST"] = "lakebase.local.test"
     os.environ["PGPORT"] = "5432"

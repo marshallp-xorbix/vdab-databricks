@@ -149,7 +149,11 @@ function hasDuplicateColumnNames(columns: Array<Record<string, unknown>>): boole
       (typeof column.type !== "string" || column.type.length > 255)) ||
     (column.dataType !== undefined && column.dataType !== null &&
       (typeof column.dataType !== "string" || column.dataType.length > 255)) ||
-    Object.keys(column).some((key) => !["name", "type", "dataType"].includes(key)),
+    (column.nullable !== undefined && typeof column.nullable !== "boolean") ||
+    (column.comment !== undefined && column.comment !== null &&
+      (typeof column.comment !== "string" || column.comment.length > 2000)) ||
+    Object.keys(column).some((key) =>
+      !["name", "type", "dataType", "nullable", "comment"].includes(key)),
   );
 }
 

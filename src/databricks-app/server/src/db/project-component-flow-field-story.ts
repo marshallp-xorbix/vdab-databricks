@@ -1,6 +1,10 @@
 import type { ProjectJsonObject } from "./project-components-contract.ts";
 import { hasUnexpectedProperties, isRecord } from "./project-component-json.ts";
 import { invalidComponents } from "./project-component-validation-errors.ts";
+import {
+  classifyChartColumnType,
+  readChartBinding,
+} from "../generation/preview-chart-bindings.ts";
 
 const PROPERTY_NAMES = [
   "title", "sourceStage", "destinationStage", "flowVolume", "stageOrder", "timeField",
@@ -47,7 +51,7 @@ export interface FlowFieldStoryProperties {
   showLabels: boolean;
 }
 
-type ErrorFactory = () => Error;
+type ErrorFactory = (detail?: string) => Error;
 
 /** Validates FlowFieldStory settings at the component save and import boundary. */
 export function validateFlowFieldStoryProperties(properties: ProjectJsonObject): void {
@@ -83,33 +87,26 @@ export function readFlowFieldStoryProperties(
   };
 }
 
-/** Validates mapped columns against selected Unity Catalog metadata when present. */
+/** Validates mapped columns against metadata returned by the selected table. */
 export function validateFlowFieldStoryBindings(
   bindings: ProjectJsonObject | null,
   properties: ProjectJsonObject,
   errorFactory: ErrorFactory = invalidComponents,
 ): void {
-  const resource = readUnityCatalogResource(bindings);
-  if (resource === null || resource.columns === undefined || resource.columns === null) {
+  const binding = readChartBinding(bindings, errorFactory);
+  if (binding.kind !== "unityCatalogTable" || binding.columns.length === 0) {
     return;
-  }
-  if (!Array.isArray(resource.columns)) {
-    throw errorFactory();
   }
 
-  const columns = readColumns(resource.columns, errorFactory);
-  if (columns.length === 0) {
-    return;
-  }
   const story = readFlowFieldStoryProperties(properties, errorFactory);
   for (const axisName of ["sourceStage", "destinationStage", "timeField", "status"] as const) {
-    requireMappedColumn(story[axisName], columns, null, errorFactory);
+    requireMappedColumn(story[axisName], binding.columns, null, errorFactory);
   }
-  requireMappedColumn(story.flowVolume, columns, "sum", errorFactory);
-  requireMappedColumn(story.stageOrder, columns, "max", errorFactory);
-  requireMappedColumn(story.conversionPct, columns, "avg", errorFactory);
-  requireMappedColumn(story.dropOffCount, columns, "sum", errorFactory);
-  requireMappedColumn(story.avgTimeInStage, columns, "avg", errorFactory);
+  requireMappedColumn(story.flowVolume, binding.columns, "sum", errorFactory);
+  requireMappedColumn(story.stageOrder, binding.columns, "max", errorFactory);
+  requireMappedColumn(story.conversionPct, binding.columns, "avg", errorFactory);
+  requireMappedColumn(story.dropOffCount, binding.columns, "sum", errorFactory);
+  requireMappedColumn(story.avgTimeInStage, binding.columns, "avg", errorFactory);
 }
 
 function readAxis(
@@ -158,7 +155,7 @@ function requireMappedColumn(
   }
 
   const transform = axis.transform === "none" ? noneFallback : axis.transform;
-  const category = classifyColumnType(column.type);
+  const category = classifyChartColumnType(column.type);
   const allowed = category === "numeric"
     ? MEASURE_TRANSFORMS
     : category === "temporal"
@@ -169,53 +166,6 @@ function requireMappedColumn(
   if (allowed !== null && !allowed.has(transform)) {
     throw errorFactory();
   }
-}
-
-function classifyColumnType(type: string | null): "numeric" | "temporal" | "categorical" | "unknown" {
-  const normalized = (type ?? "").trim().toUpperCase();
-  if (/^(TINYINT|SMALLINT|INT|INTEGER|BIGINT|LONG|FLOAT|DOUBLE|DECIMAL|NUMERIC)(\b|\s*\()/.test(normalized)) {
-    return "numeric";
-  }
-  if (/^(DATE|TIMESTAMP|TIMESTAMP_NTZ|TIME)(\b|\s*\()/.test(normalized)) {
-    return "temporal";
-  }
-  if (/^(STRING|CHAR|VARCHAR|BOOLEAN|BOOL)(\b|\s*\()/.test(normalized)) {
-    return "categorical";
-  }
-  return "unknown";
-}
-
-function readColumns(
-  value: unknown[],
-  errorFactory: ErrorFactory,
-): Array<{ name: string; type: string | null }> {
-  const columns = value.map((column) => {
-    if (
-      !isRecord(column) || hasUnexpectedProperties(column, ["name", "type", "dataType"]) ||
-      typeof column.name !== "string" || column.name.length < 1 || column.name.length > 255 ||
-      column.name.trim() !== column.name || /[\u0000-\u001f\u007f]/.test(column.name) ||
-      (column.type !== undefined && column.type !== null && typeof column.type !== "string") ||
-      (column.dataType !== undefined && column.dataType !== null && typeof column.dataType !== "string")
-    ) {
-      throw errorFactory();
-    }
-    const typeValue = column.type ?? column.dataType ?? null;
-    if (typeof typeValue === "string" && typeValue.length > 255) {
-      throw errorFactory();
-    }
-    return { name: column.name, type: typeValue as string | null };
-  });
-  if (new Set(columns.map((column) => column.name)).size !== columns.length) {
-    throw errorFactory();
-  }
-  return columns;
-}
-
-function readUnityCatalogResource(bindings: ProjectJsonObject | null): Record<string, unknown> | null {
-  const binding = bindings?.unityCatalogTable;
-  const source = isRecord(binding) ? binding.source : null;
-  const resource = isRecord(source) ? source.resource : null;
-  return isRecord(resource) ? resource : null;
 }
 
 function readText(

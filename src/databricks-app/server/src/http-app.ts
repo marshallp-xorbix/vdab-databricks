@@ -178,6 +178,19 @@ async function handleRequest(
     );
   } catch (error) {
     const applicationError = toApplicationError(error);
+    if (!(error instanceof ApplicationError)) {
+      const detail =
+        error instanceof Error ? error.message : "unknown non-application error";
+      process.stdout.write(
+        `${JSON.stringify({
+          event: "request.unexpected_error",
+          requestId,
+          method,
+          path: requestPath,
+          detail,
+        })}\n`,
+      );
+    }
     if (response.headersSent) {
       if (!response.destroyed && !response.writableEnded) {
         writeSseError(response, applicationError);

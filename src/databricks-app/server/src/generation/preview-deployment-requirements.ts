@@ -8,11 +8,13 @@ import { projectUsesLakebase } from "./preview-lakebase-helpers.ts";
 import { getLakebaseDeploymentRequirements } from "./preview-deployment-lakebase-requirements.ts";
 import {
   createSqlWarehouseAppResourceBinding,
+  DEFAULT_SQL_WAREHOUSE_RESOURCE_KEY,
   isValidSqlWarehouseId,
 } from "../sql-warehouse-app-resource-binding.ts";
 
 /** Preferred child-App resource key for Unity Catalog SQL (SaaS DefaultResourceKey). */
-export const PREFERRED_SQL_WAREHOUSE_RESOURCE_KEY = "sql-warehouse";
+export const PREFERRED_SQL_WAREHOUSE_RESOURCE_KEY =
+  DEFAULT_SQL_WAREHOUSE_RESOURCE_KEY;
 
 /** User scopes and unsupported actions required by one generated Streamlit app. */
 export interface ProjectDeploymentRequirements {
@@ -58,8 +60,7 @@ export function getProjectDeploymentRequirements(
           (node.actionType === "saveToTable" &&
             isUnityCatalogTable(node.params.targetTable)) ||
           (node.actionType === "buildSql" &&
-            node.params.sqlSourceKind === "unityCatalogTable" &&
-            typeof node.params.sqlWarehouseId !== "string"),
+            node.params.sqlSourceKind === "unityCatalogTable"),
       ),
     );
 

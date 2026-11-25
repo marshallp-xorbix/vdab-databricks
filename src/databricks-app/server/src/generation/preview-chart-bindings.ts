@@ -237,12 +237,14 @@ function readColumns(value: unknown, invalidChart: ChartErrorFactory): ChartColu
   const columns = value.map((column): ChartColumn => {
     if (
       !isRecord(column) ||
-      hasUnexpectedProperties(column, ["name", "type", "dataType", "nullable"]) ||
+      hasUnexpectedProperties(column, ["name", "type", "dataType", "nullable", "comment"]) ||
       typeof column.name !== "string" || column.name.length < 1 || column.name.length > 255 ||
       column.name.trim() !== column.name || /[\u0000-\u001f\u007f]/.test(column.name) ||
       (column.type !== undefined && column.type !== null && typeof column.type !== "string") ||
       (column.dataType !== undefined && column.dataType !== null && typeof column.dataType !== "string") ||
-      (column.nullable !== undefined && typeof column.nullable !== "boolean")
+      (column.nullable !== undefined && typeof column.nullable !== "boolean") ||
+      (column.comment !== undefined && column.comment !== null &&
+        (typeof column.comment !== "string" || column.comment.length > 2000))
     ) {
       throw invalidChart("Chart column metadata is invalid.");
     }

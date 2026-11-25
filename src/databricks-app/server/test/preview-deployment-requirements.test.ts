@@ -211,7 +211,7 @@ test("ProjectDeploymentRequirements_FallsBackToBuilderEnvWhenChildHasNoWarehouse
   assert.deepEqual(requirements.blockers, []);
 });
 
-test("ProjectDeploymentRequirements_UsesExplicitBuildSqlWarehouseWithoutDefaultResource", () => {
+test("ProjectDeploymentRequirements_ExplicitBuildSqlWarehouseStillRequiresDefaultResource", () => {
   const workflow = createWorkflow({
     sqlSourceKind: "unityCatalogTable",
     sqlTemplate: "SELECT 1",
@@ -220,11 +220,20 @@ test("ProjectDeploymentRequirements_UsesExplicitBuildSqlWarehouseWithoutDefaultR
     sqlWarehouseName: "Analytics",
   });
 
-  const requirements = getProjectDeploymentRequirements([], workflow);
+  const missing = getProjectDeploymentRequirements([], workflow);
+  const withDefault = getProjectDeploymentRequirements(
+    [],
+    workflow,
+    "warehouse-123",
+  );
 
-  assert.deepEqual(requirements.userApiScopes, ["sql"]);
-  assert.deepEqual(requirements.appResources, []);
-  assert.deepEqual(requirements.blockers, []);
+  assert.deepEqual(missing.userApiScopes, ["sql"]);
+  assert.deepEqual(missing.appResources, []);
+  assert.equal(missing.blockers[0]?.code, "default_sql_warehouse_unavailable");
+  assert.deepEqual(withDefault.appResources, [
+    createSqlWarehouseAppResourceBinding("warehouse-123").resource,
+  ]);
+  assert.deepEqual(withDefault.blockers, []);
 });
 
 test("ProjectDeploymentRequirements_RequiresViewerFilesScopeForFileUpload", () => {
@@ -350,6 +359,47 @@ test("DeploymentAppResourceSnapshot_RoundTripsGenieAndServingResources", async (
       serving_endpoint: {
         name: "claims-endpoint",
         permission: "CAN_QUERY" as const,
+      },
+    },
+  ];
+  assert.deepEqual(
+    readDeploymentAppResourceArray(JSON.stringify(resources)),
+    resources,
+  );
+});
+
+test("DeploymentAppResourceSnapshot_RoundTripsChildSqlWarehouseAndLakebaseResources", async () => {
+  const { readDeploymentAppResourceArray } = await import(
+    "../src/db/project-deployment-repository-mapping.ts"
+  );
+  const resources = [
+    {
+      name: "sql-warehouse",
+      description: "Analytics warehouse",
+      sql_warehouse: { id: "child-wh-1", permission: "CAN_MANAGE" as const },
+    },
+    {
+      name: "vdab-pg-0123456789abcdef",
+      description: "VDAB Lakebase Autoscaling",
+      postgres: {
+        branch: "projects/db-project/branches/production",
+        database:
+          "projects/db-project/branches/production/databases/database-id",
+        permission: "CAN_CONNECT_AND_CREATE" as const,
+      },
+    },
+    {
+      name: "nightly-job",
+      description: "Nightly job",
+      job: { id: "job-1", permission: "CAN_MANAGE_RUN" as const },
+    },
+    {
+      name: "claims-table",
+      description: "Claims table",
+      uc_securable: {
+        securable_full_name: "main.sales.claims",
+        securable_type: "TABLE" as const,
+        permission: "SELECT" as const,
       },
     },
   ];

@@ -29,7 +29,7 @@ test("WorkspaceAppDeploymentClient_CreateApp_SendsMultipleRequiredResources", as
       },
     },
     {
-      name: "vdab-wh-0123456789abcdef",
+      name: "sql-warehouse",
       description: "VDAB default SQL warehouse",
       sql_warehouse: {
         id: "warehouse-123",
