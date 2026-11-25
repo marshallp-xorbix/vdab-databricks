@@ -160,10 +160,6 @@ def _assert_workflow_side_effects(
         raise AssertionError(
             "TriggerToast did not reach the mocked Streamlit renderer."
         )
-    flush_modal = namespace.get("_vdab_flush_pending_modal")
-    if not callable(flush_modal):
-        raise AssertionError("Generated source omitted pending-modal handling.")
-    flush_modal()
     if not streamlit.dialog_calls:
         raise AssertionError("ShowModal did not render its generated dialog.")
     if (

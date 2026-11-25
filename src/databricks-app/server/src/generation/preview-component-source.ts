@@ -234,9 +234,6 @@ export function generateProjectSource(
       workflowEventKeys,
     ),
   );
-  if (workflowEventKeys !== undefined) {
-    lines.push("_vdab_flush_pending_modal()", "");
-  }
   appendRootComponents(
     lines,
     componentTree.rootComponents,
@@ -247,7 +244,7 @@ export function generateProjectSource(
   );
 
   if (workflowEventKeys !== undefined) {
-    lines.push("", "_vdab_flush_pending_modal()", "_vdab_flush_toasts()", "");
+    lines.push("", "_vdab_flush_toasts()", "");
   }
 
   return `${lines.join("\n")}\n`;

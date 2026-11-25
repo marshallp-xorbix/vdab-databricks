@@ -145,6 +145,14 @@ test("ProjectPreviewGenerator_EmitsWorkflowRuntimeCallbacksActionsAndModuleFiles
   ]);
   assert.match(source, /on_click=_vdab_run_component_workflows/);
   assert.match(source, /_vdab_run_component_workflows\('order-form', 'onSubmit'\)/);
+  assert.match(source, /def show_savedModal\(\):/);
+  assert.match(source, /modal_function\(\)/);
+  assert.doesNotMatch(source, /_vdab_pending_modal|_vdab_flush_pending_modal/);
+  assert.ok(
+    (source.indexOf("def show_savedModal():") >= 0) &&
+      (source.indexOf("def show_savedModal():") < source.indexOf("st.button(")),
+    "Modal dialog openers must be defined before top-level buttons.",
+  );
   assert.match(source, /_vdab_sql_parameter\(parameter_name, value\)/);
   assert.match(source, /warehouse_id_override=source_output\.get\('sqlWarehouseId'\)/);
   assert.match(source, /sqlWarehouseId': params\.get\('sqlWarehouseId'\)/);
