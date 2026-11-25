@@ -5,6 +5,8 @@ import {
   type FC,
   type KeyboardEvent,
 } from "react";
+import { Label } from "../../ui/label";
+import { Switch } from "../../ui/switch";
 import {
   PAGE_WIDTH_DEFAULT,
   PAGE_WIDTH_MAX,
@@ -15,11 +17,15 @@ import {
 interface IPagePropertiesPanelProps {
   pageWidth: number;
   onPageWidthChange: (pageWidth: number) => void;
+  displayAppNameHeader: boolean;
+  onDisplayAppNameHeaderChange: (displayAppNameHeader: boolean) => void;
 }
 
 const PagePropertiesPanel: FC<Readonly<IPagePropertiesPanelProps>> = ({
   pageWidth,
   onPageWidthChange,
+  displayAppNameHeader,
+  onDisplayAppNameHeaderChange,
 }) => {
   const [draftValue, setDraftValue] = useState(() => String(pageWidth));
 
@@ -66,7 +72,18 @@ const PagePropertiesPanel: FC<Readonly<IPagePropertiesPanelProps>> = ({
           <div className="h-px flex-1 bg-muted" />
         </div>
 
-        <div className="space-y-2 px-3 pb-3" data-property-nested-fields>
+        <div className="space-y-3 px-3 pb-3" data-property-nested-fields>
+          <div className="flex items-center gap-3">
+            <Switch
+              id="display-app-name-header"
+              checked={displayAppNameHeader}
+              onCheckedChange={onDisplayAppNameHeaderChange}
+            />
+            <Label htmlFor="display-app-name-header" className="text-sm">
+              Display App Name Header
+            </Label>
+          </div>
+
           <div>
             <label
               htmlFor="page-width-slider"

@@ -11,7 +11,6 @@ import urllib.parse
 import urllib.request
 
 st.set_page_config(page_title='Supply chain graph', layout='wide')
-st.title('Supply chain graph')
 
 st.markdown("""<style>
   .block-container { max-width: 730px; }

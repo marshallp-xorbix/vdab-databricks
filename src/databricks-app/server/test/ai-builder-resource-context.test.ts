@@ -35,6 +35,14 @@ test("AiBuilderResourceContextService_ReturnsDeterministicCurrentWorkspaceResour
           authenticationMode: "databricks",
         };
       },
+      listSchemas: async () => ({
+        items: [{ name: "default" }],
+        authenticationMode: "databricks",
+      }),
+      listVolumes: async () => ({
+        items: [{ name: "uploads" }],
+        authenticationMode: "databricks",
+      }),
     },
     executionResources: {
       listJobs: async (_caller: CallerIdentity, signal?: AbortSignal) => {
@@ -70,6 +78,10 @@ test("AiBuilderResourceContextService_ReturnsDeterministicCurrentWorkspaceResour
       status: "available",
       items: ["a_catalog.default.records", "z_catalog.default.records"],
     },
+    volumes: {
+      status: "available",
+      items: ["a_catalog.default.uploads", "z_catalog.default.uploads"],
+    },
     jobs: { status: "available", items: [{ jobId: "101", name: "Refresh records" }] },
     sqlWarehouses: { status: "available", items: [{ id: "warehouse-1", name: "Analytics", state: "running" }] },
     lakebaseAutoscaling: {
@@ -91,6 +103,7 @@ test("AiBuilderResourceContextService_DistinguishesAuthorizedEmptyFromUnavailabl
   const empty = await emptyService.getContext(CALLER, new AbortController().signal);
   assert.deepEqual(empty, {
     unityCatalogTables: { status: "empty", items: [] },
+    volumes: { status: "empty", items: [] },
     jobs: { status: "empty", items: [] },
     sqlWarehouses: { status: "empty", items: [] },
     lakebaseAutoscaling: { status: "empty", items: [] },
@@ -111,6 +124,7 @@ test("AiBuilderResourceContextService_DistinguishesAuthorizedEmptyFromUnavailabl
   const unavailable = await unavailableService.getContext(CALLER, new AbortController().signal);
   assert.deepEqual(unavailable, {
     unityCatalogTables: { status: "unavailable", items: [], reason: "permission_required" },
+    volumes: { status: "unavailable", items: [], reason: "permission_required" },
     jobs: { status: "unavailable", items: [], reason: "permission_required" },
     sqlWarehouses: { status: "unavailable", items: [], reason: "temporarily_unavailable" },
     lakebaseAutoscaling: { status: "unavailable", items: [], reason: "permission_required" },
@@ -263,6 +277,8 @@ function createService(overrides: ContextServiceOverrides = {}): AiBuilderResour
   const workspaceResources = {
     listCatalogs: async () => ({ items: [], authenticationMode: "databricks" }),
     listTableSummaries: async () => ({ items: [], hasMore: false, authenticationMode: "databricks" }),
+    listSchemas: async () => ({ items: [], authenticationMode: "databricks" }),
+    listVolumes: async () => ({ items: [], authenticationMode: "databricks" }),
     ...overrides.workspaceResources,
   } as unknown as WorkspaceResourcesService;
   const executionResources = {

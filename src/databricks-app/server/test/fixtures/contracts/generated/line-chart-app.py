@@ -9,7 +9,6 @@ import urllib.parse
 import urllib.request
 
 st.set_page_config(page_title='Sales over time', layout='wide')
-st.title('Sales over time')
 
 st.markdown("""<style>
   .block-container { max-width: 730px; }

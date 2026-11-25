@@ -17,6 +17,7 @@ import TabBar from "./AppBuilderComponents/TabBar";
 import { CanvasContextType, TabType } from "../types/editor";
 import { useTabManagement } from "../hooks/useTabManagement";
 import { toCanvasComponents } from "../utils/projectCanvasAdapter";
+import { getDisplayAppNameHeaderFromTheme } from "../utils/displayAppNameHeaderDefaults";
 import { getPageWidthFromTheme } from "../utils/pageWidthDefaults";
 import type { IProjectComponentPropertiesEditorProps } from "./ProjectComponentPropertiesEditor";
 import { useTheme } from "../context/ThemeContext";
@@ -32,6 +33,7 @@ interface IProjectComponentsEditorProps {
   components: IProjectComponent[];
   definitions: IComponentDefinition[];
   theme: Record<string, string>;
+  appName: string;
   isDisabled: boolean;
   workflow: IProjectWorkflowDefinition;
   toolbar: ReactNode;
@@ -39,12 +41,14 @@ interface IProjectComponentsEditorProps {
   onComponentsChange: (components: IProjectComponent[]) => void;
   onWorkflowChange: (workflow: IProjectWorkflowDefinition) => void;
   onPageWidthChange: (pageWidth: number) => void;
+  onDisplayAppNameHeaderChange: (displayAppNameHeader: boolean) => void;
 }
 
 function ProjectComponentsEditor({
   components,
   definitions,
   theme,
+  appName,
   isDisabled,
   workflow,
   toolbar,
@@ -52,6 +56,7 @@ function ProjectComponentsEditor({
   onComponentsChange,
   onWorkflowChange,
   onPageWidthChange,
+  onDisplayAppNameHeaderChange,
 }: Readonly<IProjectComponentsEditorProps>) {
   const editor = useProjectComponentEditor({
     components,
@@ -238,6 +243,14 @@ function ProjectComponentsEditor({
                     ? getPageWidthFromTheme(theme)
                     : undefined
                 }
+                appName={
+                  activeTab?.type === TabType.MainPage ? appName : undefined
+                }
+                displayAppNameHeader={
+                  activeTab?.type === TabType.MainPage
+                    ? getDisplayAppNameHeaderFromTheme(theme)
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -262,6 +275,16 @@ function ProjectComponentsEditor({
               onPageWidthChange={
                 activeTab?.type === TabType.MainPage
                   ? onPageWidthChange
+                  : undefined
+              }
+              displayAppNameHeader={
+                activeTab?.type === TabType.MainPage
+                  ? getDisplayAppNameHeaderFromTheme(theme)
+                  : undefined
+              }
+              onDisplayAppNameHeaderChange={
+                activeTab?.type === TabType.MainPage
+                  ? onDisplayAppNameHeaderChange
                   : undefined
               }
             />

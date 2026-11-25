@@ -71,6 +71,8 @@ interface PropertiesPanelProps {
   canvasContextType?: CanvasContextType;
   pageWidth?: number;
   onPageWidthChange?: (pageWidth: number) => void;
+  displayAppNameHeader?: boolean;
+  onDisplayAppNameHeaderChange?: (displayAppNameHeader: boolean) => void;
   projectComponentEditor?: IProjectComponentPropertiesEditorProps;
 }
 
@@ -88,6 +90,8 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
   canvasContextType = CanvasContextType.Page,
   pageWidth,
   onPageWidthChange,
+  displayAppNameHeader,
+  onDisplayAppNameHeaderChange,
   projectComponentEditor,
 }) => {
   const [codeNameDrafts, setCodeNameDrafts] = useState<Record<string, string>>(
@@ -182,7 +186,9 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
     !selectedComponent &&
     canvasContextType === CanvasContextType.Page &&
     pageWidth !== undefined &&
-    onPageWidthChange !== undefined;
+    onPageWidthChange !== undefined &&
+    displayAppNameHeader !== undefined &&
+    onDisplayAppNameHeaderChange !== undefined;
   const hasBindingsSection = Boolean(
     (selectedComponent?.supportedBindings?.length ?? 0) > 0 &&
       projectComponentEditor,
@@ -345,10 +351,14 @@ const PropertiesPanel: FC<PropertiesPanelProps> = ({
           <>
             {showPageProperties &&
             pageWidth !== undefined &&
-            onPageWidthChange !== undefined ? (
+            onPageWidthChange !== undefined &&
+            displayAppNameHeader !== undefined &&
+            onDisplayAppNameHeaderChange !== undefined ? (
               <PagePropertiesPanel
                 pageWidth={pageWidth}
                 onPageWidthChange={onPageWidthChange}
+                displayAppNameHeader={displayAppNameHeader}
+                onDisplayAppNameHeaderChange={onDisplayAppNameHeaderChange}
               />
             ) : (
               <div className="px-3 pb-3 pt-2 text-sm text-[var(--builder-chrome-foreground)]">

@@ -11,7 +11,6 @@ import urllib.parse
 import urllib.request
 
 st.set_page_config(page_title='Journey tracker', layout='wide')
-st.title('Journey tracker')
 
 st.markdown("""<style>
   .block-container { max-width: 730px; }

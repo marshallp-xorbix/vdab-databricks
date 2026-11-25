@@ -11,7 +11,6 @@ import urllib.parse
 import urllib.request
 
 st.set_page_config(page_title='Weekly revenue pulse', layout='wide')
-st.title('Weekly revenue pulse')
 
 st.markdown("""<style>
   .block-container { max-width: 730px; }

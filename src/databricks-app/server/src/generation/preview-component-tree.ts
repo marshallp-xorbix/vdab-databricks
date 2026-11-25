@@ -118,13 +118,44 @@ export function buildPreviewComponentTree(
   };
 }
 
+/** Preview-supported leaf types allowed directly inside Modal (beyond layout controls). */
+const MODAL_LEAF_COMPONENT_TYPES = [
+  "DataWindow",
+  "EditableDataWindow",
+  "BarChart",
+  "LineChart",
+  "PieChart",
+  "DonutChart",
+  "AmoebaStory",
+  "FlowFieldStory",
+  "HeatMapStory",
+  "HoneycombStory",
+  "NetworkWebStory",
+  "PulseWaveStory",
+  "SpiralStory",
+  "TerrainStory",
+  "DashboardEmbed",
+  "GenieChat",
+  "ModelChat",
+] as const;
+
 function isAllowedModalChild(component: ProjectComponent): boolean {
-  return isAllowedLayoutControlChild(component) ||
+  if (
     component.type === "Expander" ||
     component.type === "Columns" ||
     component.type === "Rows" ||
     component.type === "Tabs" ||
-    component.type === "Form";
+    component.type === "Form"
+  ) {
+    return true;
+  }
+
+  if (isAllowedLayoutControlChild(component)) {
+    return true;
+  }
+
+  return component.children.length === 0 &&
+    MODAL_LEAF_COMPONENT_TYPES.some((type) => type === component.type);
 }
 
 function assertAcyclic(

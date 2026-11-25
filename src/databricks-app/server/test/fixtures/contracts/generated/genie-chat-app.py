@@ -9,7 +9,6 @@ import urllib.parse
 import urllib.request
 
 st.set_page_config(page_title='Workspace Genie', layout='wide')
-st.title('Workspace Genie')
 
 st.markdown("""<style>
   .block-container { max-width: 730px; }

@@ -152,6 +152,127 @@ test("AiBuilderService_StreamsNeedsClarificationWhenNoToolsAndNoChanges", async 
   assert.equal(result.data.proposal, null);
 });
 
+test("AiBuilderService_RepairsValidationFailureThenCompletes", async () => {
+  let invokeCount = 0;
+  const workspaceClient = {
+    invoke: async (_caller: CallerIdentity, _endpoint: string, messages: AiBuilderModelMessage[]) => {
+      invokeCount += 1;
+      if (invokeCount === 1) {
+        return createToolStreamResponse([
+          {
+            id: "button-1",
+            name: "addButton",
+            arguments: { codeName: "actionButton", label: "Run" },
+          },
+          {
+            id: "workflow-1",
+            name: "createWorkflow",
+            arguments: {
+              workflowCodeName: "badTrigger",
+              triggerComponentCodeName: "actionButton",
+              triggerEventKey: "onSubmit",
+            },
+          },
+        ]);
+      }
+      if (invokeCount === 2) {
+        return createTextStreamResponse("Perfect! I successfully created the workflow.");
+      }
+      if (invokeCount === 3) {
+        assert.equal(messages.at(-1)?.role, "user");
+        assert.match(String(messages.at(-1)?.content ?? ""), /VALIDATION_FAILED/);
+        return createToolStreamResponse([
+          {
+            id: "delete-1",
+            name: "deleteWorkflow",
+            arguments: { workflowCodeName: "badTrigger" },
+          },
+          {
+            id: "workflow-2",
+            name: "createWorkflow",
+            arguments: {
+              workflowCodeName: "goodTrigger",
+              triggerComponentCodeName: "actionButton",
+              triggerEventKey: "onClick",
+            },
+          },
+          {
+            id: "toast-1",
+            name: "addTriggerToastAction",
+            arguments: {
+              workflowCodeName: "goodTrigger",
+              nodeId: "toast1",
+              body: "Ready",
+              toastDuration: "short",
+            },
+          },
+        ]);
+      }
+      return createTextStreamResponse("Repaired the invalid workflow trigger.");
+    },
+  } as unknown as AiBuilderWorkspaceClient;
+  const service = createService({ workspaceClient });
+  const prepared = await service.prepare(CALLER, "request-1", "project-1", createRequest());
+  const events: AiBuilderEvent[] = [];
+  await prepared.execute(new AbortController().signal, async (event) => {
+    events.push(event);
+  });
+
+  assert.equal(invokeCount, 4);
+  assert.ok(events.some((event) =>
+    event.event === "progress" &&
+    event.data.message.includes("Repairing the proposal after validation")));
+  const result = events.find((event) => event.event === "result");
+  assert.ok(result?.event === "result");
+  assert.equal(result.data.outcome, "completed");
+  assert.equal(result.data.proposal?.workflow.workflows[0]?.codeName, "goodTrigger");
+  assert.equal(result.data.assistantMessage, "Repaired the invalid workflow trigger.");
+});
+
+test("AiBuilderService_ExhaustedValidationRepairReturnsGroundedFailure", async () => {
+  let invokeCount = 0;
+  const workspaceClient = {
+    invoke: async () => {
+      invokeCount += 1;
+      if (invokeCount === 1) {
+        return createToolStreamResponse([
+          {
+            id: "button-1",
+            name: "addButton",
+            arguments: { codeName: "actionButton", label: "Run" },
+          },
+          {
+            id: "workflow-1",
+            name: "createWorkflow",
+            arguments: {
+              workflowCodeName: "badTrigger",
+              triggerComponentCodeName: "actionButton",
+              triggerEventKey: "onSubmit",
+            },
+          },
+        ]);
+      }
+      return createTextStreamResponse("Perfect! I've successfully created a complete app.");
+    },
+  } as unknown as AiBuilderWorkspaceClient;
+  const service = createService({ workspaceClient });
+  const prepared = await service.prepare(CALLER, "request-1", "project-1", createRequest());
+  const events: AiBuilderEvent[] = [];
+  await prepared.execute(new AbortController().signal, async (event) => {
+    events.push(event);
+  });
+
+  // tools + failed finalize + 2 repair attempts that still fail finalize
+  assert.equal(invokeCount, 4);
+  const result = events.find((event) => event.event === "result");
+  assert.ok(result?.event === "result");
+  assert.equal(result.data.outcome, "unableToComplete");
+  assert.equal(result.data.proposal, null);
+  assert.match(result.data.assistantMessage, /^I could not apply a valid set of project changes/);
+  assert.match(result.data.assistantMessage, /Validation:/);
+  assert.doesNotMatch(result.data.assistantMessage, /Perfect! I've successfully created/);
+});
+
 test("AiBuilderService_RejectsStaleProjectBeforeContactingEndpoint", async () => {
   let endpointListCount = 0;
   const workspaceResources = {
@@ -179,6 +300,7 @@ interface ServiceOverrides {
 
 const TEST_RESOURCE_CONTEXT: AiBuilderResourceContext = {
   unityCatalogTables: { status: "available", items: ["main.default.customers"] },
+  volumes: { status: "available", items: ["main.default.uploads"] },
   jobs: { status: "empty", items: [] },
   sqlWarehouses: { status: "empty", items: [] },
   lakebaseAutoscaling: { status: "unavailable", items: [], reason: "permission_required" },

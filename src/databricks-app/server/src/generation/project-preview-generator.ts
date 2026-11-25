@@ -102,11 +102,13 @@ export class ProjectPreviewGenerator {
       customModulesSource,
     );
     const pageWidth = readPageWidth(project.theme);
+    const displayAppNameHeader = readDisplayAppNameHeader(project.theme);
     const content = generateProjectSource(
       project.name,
       document.components,
       workflow,
       pageWidth,
+      displayAppNameHeader,
     );
     const files: PreviewFile[] = [
       { path: "app.py", content },
@@ -158,4 +160,20 @@ function readPageWidth(theme: Record<string, unknown> | null | undefined): numbe
   const parsedValue = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(parsedValue)) return DEFAULT_PAGE_WIDTH;
   return Math.min(MAXIMUM_PAGE_WIDTH, Math.max(MINIMUM_PAGE_WIDTH, Math.round(parsedValue)));
+}
+
+function readDisplayAppNameHeader(
+  theme: Record<string, unknown> | null | undefined,
+): boolean {
+  const value = theme?.displayAppNameHeader;
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return false;
 }

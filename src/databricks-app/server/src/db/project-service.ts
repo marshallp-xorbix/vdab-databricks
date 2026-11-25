@@ -18,6 +18,7 @@ const PROJECT_THEME_COLOR_KEYS = [
   "textColor",
 ] as const;
 const PROJECT_THEME_PAGE_WIDTH_KEY = "pageWidth";
+const PROJECT_THEME_DISPLAY_APP_NAME_HEADER_KEY = "displayAppNameHeader";
 const MIN_PROJECT_PAGE_WIDTH = 730;
 const MAX_PROJECT_PAGE_WIDTH = 1800;
 const MIN_USER_ID_LENGTH = 3;
@@ -257,6 +258,7 @@ function readProjectTheme(value: unknown): Record<string, unknown> | null {
   const allowedKeys = new Set<string>([
     ...PROJECT_THEME_COLOR_KEYS,
     PROJECT_THEME_PAGE_WIDTH_KEY,
+    PROJECT_THEME_DISPLAY_APP_NAME_HEADER_KEY,
   ]);
   if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
     throw invalidProjectInput();
@@ -274,6 +276,16 @@ function readProjectTheme(value: unknown): Record<string, unknown> | null {
       !Number.isInteger(parsedWidth) ||
       parsedWidth < MIN_PROJECT_PAGE_WIDTH ||
       parsedWidth > MAX_PROJECT_PAGE_WIDTH
+    ) {
+      throw invalidProjectInput();
+    }
+  }
+  const displayAppNameHeader = value[PROJECT_THEME_DISPLAY_APP_NAME_HEADER_KEY];
+  if (displayAppNameHeader !== undefined) {
+    if (
+      typeof displayAppNameHeader !== "boolean" &&
+      displayAppNameHeader !== "true" &&
+      displayAppNameHeader !== "false"
     ) {
       throw invalidProjectInput();
     }

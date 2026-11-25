@@ -23,7 +23,8 @@ import type { ProjectService } from "./db/project-service.ts";
 import type { ProjectWorkflowService } from "./db/project-workflow-service.ts";
 import type { WorkspaceResourcesService } from "./workspace-resources-service.ts";
 
-const MAX_TOOL_ROUNDS = 12;
+const MAX_TOOL_ROUNDS = 14;
+const MAX_VALIDATION_REPAIR_ROUNDS = 2;
 
 export interface PreparedAiBuilderRequest {
   execute(
@@ -144,6 +145,7 @@ export class AiBuilderService {
     );
     const session = new AiBuilderCanvasSession(input.proposalContext, definitions);
     let latestAssistantMessage = "";
+    let repairRoundsRemaining = MAX_VALIDATION_REPAIR_ROUNDS;
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
       await emit({
@@ -151,7 +153,9 @@ export class AiBuilderService {
         data: {
           message: round === 0
             ? `Generating a proposal with ${endpoint.name}…`
-            : "Continuing the multi-step proposal…",
+            : repairRoundsRemaining < MAX_VALIDATION_REPAIR_ROUNDS
+              ? "Repairing the proposal after validation…"
+              : "Continuing the multi-step proposal…",
         },
       });
       const response = await this.workspaceClient.invoke(caller, endpoint.name, messages, signal);
@@ -163,15 +167,40 @@ export class AiBuilderService {
       latestAssistantMessage = completion.assistantMessage.trim() || latestAssistantMessage;
 
       if (completion.toolCalls.length === 0) {
-        await emit({
-          event: "result",
-          data: await this.finalizeWithoutTools(
-            session,
-            input,
-            definitions,
-            latestAssistantMessage,
-          ),
-        });
+        const finalized = this.finalizeWithoutTools(
+          session,
+          input,
+          definitions,
+          latestAssistantMessage,
+        );
+        if (
+          finalized.outcome === "unableToComplete" &&
+          session.hasChanges() &&
+          repairRoundsRemaining > 0 &&
+          finalized.validationDetail
+        ) {
+          repairRoundsRemaining -= 1;
+          await emit({
+            event: "progress",
+            data: { message: "Proposal validation failed; asking the model to repair…" },
+          });
+          messages.push({
+            role: "assistant",
+            content: latestAssistantMessage || null,
+          });
+          messages.push({
+            role: "user",
+            content: [
+              "VALIDATION_FAILED: The draft changes are invalid and were not applied.",
+              `Detail: ${finalized.validationDetail}`,
+              "Fix the draft with tools. Form children may only be input fields; FileUpload, Button, and DataWindow must be Form siblings; Modals stay root-level; volume bindings need valueType file and filePath; table bindings must not include resourceKey on the component resource.",
+              "Do not claim success until tools repair the draft.",
+            ].join("\n"),
+          });
+          latestAssistantMessage = "";
+          continue;
+        }
+        await emit({ event: "result", data: finalized });
         return;
       }
 
@@ -196,7 +225,7 @@ export class AiBuilderService {
 
     await emit({
       event: "result",
-      data: await this.finalizeAfterMaxRounds(session, input, definitions, latestAssistantMessage),
+      data: this.finalizeAfterMaxRounds(session, input, definitions, latestAssistantMessage),
     });
   }
 
@@ -238,17 +267,12 @@ export class AiBuilderService {
     return results;
   }
 
-  private async finalizeWithoutTools(
+  private finalizeWithoutTools(
     session: AiBuilderCanvasSession,
     input: AiBuilderInput,
     definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
     assistantMessage: string,
-  ): Promise<{
-    assistantMessage: string;
-    proposal: AiBuilderProposal | null;
-    version: number;
-    outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
-  }> {
+  ): AiBuilderFinalizeResult {
     const tagged = readTaggedOutcome(assistantMessage);
     if (!session.hasChanges()) {
       return {
@@ -262,21 +286,16 @@ export class AiBuilderService {
     return this.buildValidatedResult(session, input, definitions, assistantMessage, outcome);
   }
 
-  private async finalizeAfterMaxRounds(
+  private finalizeAfterMaxRounds(
     session: AiBuilderCanvasSession,
     input: AiBuilderInput,
     definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
     assistantMessage: string,
-  ): Promise<{
-    assistantMessage: string;
-    proposal: AiBuilderProposal | null;
-    version: number;
-    outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
-  }> {
+  ): AiBuilderFinalizeResult {
     if (!session.hasChanges()) {
       return {
         assistantMessage: [
-          assistantMessage || "I could not finish the request within the tool-call limit.",
+          "I could not finish the request within the tool-call limit.",
           "",
           "Try a narrower request, or tell me which part to do first.",
         ].join("\n").slice(0, 4_000),
@@ -294,12 +313,7 @@ export class AiBuilderService {
     definitions: ReturnType<ComponentRegistryService["getRegistry"]>["components"],
     assistantMessage: string,
     preferredOutcome: "completed" | "partial" | "unableToComplete",
-  ): {
-    assistantMessage: string;
-    proposal: AiBuilderProposal | null;
-    version: number;
-    outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
-  } {
+  ): AiBuilderFinalizeResult {
     try {
       const proposal = session.buildProposal(input.version, definitions);
       return {
@@ -314,7 +328,7 @@ export class AiBuilderService {
         : "The proposed project changes could not be validated.";
       return {
         assistantMessage: [
-          assistantMessage || "I could not apply a valid set of project changes for that request.",
+          "I could not apply a valid set of project changes for that request.",
           "",
           `Validation: ${detail}`,
           "",
@@ -323,10 +337,19 @@ export class AiBuilderService {
         proposal: null,
         version: input.version,
         outcome: "unableToComplete",
+        validationDetail: detail,
       };
     }
   }
 }
+
+type AiBuilderFinalizeResult = {
+  assistantMessage: string;
+  proposal: AiBuilderProposal | null;
+  version: number;
+  outcome: "completed" | "partial" | "needsClarification" | "unableToComplete";
+  validationDetail?: string;
+};
 
 function requireEditorRole(role: string): void {
   if (role !== "owner" && role !== "editor" && role !== "installationAdmin") {

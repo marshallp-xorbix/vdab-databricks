@@ -6,6 +6,7 @@ import { ComponentCategory as Category } from "../../../types/components/compone
 import type { RemoveComponentOptions } from "../../../types/components/componentRemoval";
 import { AppComponent } from "./AppComponent";
 import { getLayoutY } from "../../../utils/layoutUtils";
+import { APP_NAME_HEADER_SELECTION_ID } from "../../../utils/displayAppNameHeaderDefaults";
 import { PAGE_WIDTH_DEFAULT } from "../../../utils/pageWidthDefaults";
 import type {
   DropTargetData,
@@ -34,6 +35,10 @@ interface CanvasViewProps {
   workspaceUrl?: string | null;
   /** Max content width in pixels for Main Page WYSIWYG framing; omit for modal canvas. */
   pageWidth?: number;
+  /** Project name shown as Streamlit title chrome when displayAppNameHeader is true. */
+  appName?: string;
+  /** Whether to render the app-name header chrome on the Main Page canvas. */
+  displayAppNameHeader?: boolean;
 }
 
 const CanvasView: FC<CanvasViewProps> = ({
@@ -48,6 +53,8 @@ const CanvasView: FC<CanvasViewProps> = ({
   contextKey,
   workspaceUrl = null,
   pageWidth,
+  appName = "",
+  displayAppNameHeader = false,
 }) => {
   const { theme: productTheme } = useTheme();
   const { isOver, setNodeRef } = useDroppable({
@@ -110,6 +117,14 @@ const CanvasView: FC<CanvasViewProps> = ({
     onSelectComponent?.(null);
   }, [onSelectComponent]);
 
+  const handleSelectAppNameHeader = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      onSelectComponent?.(APP_NAME_HEADER_SELECTION_ID);
+    },
+    [onSelectComponent],
+  );
+
   const handleCanvasKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key === "Escape") {
@@ -122,6 +137,9 @@ const CanvasView: FC<CanvasViewProps> = ({
   const isPageContext = pageWidth !== undefined;
   const contentMaxWidth = pageWidth ?? PAGE_WIDTH_DEFAULT;
   const isPageSelected = isPageContext && selectedComponentId === null;
+  const showAppNameHeader = isPageContext && displayAppNameHeader;
+  const isAppNameHeaderSelected =
+    selectedComponentId === APP_NAME_HEADER_SELECTION_ID;
   const canvasBackground = resolveAppThemeBackground(theme, productTheme);
 
   return (
@@ -165,8 +183,27 @@ const CanvasView: FC<CanvasViewProps> = ({
         }
         style={isPageContext ? { maxWidth: contentMaxWidth } : undefined}
       >
-        {contextComponents.length === 0 ? (
-          <div className="h-full flex items-center justify-center"></div>
+        {showAppNameHeader ? (
+          <div className="relative z-10 p-2 pb-0">
+            <button
+              type="button"
+              aria-label="App name header"
+              aria-pressed={isAppNameHeaderSelected}
+              className={`w-full cursor-pointer rounded-sm px-1 py-1 text-left transition-shadow ${
+                isAppNameHeaderSelected
+                  ? "ring-2 ring-primary ring-offset-2"
+                  : "hover:ring-1 hover:ring-primary/40"
+              }`}
+              onClick={handleSelectAppNameHeader}
+            >
+              <h1 className="truncate text-3xl font-semibold leading-tight text-foreground">
+                {appName.trim().length > 0 ? appName : "Untitled app"}
+              </h1>
+            </button>
+          </div>
+        ) : null}
+        {topLevelComponents.length === 0 ? (
+          <div className="h-full min-h-8 flex items-center justify-center"></div>
         ) : (
           <SortableContext
             id={canvasSortableContainerId}

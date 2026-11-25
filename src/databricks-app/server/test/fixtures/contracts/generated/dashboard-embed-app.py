@@ -5,7 +5,6 @@ import re
 import urllib.parse
 
 st.set_page_config(page_title='Quarterly overview', layout='wide')
-st.title('Quarterly overview')
 
 st.markdown("""<style>
   .block-container { max-width: 730px; }

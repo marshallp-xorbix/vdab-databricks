@@ -1,7 +1,6 @@
 import streamlit as st
 
 st.set_page_config(page_title='Preview O\'Brien', layout='wide')
-st.title('Preview O\'Brien')
 
 st.markdown("""<style>
   .block-container { max-width: 730px; }

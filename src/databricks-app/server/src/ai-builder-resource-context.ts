@@ -13,6 +13,8 @@ import type { WorkspaceResourcesService } from "./workspace-resources-service.ts
 
 const MAX_CATALOGS = 8;
 const MAX_TABLES = 32;
+const MAX_VOLUMES = 32;
+const MAX_SCHEMAS_PER_CATALOG_FOR_VOLUMES = 4;
 const MAX_JOBS = 30;
 const MAX_SQL_WAREHOUSES = 20;
 const MAX_LAKEBASE_PROJECTS = 5;
@@ -45,6 +47,7 @@ interface AiBuilderLakebaseProject {
 /** Bounded, token-free inventory available to the current AI Builder caller. */
 export interface AiBuilderResourceContext {
   unityCatalogTables: InventorySection<string>;
+  volumes: InventorySection<string>;
   jobs: InventorySection<WorkspaceJobResource>;
   sqlWarehouses: InventorySection<WorkspaceSqlWarehouseResource>;
   lakebaseAutoscaling: InventorySection<AiBuilderLakebaseProject>;
@@ -68,14 +71,21 @@ export class AiBuilderResourceContextService {
 
   /** Returns safe current-workspace names and IDs, never hosts or credentials. */
   async getContext(caller: CallerIdentity, signal: AbortSignal): Promise<AiBuilderResourceContext> {
-    const [unityCatalogTables, jobs, sqlWarehouses, lakebaseAutoscaling] = await Promise.all([
+    const [unityCatalogTables, volumes, jobs, sqlWarehouses, lakebaseAutoscaling] = await Promise.all([
       this.discoverUnityCatalogTables(caller, signal),
+      this.discoverVolumes(caller, signal),
       this.discoverJobs(caller, signal),
       this.discoverSqlWarehouses(caller, signal),
       this.discoverLakebase(caller, signal),
     ]);
     signal.throwIfAborted();
-    return fitContextByteLimit({ unityCatalogTables, jobs, sqlWarehouses, lakebaseAutoscaling });
+    return fitContextByteLimit({
+      unityCatalogTables,
+      volumes,
+      jobs,
+      sqlWarehouses,
+      lakebaseAutoscaling,
+    });
   }
 
   private async discoverUnityCatalogTables(
@@ -115,6 +125,61 @@ export class AiBuilderResourceContextService {
       }
     }
     const items = [...tables].sort().slice(0, MAX_TABLES);
+    return createSection(items, truncated, failureReason);
+  }
+
+  private async discoverVolumes(
+    caller: CallerIdentity,
+    signal: AbortSignal,
+  ): Promise<InventorySection<string>> {
+    let catalogs: string[];
+    try {
+      catalogs = (await this.workspaceResources.listCatalogs(caller, signal)).items
+        .map((catalog) => catalog.name).sort();
+    } catch (error) {
+      return unavailableFor(error, signal);
+    }
+    if (catalogs.length === 0) return { status: "empty", items: [] };
+
+    let truncated = catalogs.length > MAX_CATALOGS;
+    let failureReason: DiscoveryFailureReason | undefined;
+    const volumes = new Set<string>();
+    for (const catalogName of catalogs.slice(0, MAX_CATALOGS)) {
+      signal.throwIfAborted();
+      if (volumes.size >= MAX_VOLUMES) {
+        truncated = true;
+        break;
+      }
+      let schemas: string[];
+      try {
+        schemas = (await this.workspaceResources.listSchemas(caller, catalogName)).items
+          .map((schema) => schema.name).sort();
+      } catch (error) {
+        failureReason = mergeFailureReason(failureReason, readFailureReason(error, signal));
+        continue;
+      }
+      truncated ||= schemas.length > MAX_SCHEMAS_PER_CATALOG_FOR_VOLUMES;
+      for (const schemaName of schemas.slice(0, MAX_SCHEMAS_PER_CATALOG_FOR_VOLUMES)) {
+        signal.throwIfAborted();
+        if (volumes.size >= MAX_VOLUMES) {
+          truncated = true;
+          break;
+        }
+        try {
+          const page = await this.workspaceResources.listVolumes(caller, catalogName, schemaName);
+          for (const volume of page.items) {
+            volumes.add(`${catalogName}.${schemaName}.${volume.name}`);
+            if (volumes.size >= MAX_VOLUMES) {
+              truncated = true;
+              break;
+            }
+          }
+        } catch (error) {
+          failureReason = mergeFailureReason(failureReason, readFailureReason(error, signal));
+        }
+      }
+    }
+    const items = [...volumes].sort().slice(0, MAX_VOLUMES);
     return createSection(items, truncated, failureReason);
   }
 
@@ -270,6 +335,8 @@ function fitContextByteLimit(context: AiBuilderResourceContext): AiBuilderResour
   while (Buffer.byteLength(JSON.stringify(context), "utf8") > MAX_CONTEXT_BYTES) {
     if (context.unityCatalogTables.items.length > 0) {
       trimSection(context.unityCatalogTables);
+    } else if (context.volumes.items.length > 0) {
+      trimSection(context.volumes);
     } else if (context.jobs.items.length > 0) {
       trimSection(context.jobs);
     } else if (context.sqlWarehouses.items.length > 0) {

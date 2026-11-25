@@ -33,6 +33,10 @@ interface AppCanvasAreaProps {
   workspaceUrl?: string | null;
   /** Max content width in pixels for Main Page WYSIWYG framing. */
   pageWidth?: number;
+  /** Project name shown as Streamlit title chrome when displayAppNameHeader is true. */
+  appName?: string;
+  /** Whether to render the app-name header chrome on the Main Page canvas. */
+  displayAppNameHeader?: boolean;
 }
 
 const AppCanvasArea: FC<AppCanvasAreaProps> = ({
@@ -47,6 +51,8 @@ const AppCanvasArea: FC<AppCanvasAreaProps> = ({
   layoutDropBlocked,
   workspaceUrl = null,
   pageWidth,
+  appName,
+  displayAppNameHeader,
 }) => {
   const [layoutDeleteOpen, setLayoutDeleteOpen] = useState(false);
   const [layoutToDelete, setLayoutToDelete] = useState<{
@@ -167,6 +173,8 @@ const AppCanvasArea: FC<AppCanvasAreaProps> = ({
           contextKey={getContextKeyForCanvas(contextType, modalId)}
           workspaceUrl={workspaceUrl}
           pageWidth={pageWidth}
+          appName={appName}
+          displayAppNameHeader={displayAppNameHeader}
         />
       </div>
 

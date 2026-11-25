@@ -12,6 +12,7 @@ import { AI_BUILDER_TOOLS } from "../src/ai-builder-tool.ts";
 const componentDefinitions = new ComponentRegistryService().getRegistry().components;
 const resourceContext: AiBuilderResourceContext = {
   unityCatalogTables: { status: "partial", items: ["main.default.customers"], truncated: true },
+  volumes: { status: "available", items: ["main.default.uploads"] },
   jobs: { status: "unavailable", items: [], reason: "permission_required" },
   sqlWarehouses: { status: "empty", items: [] },
   lakebaseAutoscaling: { status: "available", items: [] },
@@ -42,7 +43,12 @@ test("AiBuilderPrompt_IncludesTypedToolRecipesAndRejectsPartialDefault", () => {
   }
   assert.match(systemMessage, /Toast Triggered!/);
   assert.match(systemMessage, /never invent catalog, schema, table, Volume, warehouse, Lakebase, endpoint, Genie space, or Job/i);
+  assert.match(systemMessage, /PLAN → TOOLS → VERIFY/i);
+  assert.match(systemMessage, /FileUpload and Button are Form siblings/i);
+  assert.match(systemMessage, /when the user explicitly names/i);
+  assert.match(systemMessage, /Inspection-style example/i);
   assert.match(systemMessage, /main\.default\.customers/);
+  assert.match(systemMessage, /main\.default\.uploads/);
   assert.ok(AI_BUILDER_TOOLS.some((tool) => tool.function.name === "addModal"));
   assert.ok(AI_BUILDER_TOOLS.some((tool) => tool.function.name === "createWorkflow"));
 });

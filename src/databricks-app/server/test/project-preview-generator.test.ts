@@ -114,6 +114,37 @@ test("ProjectPreviewGenerator_EmitsSavedPageWidthInGeneratedStreamlitSource", ()
   assert.match(source, /\.block-container \{ max-width: 1120px; \}/);
 });
 
+test("ProjectPreviewGenerator_OmitsAppNameTitleByDefault", () => {
+  const preview = new ProjectPreviewGenerator().generate(
+    project,
+    createDocument([]),
+  );
+  const source = preview.files.find((file) => file.path === "app.py")?.content ?? "";
+
+  assert.match(source, /st\.set_page_config\(page_title='Preview O\\'Brien', layout='wide'\)/);
+  assert.doesNotMatch(source, /st\.title\(/);
+});
+
+test("ProjectPreviewGenerator_EmitsAppNameTitleWhenDisplayAppNameHeaderEnabled", () => {
+  const preview = new ProjectPreviewGenerator().generate(
+    { ...project, theme: { displayAppNameHeader: true } },
+    createDocument([]),
+  );
+  const source = preview.files.find((file) => file.path === "app.py")?.content ?? "";
+
+  assert.match(source, /st\.title\('Preview O\\'Brien'\)/);
+});
+
+test("ProjectPreviewGenerator_EmitsAppNameTitleWhenDisplayAppNameHeaderStringTrue", () => {
+  const preview = new ProjectPreviewGenerator().generate(
+    { ...project, theme: { displayAppNameHeader: "true" } },
+    createDocument([]),
+  );
+  const source = preview.files.find((file) => file.path === "app.py")?.content ?? "";
+
+  assert.match(source, /st\.title\('Preview O\\'Brien'\)/);
+});
+
 test("ProjectPreviewGenerator_AddsApprovedAsyncpgOnlyForLakebaseBackedOutput", () => {
   const generator = new ProjectPreviewGenerator();
   const lakebaseBinding: NonNullable<ProjectComponent["bindings"]> = {

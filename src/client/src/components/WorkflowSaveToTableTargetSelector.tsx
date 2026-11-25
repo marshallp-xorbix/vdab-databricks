@@ -54,7 +54,7 @@ export default function WorkflowSaveToTableTargetSelector({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <div className="max-w-xs space-y-1">
         <Label className="text-sm font-medium">Target Type</Label>
         <Select

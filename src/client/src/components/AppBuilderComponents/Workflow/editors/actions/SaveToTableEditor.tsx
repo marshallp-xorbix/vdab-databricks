@@ -273,13 +273,11 @@ export const SaveToTableEditor: FC<WorkflowActionEditorProps> = ({
         </div>
       </div>
 
-      <div className="rounded-md border border-border p-3 space-y-3">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_1fr] lg:items-start">
-          <WorkflowSaveToTableTargetSelector
-            value={targetTable}
-            onChange={(next) => updateTargetTable(() => next)}
-          />
-        </div>
+      <div className="min-w-0 rounded-md border border-border p-3 space-y-3">
+        <WorkflowSaveToTableTargetSelector
+          value={targetTable}
+          onChange={(next) => updateTargetTable(() => next)}
+        />
       </div>
 
       <SaveToTableColumnMappingEditor

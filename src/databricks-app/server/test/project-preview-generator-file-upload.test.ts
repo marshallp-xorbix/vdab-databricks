@@ -75,6 +75,75 @@ test("ProjectPreviewGenerator_ModalValidatesPropertiesTreesAndOrdering", () => {
   }
 });
 
+test("ProjectPreviewGenerator_ModalAllowsDataWindowChildForInspectionStyleApps", () => {
+  const generator = new ProjectPreviewGenerator();
+  const preview = generator.generate(
+    project,
+    createDocument([
+      createModal({
+        key: "recentInspectionsModal",
+        codeName: "recentInspectionsModal",
+        properties: { title: "Recent inspections", width: "large", position: "center", dismissible: true },
+        children: ["recentInspectionsTable"],
+      }),
+      createDataWindow({
+        key: "recentInspectionsTable",
+        codeName: "recentInspectionsTable",
+        properties: {
+          label: "Recent inspections",
+          maxRows: 20,
+          scrollable: true,
+          placeholder: "(missing)",
+          width: "stretch",
+          hideIndex: null,
+          height: "content",
+        },
+        bindings: {
+          unityCatalogTable: {
+            bindingType: "unityCatalogTable",
+            source: {
+              kind: "resource",
+              valueType: "table",
+              resource: {
+                type: "unityCatalogTable",
+                catalog: "dbdemos",
+                schema: "vdab",
+                table: "shipment_inspection",
+                primaryKeyColumn: null,
+              },
+            },
+          },
+        },
+        layout: { y: 0 },
+      }),
+    ]),
+  );
+
+  const source = preview.files.find((file) => file.path === "app.py")?.content ?? "";
+  assert.match(source, /@st\.dialog\('Recent inspections'/);
+  assert.match(source, /def show_recentInspectionsModal\(\):/);
+  assert.match(source, /shipment_inspection/);
+  assert.doesNotMatch(source, /Supported layout containers can contain only supported first-level controls/);
+});
+
+test("ProjectPreviewGenerator_FormStillRejectsFileUploadChild", () => {
+  const generator = new ProjectPreviewGenerator();
+  assert.throws(
+    () => generator.generate(
+      project,
+      createDocument([
+        createForm({ children: ["upload"] }),
+        createFileUpload({ key: "upload", codeName: "defectPhotos" }),
+      ]),
+    ),
+    (error: unknown) =>
+      error instanceof ApplicationError &&
+      error.status === 422 &&
+      error.code === "invalid_component_tree" &&
+      error.message.includes("Supported layout containers can contain only supported first-level controls."),
+  );
+});
+
 
 test("ProjectPreviewGenerator_FileUploadMatchesCallerAuthorizedVolumePythonFixture", async () => {
   const fixturePath = new URL(

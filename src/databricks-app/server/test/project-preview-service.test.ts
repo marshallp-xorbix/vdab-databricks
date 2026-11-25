@@ -66,5 +66,9 @@ test("ProjectPreviewService_GeneratesCurrentProjectVersion", async () => {
   assert.equal(preview.projectId, project.id);
   assert.equal(preview.version, project.version);
   assert.equal(preview.previewOnly, true);
-  assert.match(preview.files[0]?.content ?? "", /st\.title\('Empty project'\)/);
+  assert.match(
+    preview.files[0]?.content ?? "",
+    /st\.set_page_config\(page_title='Empty project', layout='wide'\)/,
+  );
+  assert.doesNotMatch(preview.files[0]?.content ?? "", /st\.title\(/);
 });

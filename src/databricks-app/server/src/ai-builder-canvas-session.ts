@@ -3,10 +3,13 @@ import type { AiBuilderProposal } from "./ai-builder-contract.ts";
 import { readAiBuilderProposal } from "./ai-builder-input.ts";
 import { resolveAiBuilderWorkflowReferences } from "./ai-builder-reference-resolution.ts";
 import type { ComponentDefinition } from "./component-registry/contracts.ts";
-import type {
-  ProjectComponent,
-  ProjectComponentType,
-  ProjectJsonObject,
+import {
+  FORM_CHILD_COMPONENT_TYPES,
+  LAYOUT_CHILD_COMPONENT_TYPES,
+  MODAL_CHILD_COMPONENT_TYPES,
+  type ProjectComponent,
+  type ProjectComponentType,
+  type ProjectJsonObject,
 } from "./db/project-components-contract.ts";
 import type {
   ProjectWorkflow,
@@ -319,8 +322,12 @@ export class AiBuilderCanvasSession {
     }
     const definition = this.definitionsByType.get(type);
     if (!definition) throw new Error(`Unsupported component type: ${type}.`);
+    if (type === "Modal" && args.parentId !== undefined && args.parentId !== null && args.parentId !== "") {
+      throw new Error("Modals must be root-level. Omit parentId when calling addModal.");
+    }
     const key = this.allocateKey(normalizedCodeName);
     const parentKey = type === "Modal" ? null : this.resolveOptionalParent(args.parentId);
+    if (parentKey) this.assertNestingAllowed(parentKey, type);
     const component: ProjectComponent = {
       key,
       type,
@@ -641,22 +648,20 @@ export class AiBuilderCanvasSession {
     const catalog = readString(args.catalog, "");
     const schema = readString(args.schema, "");
     const volume = readString(args.volume, "");
-    const resource: ProjectJsonObject = {
-      type: "databricksVolume",
-      resourceKey: `volume_${hashText(`${catalog}.${schema}.${volume}`)}`,
-      catalog,
-      schema,
-      volume,
-    };
-    if (typeof args.filePath === "string" && args.filePath) {
-      resource.filePath = args.filePath;
-    }
+    const filePath = typeof args.filePath === "string" ? args.filePath : "";
     component.bindings = {
       databricksVolume: {
         bindingType: "databricksVolume",
         source: {
           kind: "resource",
-          resource,
+          valueType: "file",
+          resource: {
+            type: "databricksVolume",
+            catalog,
+            schema,
+            volume,
+            filePath,
+          },
         },
       },
     };
@@ -675,7 +680,6 @@ export class AiBuilderCanvasSession {
     const table = readString(args.table, "");
     const resource: ProjectJsonObject = {
       type: bindingType,
-      resourceKey: `table_${hashText(`${bindingType}|${catalog}|${schema}|${table}|${String(args.instanceName ?? "")}|${String(args.projectId ?? "")}`)}`,
       catalog,
       schema,
       table,
@@ -763,6 +767,55 @@ export class AiBuilderCanvasSession {
     const parent = this.components.find((component) => component.key === parentKey);
     if (!parent) throw new Error(`Parent '${parentKey}' was not found.`);
     parent.children = [...parent.children, childKey];
+  }
+
+  /** Rejects illegal nesting with actionable guidance before mutating the draft. */
+  private assertNestingAllowed(parentKey: string, childType: ProjectComponentType): void {
+    const parent = this.components.find((component) => component.key === parentKey);
+    if (!parent) throw new Error(`Parent '${parentKey}' was not found.`);
+
+    if (isContainerComponent(childType) && childType !== "Modal") {
+      if (parent.type !== "Modal") {
+        throw new Error(
+          `${childType} may only be root-level or a direct Modal child. Place it at root or under a Modal, not under ${parent.type}.`,
+        );
+      }
+      return;
+    }
+
+    if (parent.type === "Form") {
+      if (!FORM_CHILD_COMPONENT_TYPES.some((type) => type === childType)) {
+        throw new Error(
+          `${childType} cannot be nested inside Form. Form children must be input fields only (${FORM_CHILD_COMPONENT_TYPES.join(", ")}). Place FileUpload, Button, and DataWindow as Form siblings (root or under Modal).`,
+        );
+      }
+      return;
+    }
+
+    if (parent.type === "Modal") {
+      if (!MODAL_CHILD_COMPONENT_TYPES.some((type) => type === childType)) {
+        throw new Error(`${childType} cannot be nested inside Modal.`);
+      }
+      return;
+    }
+
+    if (
+      parent.type === "Expander" ||
+      parent.type === "Columns" ||
+      parent.type === "Rows" ||
+      parent.type === "Tabs"
+    ) {
+      if (!LAYOUT_CHILD_COMPONENT_TYPES.some((type) => type === childType)) {
+        throw new Error(
+          `${childType} cannot be nested inside ${parent.type}. Layout slots accept only: ${LAYOUT_CHILD_COMPONENT_TYPES.join(", ")}.`,
+        );
+      }
+      return;
+    }
+
+    throw new Error(
+      `${parent.type} cannot contain children. Nest under Form, Modal, Columns, Rows, Tabs, or Expander instead.`,
+    );
   }
 
   private childLayout(parentKey: string, args: Record<string, unknown>): ProjectJsonObject | null {
@@ -858,6 +911,15 @@ function parseJsonArray(value: unknown): unknown[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isContainerComponent(type: ProjectComponentType): boolean {
+  return type === "Form" ||
+    type === "Modal" ||
+    type === "Expander" ||
+    type === "Columns" ||
+    type === "Rows" ||
+    type === "Tabs";
 }
 
 function hashText(value: string): string {

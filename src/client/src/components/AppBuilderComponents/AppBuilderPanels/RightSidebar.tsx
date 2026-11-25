@@ -22,6 +22,8 @@ interface RightSidebarProps {
   canvasContextType?: CanvasContextType;
   pageWidth?: number;
   onPageWidthChange?: (pageWidth: number) => void;
+  displayAppNameHeader?: boolean;
+  onDisplayAppNameHeaderChange?: (displayAppNameHeader: boolean) => void;
   projectComponentEditor?: IProjectComponentPropertiesEditorProps;
 }
 
@@ -39,6 +41,8 @@ const RightSidebar: FC<RightSidebarProps> = ({
   canvasContextType,
   pageWidth,
   onPageWidthChange,
+  displayAppNameHeader,
+  onDisplayAppNameHeaderChange,
   projectComponentEditor,
 }) => {
   return (
@@ -59,6 +63,8 @@ const RightSidebar: FC<RightSidebarProps> = ({
           canvasContextType={canvasContextType}
           pageWidth={pageWidth}
           onPageWidthChange={onPageWidthChange}
+          displayAppNameHeader={displayAppNameHeader}
+          onDisplayAppNameHeaderChange={onDisplayAppNameHeaderChange}
           projectComponentEditor={projectComponentEditor}
         />
       </div>

@@ -56,8 +56,9 @@ export function buildAiBuilderContractGuidance(
     `- Trigger event map from the active component registry: ${eventMap}.`,
     "- Create workflows with createWorkflow(workflowCodeName, triggerComponentCodeName, triggerEventKey), then add actions. Single-action workflows need no edges.",
     "- Button interactivity example: addModal(codeName=workflowModal) → createWorkflow(openWorkflowModal, modalButton, onClick) → addShowModalAction(..., workflowModal); createWorkflow(toastTriggered, toastButton, onClick) → addTriggerToastAction(..., \"Toast Triggered!\"). Complete every requested step in the same turn.",
+    "- Inspection-style example: addForm(inspectionForm) + field children → addFileUpload sibling + setStaticVolumeBinding → addButton + addModal(recentModal) + addDataWindow(parentId=recentModal) + setStaticUnityCatalogBinding → createWorkflow(Form.onSubmit)+addSaveToTableAction → createWorkflow(Button.onClick)+addShowModalAction. Never nest FileUpload or Button inside Form.",
     `- Prebuilt module signatures from the active library:\n${prebuiltSignatures || "(none)"}`,
     `Story visualizations: ${stories}. Choose only a story the user requested. Prefer setStaticXxxBinding after adding a story. If required field roles are unclear, ask before inventing column names.`,
-    "Resource authority: project sharing does not grant Databricks resource access. Never invent catalog, schema, table, Volume, warehouse, Lakebase, endpoint, Genie space, or Job IDs/names. Reuse only references already present in the supplied project; ask the user to select a new workspace resource in VDAB first.",
+    "Resource authority: project sharing does not grant Databricks resource access. Prefer listed inventory or references already in the project. When the user explicitly names a catalog.schema.table or catalog.schema.volume in the prompt, bind that exact name. Otherwise never invent catalog, schema, table, Volume, warehouse, Lakebase, endpoint, Genie space, or Job IDs/names — ask NEEDS_CLARIFICATION or ask the user to select the resource in VDAB first.",
   ].join("\n");
 }

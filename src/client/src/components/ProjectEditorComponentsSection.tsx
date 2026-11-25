@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Button } from "./ui/button";
 import ProjectComponentsEditor from "./ProjectComponentsEditor";
 import type { useProjectEditor } from "../hooks/useProjectEditor";
+import { DISPLAY_APP_NAME_HEADER_THEME_KEY } from "../utils/displayAppNameHeaderDefaults";
 import { PAGE_WIDTH_THEME_KEY } from "../utils/pageWidthDefaults";
 
 type ProjectEditorState = ReturnType<typeof useProjectEditor>;
@@ -25,6 +26,7 @@ interface IProjectEditorComponentsSectionProps {
     | "canEdit"
     | "handleComponentsChange"
     | "setWorkflow"
+    | "name"
     | "theme"
     | "setTheme"
   >;
@@ -95,6 +97,7 @@ function ProjectEditorComponentsSection({
           components={components}
           definitions={registryQuery.data?.components ?? []}
           theme={editor.theme as Record<string, string>}
+          appName={editor.name}
           isDisabled={
             !canEdit || editor.isCanvasSaving ||
             isMetadataDirty ||
@@ -111,6 +114,12 @@ function ProjectEditorComponentsSection({
             editor.setTheme((currentTheme) => ({
               ...currentTheme,
               [PAGE_WIDTH_THEME_KEY]: String(pageWidth),
+            }))
+          }
+          onDisplayAppNameHeaderChange={(displayAppNameHeader) =>
+            editor.setTheme((currentTheme) => ({
+              ...currentTheme,
+              [DISPLAY_APP_NAME_HEADER_THEME_KEY]: String(displayAppNameHeader),
             }))
           }
         />

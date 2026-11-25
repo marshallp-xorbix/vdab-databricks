@@ -10,7 +10,6 @@ import urllib.parse
 import urllib.request
 
 st.set_page_config(page_title='Revenue by region', layout='wide')
-st.title('Revenue by region')
 
 st.markdown("""<style>
   .block-container { max-width: 730px; }

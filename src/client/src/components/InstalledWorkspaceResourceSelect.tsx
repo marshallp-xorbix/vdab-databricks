@@ -50,7 +50,7 @@ export default function InstalledWorkspaceResourceSelect({
         onValueChange={onChange}
         disabled={disabled || loading || Boolean(errorMessage)}
       >
-        <SelectTrigger aria-label={label} className="h-9 text-sm">
+        <SelectTrigger aria-label={label} className="h-9 min-w-0 text-sm [&>span]:min-w-0 [&>span]:truncate">
           <SelectValue
             placeholder={
               loading ? `Loading ${label.toLowerCase()}…` : placeholder
